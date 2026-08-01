@@ -262,6 +262,21 @@ export default function UnifiedDashboard() {
     [recentRetros]
   );
 
+  // A brand-new workspace has nothing in it, and the panels below each render
+  // their own reassuring empty state — "You're clear", "Nothing's drifted".
+  // Those are right for a returning user with a quiet week and exactly wrong
+  // for someone thirty seconds past signup, who reads them as "this is empty
+  // and there is nothing to do". Detect the zero state and say what to do next.
+  const isNewWorkspace = useMemo(
+    () =>
+      !loading &&
+      conversations.length === 0 &&
+      timeline.length === 0 &&
+      awaiting.length === 0 &&
+      !sprint,
+    [loading, conversations, timeline, awaiting, sprint]
+  );
+
   // ─── render ───────────────────────────────────────────────────────────────
 
   return (
@@ -276,9 +291,15 @@ export default function UnifiedDashboard() {
             })}
           </p>
           <h1 className="dash-hero-title">
-            {firstName || "Welcome back"}
+            {isNewWorkspace ? `Welcome, ${firstName || "there"}` : firstName || "Welcome back"}
           </h1>
-          {awaiting.length > 0 ? (
+          {isNewWorkspace ? (
+            <p className="dash-hero-summary">
+              Your workspace is empty, which is the right place to start. Connect a
+              repository and Knoledgr begins recording decisions against the pull
+              requests that implement them.
+            </p>
+          ) : awaiting.length > 0 ? (
             <p className="dash-hero-summary">
               {awaiting.length} item{awaiting.length === 1 ? "" : "s"} waiting on you.
             </p>
@@ -287,15 +308,28 @@ export default function UnifiedDashboard() {
           )}
         </div>
         <div className="dash-hero-actions">
-          <Link to="/decisions/new" className="dash-btn dash-btn-primary">
-            Draft a decision
-          </Link>
-          <Link to="/ask" className="dash-btn">
-            Ask Recall
-          </Link>
-          <Link to="/agent" className="dash-btn">
-            Run agent
-          </Link>
+          {isNewWorkspace ? (
+            <>
+              <Link to="/integrations/github" className="dash-btn dash-btn-primary">
+                Connect GitHub
+              </Link>
+              <Link to="/decisions/new" className="dash-btn">
+                Record a decision
+              </Link>
+            </>
+          ) : (
+            <>
+              <Link to="/decisions/new" className="dash-btn dash-btn-primary">
+                Draft a decision
+              </Link>
+              <Link to="/ask" className="dash-btn">
+                Ask Recall
+              </Link>
+              <Link to="/agent" className="dash-btn">
+                Run agent
+              </Link>
+            </>
+          )}
         </div>
       </header>
 

@@ -16,26 +16,19 @@ export default function OnboardingTour() {
   const textPrimary = darkMode ? 'text-stone-100' : 'text-gray-900';
   const textSecondary = darkMode ? 'text-stone-400' : 'text-gray-600';
 
+  // One step, not five. The previous tour walked through Knowledge Hub /
+  // Collaborate / Execute — the "unified platform" pitch the marketing site no
+  // longer makes. It also never mentioned GitHub, so someone who signed up on
+  // the promise of "connect GitHub in a minute" arrived and was told about
+  // sprints instead. A tour is not a feature list; it should point at the one
+  // action worth taking first.
   const steps = [
     {
-      title: 'Welcome to Knoledgr',
-      description: 'A unified knowledge platform where conversations, decisions, and execution stay connected. Let\'s take a quick tour.',
-    },
-    {
-      title: 'Knowledge Hub',
-      description: 'Search across all content, explore the knowledge graph, and discover connections.',
-    },
-    {
-      title: 'Collaborate',
-      description: 'Start conversations, make decisions, and schedule meetings - all linked together.',
-    },
-    {
-      title: 'Execute',
-      description: 'Manage projects, track tasks, run sprints, and achieve goals.',
-    },
-    {
-      title: 'AI-Powered Context',
-      description: 'Every item shows related content, expert users, and smart suggestions automatically.',
+      title: 'Connect a repository',
+      description:
+        'Knoledgr records the decisions your team makes and links them to the pull requests that implemented them. Connect one repo and it starts building that history from the work you are already doing — nothing to migrate, and nobody has to change how they work.',
+      cta: 'Connect GitHub',
+      to: '/integrations/github',
     },
   ];
 
@@ -60,9 +53,14 @@ export default function OnboardingTour() {
   const handleNext = () => {
     if (step < steps.length - 1) {
       setStep((current) => current + 1);
-    } else {
-      handleComplete();
+      return;
     }
+    // Land the user on the action rather than dumping them back on an empty
+    // dashboard — the whole point of the step is that they do the thing.
+    const destination = steps[step]?.to;
+    localStorage.setItem('onboarding_completed', 'true');
+    setShow(false);
+    navigate(destination || (user ? '/dashboard' : '/'), { replace: true });
   };
 
   const handleComplete = () => {
@@ -77,8 +75,12 @@ export default function OnboardingTour() {
     <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
       <div className={`${bgPrimary} border ${borderColor} rounded-lg p-8 max-w-md w-full`}>
         <div className="flex justify-between items-start mb-6">
-          <div className={`text-sm ${textSecondary}`}>Step {step + 1} of {steps.length}</div>
-          <button onClick={handleComplete}>
+          {steps.length > 1 ? (
+            <div className={`text-sm ${textSecondary}`}>Step {step + 1} of {steps.length}</div>
+          ) : (
+            <div className={`text-sm ${textSecondary}`}>Getting started</div>
+          )}
+          <button onClick={handleComplete} aria-label="Dismiss">
             <XMarkIcon className={`w-5 h-5 ${textSecondary}`} />
           </button>
         </div>
@@ -91,13 +93,13 @@ export default function OnboardingTour() {
             onClick={handleComplete}
             className={`px-4 py-2 border ${borderColor} rounded ${textSecondary} hover:bg-opacity-50`}
           >
-            Skip Tour
+            Later
           </button>
           <button
             onClick={handleNext}
             className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 ${bgPrimary} border-2 ${borderColor} rounded ${textPrimary} hover:bg-opacity-80`}
           >
-            {step < steps.length - 1 ? 'Next' : 'Get Started'}
+            {steps[step].cta || (step < steps.length - 1 ? 'Next' : 'Get Started')}
             <ArrowRightIcon className="w-4 h-4" />
           </button>
         </div>

@@ -898,9 +898,14 @@ def register(request):
             except Exception:
                 logger.exception("Failed to send welcome email to %s", email)
             
+            # Return the same auth payload login does, so the client can sign
+            # the user straight in. Making someone re-enter the password they
+            # chose ten seconds earlier is pure drop-off: they have already
+            # proven the credential by creating the account with it.
             return Response({
                 'message': 'Organization created successfully',
-                'username': user.username
+                'username': user.username,
+                **_build_auth_payload(user),
             }, status=status.HTTP_201_CREATED)
             
         except Exception as e:

@@ -1,8 +1,14 @@
 import os
+import secrets
 
 # Force safe values before importing base settings, regardless of current shell env.
 os.environ["DEBUG"] = "False"
-os.environ.setdefault("SECRET_KEY", "test-secret-key")
+
+# Generated per run rather than a literal. A hardcoded "test-secret-key" string
+# works fine, but it is indistinguishable from a real leaked credential to a
+# scanner, and a finding you have to remember to ignore is worse than no
+# finding at all. Nothing here needs the key to be stable across runs.
+os.environ.setdefault("SECRET_KEY", secrets.token_urlsafe(48))
 
 from .settings import *  # noqa: F401,F403
 

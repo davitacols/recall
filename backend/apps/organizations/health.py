@@ -49,14 +49,6 @@ def health_check(request):
         status['components']['redis'] = 'error'
         status['status'] = 'degraded'
 
-    # Not verified: saying 'configured' used to imply the credentials worked.
-    # They can be present and still be rejected, so name what was actually
-    # established. Verifying would mean a network round trip on every probe.
-    if getattr(settings, 'COGNITO_USER_POOL_ID', ''):
-        status['components']['cognito'] = (
-            'configured' if settings.AWS_ACCESS_KEY_ID else 'missing credentials'
-        )
-
     try:
         from apps.knowledge.search_engine import get_search_engine
         get_search_engine()

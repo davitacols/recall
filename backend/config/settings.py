@@ -152,7 +152,6 @@ DATABASES = {
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework_simplejwt.authentication.JWTAuthentication',
-        'apps.users.authentication.CognitoAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
@@ -169,10 +168,10 @@ REST_FRAMEWORK = {
     'PAGE_SIZE': 20
 }
 
-# AWS Cognito Configuration
-COGNITO_USER_POOL_ID = config('COGNITO_USER_POOL_ID', default='')
-COGNITO_CLIENT_ID = config('COGNITO_CLIENT_ID', default='')
-COGNITO_REGION = config('AWS_REGION', default='us-east-1')
+# AWS Cognito removed: the credentials were rejected with 403, no user was ever
+# linked to a Cognito identity, and Google OAuth plus SimpleJWT cover auth.
+# Keeping a dead second authenticator on the hot path meant every token
+# SimpleJWT declined triggered an outbound JWKS fetch to AWS.
 GOOGLE_CLIENT_ID = config('GOOGLE_CLIENT_ID', default='')
 GOOGLE_OAUTH_ENABLED = _env_bool('GOOGLE_OAUTH_ENABLED', default=bool(GOOGLE_CLIENT_ID))
 GOOGLE_CLIENT_SECRET = config('GOOGLE_CLIENT_SECRET', default='')
@@ -233,9 +232,7 @@ CELERY_TASK_TIME_LIMIT = 30 * 60
 NOTIFICATIONS_USE_CELERY = _env_bool('NOTIFICATIONS_USE_CELERY', default=False)
 
 # AI Configuration
-AWS_ACCESS_KEY_ID = config('AWS_ACCESS_KEY_ID', default='')
-AWS_SECRET_ACCESS_KEY = config('AWS_SECRET_ACCESS_KEY', default='')
-AWS_REGION = config('AWS_REGION', default='us-east-1')
+# AWS settings removed with Cognito — nothing else in the codebase used them.
 CLAUDE_API_KEY = config('CLAUDE_API_KEY', default='').strip()
 ANTHROPIC_API_KEY = config('ANTHROPIC_API_KEY', default=CLAUDE_API_KEY).strip()
 CLAUDE_MODEL = (

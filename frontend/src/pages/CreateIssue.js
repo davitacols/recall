@@ -18,7 +18,6 @@ import {
   SectionMessage,
 } from "../components/atlas";
 import { useAgentContextHint, useAgentDock } from "../components/AgentDock";
-import BeforeYouCreate from "../components/BeforeYouCreate";
 import "./CreateIssue.css";
 
 const PRIORITIES = [
@@ -259,68 +258,10 @@ export default function CreateIssue() {
         </section>
 
         <aside className="ci-side">
-          <BeforeYouCreate
-            endpoint="/api/agile/intelligence/similar-issues/"
-            title={form.title}
-            description={form.description}
-            surface="issues"
-            heroTitle="Before you create"
-            heroSub="Similar past issues, with how they were resolved."
-            driftLabel={(item) =>
-              item.is_resolved
-                ? ""
-                : item.priority === "highest" || item.priority === "high"
-                ? "high-priority open"
-                : ""
-            }
-            emptyHint="Start typing a title — we'll surface past issues that touched similar ground."
-            renderItem={(it) => (
-              <li
-                key={it.id}
-                className={`byc-card ci-similar ${it.is_resolved ? "is-resolved" : ""}`}
-              >
-                <div className="byc-card-head">
-                  <Link to={it.url} className="byc-card-title">
-                    {it.title}
-                  </Link>
-                  <span
-                    className="ci-similar-state"
-                    style={{
-                      background: it.is_resolved
-                        ? "rgba(0, 135, 90, 0.12)"
-                        : "rgba(38, 132, 255, 0.12)",
-                      color: it.is_resolved ? "#00875A" : "#2684FF",
-                    }}
-                  >
-                    {it.is_resolved ? <CheckCircleIcon /> : null}
-                    {it.is_resolved ? "Resolved" : it.status.replace(/_/g, " ")}
-                  </span>
-                </div>
-                <div className="byc-card-meta">
-                  <Lozenge>{it.key}</Lozenge>
-                  <Lozenge>{it.issue_type}</Lozenge>
-                  <Lozenge variant={STATUS_TONE[it.status] || "default"}>
-                    {it.priority}
-                  </Lozenge>
-                  {it.project_name ? (
-                    <span style={{ fontSize: 11.5, color: "var(--app-muted)" }}>
-                      {it.project_name}
-                    </span>
-                  ) : null}
-                </div>
-                <div className="byc-card-foot">
-                  <span>
-                    {it.assignee
-                      ? "Owned by " + (it.assignee.name || "—")
-                      : "Unassigned"}
-                  </span>
-                  <Link to={it.url} className="byc-card-open">
-                    Open <ChevronRightIcon />
-                  </Link>
-                </div>
-              </li>
-            )}
-          />
+          {/* The 'Before you create' panel was removed: it pointed at
+              /api/agile/intelligence/similar-issues/, which has no backend.
+              The component swallowed the 404 into an empty list, so the panel
+              never rendered anything and no one could tell it was broken. */}
         </aside>
       </div>
     </div>

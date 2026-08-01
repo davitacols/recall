@@ -4,49 +4,67 @@ from django.db import connection
 from django.conf import settings
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
+import logging
 import redis
 import re
 from urllib.parse import urlparse
 
+logger = logging.getLogger(__name__)
+
+
 @csrf_exempt
 def health_check(request):
-    """System health check endpoint"""
+    """System health check endpoint.
+
+    This endpoint is unauthenticated, so it reports states rather than
+    exception text: a database connection error stringifies to the DSN, which
+    would hand a caller the host, user and sometimes the password. Details are
+    logged server-side instead.
+
+    It also distinguishes 'ok' (actively verified this request) from
+    'configured' (a setting is present, nothing was checked). Reporting a
+    credential as healthy because its env var is a non-empty string is worse
+    than reporting nothing — it reads green while the dependency is dead.
+    """
     status = {
         'status': 'healthy',
         'components': {}
     }
-    
-    # Check database
+
+    # Verified: the request path genuinely depends on these.
     try:
         connection.ensure_connection()
         status['components']['database'] = 'ok'
-    except Exception as e:
-        status['components']['database'] = f'error: {str(e)}'
+    except Exception:
+        logger.exception('Health check: database connection failed')
+        status['components']['database'] = 'error'
         status['status'] = 'unhealthy'
-    
-    # Check Redis
+
     try:
         r = redis.from_url(settings.CELERY_BROKER_URL)
         r.ping()
         status['components']['redis'] = 'ok'
-    except Exception as e:
-        status['components']['redis'] = f'error: {str(e)}'
+    except Exception:
+        logger.exception('Health check: redis ping failed')
+        status['components']['redis'] = 'error'
         status['status'] = 'degraded'
-    
-    # Check AWS credentials
-    if settings.AWS_ACCESS_KEY_ID:
-        status['components']['aws'] = 'configured'
-    else:
-        status['components']['aws'] = 'not configured'
-    
-    # Check ChromaDB
+
+    # Not verified: saying 'configured' used to imply the credentials worked.
+    # They can be present and still be rejected, so name what was actually
+    # established. Verifying would mean a network round trip on every probe.
+    if getattr(settings, 'COGNITO_USER_POOL_ID', ''):
+        status['components']['cognito'] = (
+            'configured' if settings.AWS_ACCESS_KEY_ID else 'missing credentials'
+        )
+
     try:
         from apps.knowledge.search_engine import get_search_engine
-        engine = get_search_engine()
+        get_search_engine()
         status['components']['chromadb'] = 'ok'
-    except Exception as e:
-        status['components']['chromadb'] = f'error: {str(e)}'
-    
+    except Exception:
+        logger.exception('Health check: search engine unavailable')
+        status['components']['chromadb'] = 'error'
+
     return JsonResponse(status)
 
 
@@ -72,8 +90,11 @@ def realtime_health_check(request):
         status['components']['message_roundtrip'] = (
             'ok' if received and received.get('ok') is True else 'unexpected payload'
         )
-    except Exception as e:
-        status['components']['channel_layer'] = f'error: {str(e)}'
+    except Exception:
+        # Same reasoning as health_check: this endpoint is unauthenticated, and
+        # a channels/redis failure stringifies to the connection URL.
+        logger.exception('Realtime health check: channel layer probe failed')
+        status['components']['channel_layer'] = 'error'
         status['status'] = 'unhealthy'
 
     try:

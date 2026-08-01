@@ -59,7 +59,10 @@ $DC logs --tail 20 migrate 2>&1 | grep -E "migrations to apply|Applying|static f
 
 echo "==> health"
 $DC ps --format "table {{.Service}}\t{{.Status}}"
+# 127.0.0.1, not localhost: busybox wget resolves localhost to ::1 first, and
+# our nginx.conf declares only `listen 80` (IPv4). The nginx image's
+# ipv6-by-default helper skips configs it does not recognise, so ::1 is refused.
 docker exec recall-web-1 wget -qO- --header="Host: www.knoledgr.com" \
-  http://localhost/api/health/ 2>/dev/null || echo "    health check unreachable"
+  http://127.0.0.1/api/health/ 2>/dev/null || echo "    health check unreachable"
 echo ""
 echo "==> deployed $(git rev-parse --short HEAD)"

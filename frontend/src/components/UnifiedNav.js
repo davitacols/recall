@@ -35,11 +35,23 @@ export default function UnifiedNav({
 
   useEffect(() => {
     let mounted = true;
+    // Was /api/enterprise/apps/installed/ — a route that does not exist (there
+    // is no /api/enterprise/ prefix at all), so this 404'd on every page load
+    // and the empty catch swallowed it. The nav simply never showed installed
+    // apps and nothing surfaced the failure.
+    //
+    // The marketplace endpoint carries an `installed` flag per app, so filter
+    // on that rather than treating every listed app as installed.
     api
-      .get("/api/enterprise/apps/installed/")
+      .get("/api/organizations/enterprise/marketplace/apps/")
       .then((res) => {
         if (!mounted) return;
-        setInstalledApps(Array.isArray(res.data?.results) ? res.data.results : res.data || []);
+        const list = Array.isArray(res.data?.results)
+          ? res.data.results
+          : Array.isArray(res.data)
+          ? res.data
+          : [];
+        setInstalledApps(list.filter((app) => app?.installed));
       })
       .catch(() => {});
     return () => {

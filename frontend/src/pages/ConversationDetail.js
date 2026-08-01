@@ -245,7 +245,7 @@ export default function ConversationDetail() {
 
   const handleEditReply = async (replyId, content) => {
     try {
-      await api.put(`/api/recall/conversations/replies/${replyId}/`, { content });
+      await api.put(`/api/conversations/replies/${replyId}/`, { content });
       fetchReplies();
     } catch (e) {
       console.error("Failed to update reply:", e);
@@ -254,7 +254,7 @@ export default function ConversationDetail() {
 
   const handleDeleteReply = async (replyId) => {
     try {
-      await api.delete(`/api/recall/conversations/replies/${replyId}/`);
+      await api.delete(`/api/conversations/replies/${replyId}/`);
       addToast("Reply deleted", "success");
       fetchReplies();
     } catch (e) {
@@ -273,7 +273,7 @@ export default function ConversationDetail() {
     setReactions({ reactions: next, user_reaction: wasSelected ? null : type });
     setReactionLoading(true);
     try {
-      if (wasSelected) await api.delete(`/api/recall/conversations/${id}/reactions/remove/`);
+      if (wasSelected) await api.delete(`/api/conversations/${id}/reactions/remove/`);
       else await api.post(`/api/recall/conversations/${id}/reactions/add/`, { reaction_type: type });
       fetchReactions();
     } catch (e) {

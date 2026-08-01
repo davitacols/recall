@@ -58,7 +58,10 @@ export default function Files() {
 
   useEffect(() => {
     let mounted = true;
-    api.get("/api/conversations/documents/all/")
+    // Was /api/conversations/documents/all/, which is not a route. Documents
+    // are served by the business app; the conversations app only exposes
+    // per-conversation document endpoints.
+    api.get("/api/business/documents/")
       .then((res) => {
         if (!mounted) return;
         const list = Array.isArray(res.data?.results) ? res.data.results : Array.isArray(res.data) ? res.data : [];

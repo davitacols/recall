@@ -199,7 +199,10 @@
   flex-direction: column;
   min-height: 0;
   overflow-y: auto;
-  padding: 24px 32px 120px;
+  /* The 120px bottom reserve existed to stop a fixed composer covering the
+     last answer. A sticky composer occupies its own space, so the reserve is
+     just a gap under it. */
+  padding: 24px 32px 16px;
 }
 
 /* ─── empty state ─────────────────────────────────────────── */
@@ -662,16 +665,25 @@
 
 /* ─── composer ────────────────────────────────────────────── */
 
+/* Sticky, not fixed. A fixed element is positioned against the viewport, so
+   `left: 50%` centred the composer on the window while the content it belongs
+   to sits in a grid column offset by the 240px history rail and the app's own
+   navigation — the composer therefore drifted left over the rail, and the
+   `calc(100% - 280px)` width was an attempt to compensate that cannot work,
+   because the offset it needs to know about is a left margin, not a width.
+
+   Sticky keeps the element in normal flow inside .ar-main, which is the
+   scroll container, so the column's own geometry constrains it and no
+   arithmetic about the surrounding chrome is required. */
 .ar-composer-wrap {
-  position: fixed;
+  position: sticky;
   bottom: 16px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: min(760px, calc(100% - 280px));
   z-index: 30;
-}
-@media (max-width: 880px) {
-  .ar-composer-wrap { width: calc(100% - 32px); }
+  width: 100%;
+  max-width: 760px;
+  /* Holds the composer at the bottom of a short page — otherwise it would sit
+     directly under the empty-state heading. */
+  margin: auto auto 0;
 }
 
 .ar-composer {

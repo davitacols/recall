@@ -81,6 +81,25 @@ SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 USE_X_FORWARDED_HOST = True
 SECURE_REDIRECT_EXEMPT = [r'^api/health/']
 
+# security.W001 warns that django.middleware.security.SecurityMiddleware is
+# absent from MIDDLEWARE and that the SECURE_* settings above therefore do
+# nothing. It is absent by name only: LocalDevelopmentSecurityMiddleware
+# subclasses it, so all of that behaviour runs. The check compares the literal
+# dotted path and does not resolve subclasses.
+#
+# Silencing a security warning deserves evidence rather than an argument, so
+# this was verified against production rather than reasoned about:
+#
+#   $ curl -sSI https://www.knoledgr.com/api/health/
+#   Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
+#   X-Content-Type-Options: nosniff
+#   Referrer-Policy: strict-origin-when-cross-origin
+#   $ curl -sSI http://www.knoledgr.com/   ->   301 to https://
+#
+# If the subclass is ever removed, this silence hides a real finding — so the
+# subclass is the thing to check first if these headers ever go missing.
+SILENCED_SYSTEM_CHECKS = ['security.W001']
+
 # Custom User Model
 AUTH_USER_MODEL = 'organizations.User'
 

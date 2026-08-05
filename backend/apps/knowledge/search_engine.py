@@ -587,11 +587,9 @@ def _iso(value):
 
 
 def _truncate(text, limit=220):
-    text = unescape(strip_tags((text or '').replace('<br>', '\n').replace('<br/>', '\n').replace('<br />', '\n')))
-    text = ' '.join(text.split())
-    if len(text) <= limit:
-        return text
-    return f'{text[:limit].rstrip()}...'
+    from apps.knowledge.text_utils import to_plain_text
+
+    return to_plain_text(text, limit=limit)
 
 
 def _parse_iso(value):

@@ -25,14 +25,22 @@ logger = logging.getLogger(__name__)
 
 _PROMPT = """You are extracting the reasoning behind a decision from a team discussion.
 
-Return ONLY the reasoning: the tradeoffs weighed, constraints that forced the
-choice, and alternatives rejected. Do not summarise what the discussion was
-about, and do not restate the decision itself.
+Return ONLY the reasoning: the goal being served, tradeoffs weighed, constraints
+that forced the choice, or alternatives rejected. Do not narrate what the
+discussion was about, and do not simply restate the decision.
 
 Rules:
 - 1-3 sentences, plain prose, no preamble and no bullet points.
-- Use only what the text supports. Do not infer motives that are not stated.
-- If the text does not actually explain WHY, reply with exactly: NO_RATIONALE
+- Use only what the text supports. Never infer motives that are not stated.
+- A brief reason still counts. "We are moving to X for better performance"
+  states a reason — capture it. Length is not the test.
+- Reply with exactly NO_RATIONALE only when the text gives no reason at all:
+  it announces a decision, a fact or a logistic and nothing more.
+
+Examples:
+- "Standup is at 9:30." -> NO_RATIONALE (a fact, no reason)
+- "We want to adopt deep learning for v3" -> NO_RATIONALE (a want, no reason)
+- "Moving to Postgres for better JSON support" -> the JSON support is the reason
 
 Title: {title}
 

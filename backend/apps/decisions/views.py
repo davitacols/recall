@@ -1363,20 +1363,24 @@ def convert_to_decision(request, conversation_id):
             return Response({'error': 'Decision already exists for this conversation'}, 
                           status=status.HTTP_400_BAD_REQUEST)
         
-        # Generate AI summary from conversation
-        from apps.agile.ai_service import generate_sprint_update_summary
-        ai_summary = generate_sprint_update_summary(
+        # Extract the reasoning, not a summary. This used to call
+        # generate_sprint_update_summary, whose prompt asks for "a summary of
+        # this sprint update" — so the rationale field ended up restating what
+        # was said rather than why it was chosen. Returns '' rather than
+        # inventing a why when the discussion does not contain one.
+        from apps.decisions.rationale import generate_decision_rationale
+        ai_rationale = generate_decision_rationale(
             conversation.title,
             conversation.content
         )
-        
+
         # Create decision from conversation
         decision = Decision.objects.create(
             organization=request.user.organization,
             conversation=conversation,
             title=conversation.title,
             description=conversation.content,
-            rationale=ai_summary,
+            rationale=ai_rationale,
             impact_level=request.data.get('impact_level', 'medium'),
             decision_maker=request.user,
             status='proposed'
@@ -1398,7 +1402,9 @@ def convert_to_decision(request, conversation_id):
             'id': decision.id,
             'title': decision.title,
             'status': decision.status,
-            'ai_summary': ai_summary
+            # Empty when the discussion contained no reasoning to extract. The
+            # client says so plainly rather than implying the why was captured.
+            'rationale': ai_rationale,
         }, status=status.HTTP_201_CREATED)
         
     except Conversation.DoesNotExist:

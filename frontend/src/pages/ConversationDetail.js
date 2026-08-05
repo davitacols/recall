@@ -350,17 +350,22 @@ export default function ConversationDetail() {
   const handleConvertToDecision = async () => {
     setConverting(true);
     try {
-      const res = await api.post("/api/decisions/", {
-        title: conversation.title,
-        description: conversation.content,
-        status: "proposed",
-        context: `Converted from conversation #${id}`,
-        conversation_id: id,
-      });
-      addToast("Converted to decision", "success");
+      // Was POST /api/decisions/, which copied the title and body across and
+      // left rationale empty — 54% of recorded decisions had no "why", which is
+      // the one field this product exists to keep. The convert endpoint links
+      // the conversation, refuses to create a duplicate, and extracts the
+      // reasoning from the discussion.
+      const res = await api.post(`/api/decisions/convert/${id}/`);
+      addToast(
+        res.data?.rationale
+          ? "Decision recorded, with the reasoning captured"
+          : "Decision recorded — add the reasoning to make it useful later",
+        "success"
+      );
       navigate(`/decisions/${res.data.id}`);
     } catch (e) {
-      addToast("Failed to convert to decision", "error");
+      const detail = e?.response?.data?.error;
+      addToast(detail || "Failed to convert to decision", "error");
     } finally {
       setConverting(false);
     }

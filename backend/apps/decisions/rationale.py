@@ -1,0 +1,89 @@
+"""Extract the reasoning behind a decision from the discussion that produced it.
+
+More than half of the decisions recorded so far have an empty rationale. That is
+the one field the product exists to preserve: a decision without its "why" is a
+row in a list, and six months later it is exactly as useless as the ticket that
+prompted the question.
+
+Part of the cause was mechanical — the convert flow reused
+generate_sprint_update_summary, whose prompt asks for "a summary of this sprint
+update". That yields a description of *what was said*, not *why it was chosen*.
+
+The important rule here: when the source does not actually contain reasoning,
+this returns empty rather than inventing something. A fabricated "why" in a
+decision-memory tool is worse than a blank one — a blank invites someone to fill
+it in, while a plausible invention gets trusted, cited, and acted on.
+"""
+
+from __future__ import annotations
+
+import logging
+
+from django.conf import settings
+
+logger = logging.getLogger(__name__)
+
+_PROMPT = """You are extracting the reasoning behind a decision from a team discussion.
+
+Return ONLY the reasoning: the tradeoffs weighed, constraints that forced the
+choice, and alternatives rejected. Do not summarise what the discussion was
+about, and do not restate the decision itself.
+
+Rules:
+- 1-3 sentences, plain prose, no preamble and no bullet points.
+- Use only what the text supports. Do not infer motives that are not stated.
+- If the text does not actually explain WHY, reply with exactly: NO_RATIONALE
+
+Title: {title}
+
+Discussion:
+{content}"""
+
+_SENTINEL = "NO_RATIONALE"
+_MAX_CONTENT = 6000
+
+
+def generate_decision_rationale(title: str, content: str) -> str:
+    """Return the reasoning behind a decision, or '' when there is none to find.
+
+    Never raises: capture must not fail because an LLM call did. A decision
+    recorded without a rationale is recoverable; a decision not recorded at all
+    is lost.
+    """
+    text = str(content or "").strip()
+    if not text:
+        return ""
+
+    api_key = getattr(settings, "ANTHROPIC_API_KEY", "")
+    if not api_key:
+        # No silent degradation to a word-count "summary" — that is what filled
+        # the field with restatements in the first place. Better empty.
+        logger.info("Rationale extraction skipped: no ANTHROPIC_API_KEY configured")
+        return ""
+
+    try:
+        import anthropic
+
+        client = anthropic.Anthropic(api_key=api_key, timeout=20.0, max_retries=1)
+        message = client.messages.create(
+            model=getattr(settings, "CLAUDE_MODEL", "claude-sonnet-4-6"),
+            max_tokens=220,
+            messages=[{
+                "role": "user",
+                "content": _PROMPT.format(title=str(title or "")[:300], content=text[:_MAX_CONTENT]),
+            }],
+        )
+        parts = getattr(message, "content", None) or []
+        answer = "".join(getattr(p, "text", "") for p in parts).strip()
+    except Exception:
+        logger.exception("Rationale extraction failed for %r", str(title)[:80])
+        return ""
+
+    if not answer or _SENTINEL in answer.upper():
+        return ""
+
+    # A model that ignores the instruction and returns a paragraph of preamble
+    # is more likely restating than reasoning; keep the field trustworthy.
+    if len(answer) > 900:
+        answer = answer[:900].rsplit(" ", 1)[0] + "…"
+    return answer

@@ -49,13 +49,26 @@ def health_check(request):
         status['components']['redis'] = 'error'
         status['status'] = 'degraded'
 
+    # Reported as 'search', not 'chromadb'. It used to claim chromadb was 'ok'
+    # whenever get_search_engine() returned — but chromadb is not installed in
+    # this image, and neither is sentence-transformers, so retrieval is the
+    # keyword engine. Naming a component that is not running, and calling it
+    # healthy, is how you end up trusting a dashboard that is wrong.
     try:
         from apps.knowledge.search_engine import get_search_engine
-        get_search_engine()
-        status['components']['chromadb'] = 'ok'
+        engine = get_search_engine()
+        status['components']['search'] = type(engine).__name__
     except Exception:
         logger.exception('Health check: search engine unavailable')
-        status['components']['chromadb'] = 'error'
+        status['components']['search'] = 'error'
+        status['status'] = 'degraded'
+
+    try:
+        import importlib.util
+        semantic = importlib.util.find_spec('sentence_transformers') is not None
+        status['components']['semantic_search'] = 'available' if semantic else 'unavailable'
+    except Exception:
+        status['components']['semantic_search'] = 'unknown'
 
     return JsonResponse(status)
 

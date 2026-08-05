@@ -105,6 +105,20 @@ def handle_pull_request_event(
         )
         return
 
+    # 2.5: a merged PR's review discussion is raw material for a decision.
+    # Runs before the marker logic and independently of it — whether or not
+    # this PR links to an existing decision, the argument inside it is worth
+    # keeping, and it is the only capture source that costs the team nothing.
+    if action == "closed" and pr.get("merged"):
+        try:
+            from apps.integrations.github_pr_capture import maybe_capture_pr_discussion
+
+            maybe_capture_pr_discussion(installation=installation, repo=repo, pr=pr)
+        except Exception:
+            logger.exception(
+                "PR discussion capture failed for %s#%s", repo.full_name, pr_number
+            )
+
     # 3: parse inline markers from the body.
     body = pr.get("body") or ""
     decision_ids = _extract_marker_decision_ids(body)

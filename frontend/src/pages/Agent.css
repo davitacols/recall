@@ -126,7 +126,11 @@
   border-right: 1px solid var(--app-border);
   padding: 14px 12px;
   overflow-y: auto;
-  max-height: calc(100vh - var(--atlas-topnav-h, 60px) - 175px);
+  /* The old max-height subtracted a further 175px to keep the rail clear of
+     a composer that floated over it. The composer no longer overlaps
+     anything, so the rail can use the height the grid actually gives it —
+     and no longer has to be re-tuned whenever the composer changes size. */
+  min-height: 0;
 }
 .ag-rail-head {
   display: flex;
@@ -214,7 +218,12 @@
 /* ─── main column ─────────────────────────────────────────── */
 
 .ag-main {
-  padding: 22px 32px 32px;
+  /* Flex column so the composer's auto top margin can hold it at the bottom
+     of a short page. */
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 22px 32px 16px;
   overflow-y: auto;
   min-width: 0;
 }
@@ -710,12 +719,25 @@
 
 /* ─── composer (docked) ───────────────────────────────────── */
 
+/* Sticky rather than fixed, for the same reason as the Ask Recall composer:
+   a fixed element is positioned against the viewport, so `left: 50%` centred
+   this on the window while the content it belongs to sits in a grid column
+   offset by the 260px run rail and the app's own navigation. The old
+   `calc(100% - 280px)` tried to correct that by narrowing the box, which
+   cannot work — narrowing a centred element leaves its centre where it was,
+   and the quantity to account for is a left offset.
+
+   Now it lives inside .ag-main, the scroll container, so the column's own
+   geometry constrains it. */
 .ag-composer {
-  position: fixed;
+  position: sticky;
   bottom: 16px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: min(820px, calc(100% - 280px));
+  z-index: 30;
+  width: 100%;
+  max-width: 820px;
+  /* Holds it at the bottom of a short page instead of directly under the
+     empty state. */
+  margin: auto auto 0;
   display: flex;
   align-items: flex-end;
   gap: 6px;
@@ -728,7 +750,7 @@
 }
 .ag-composer:focus-within { border-color: var(--app-text); }
 @media (max-width: 880px) {
-  .ag-composer { width: calc(100% - 32px); }
+  .ag-composer { width: 100%; }
 }
 
 .ag-composer-profile {

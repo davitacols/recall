@@ -191,6 +191,38 @@ def github_get(path: str, *, installation_id: int, params: Optional[dict] = None
     )
 
 
+def github_post(path: str, *, installation_id: int, json_body: dict) -> requests.Response:
+    """POST to a GitHub API path using the installation's token.
+
+    Writing requires a permission the App may not hold — it shipped read-only.
+    Callers must treat 403 as "not granted yet" rather than an error, so a
+    workspace that has not accepted the updated permissions keeps working with
+    the read-only behaviour instead of erroring on every webhook.
+    """
+    token = get_installation_token(installation_id)
+    return requests.post(
+        f"{GITHUB_API}{path}",
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+        },
+        json=json_body,
+        timeout=15,
+    )
+
+
+def installation_can_write_prs(installation) -> bool:
+    """Whether this installation granted pull_requests: write.
+
+    Checked before attempting a comment so the common case (permission not yet
+    accepted) costs nothing and logs once, rather than issuing a request that
+    is guaranteed to 403.
+    """
+    perms = getattr(installation, "permissions", None) or {}
+    return str(perms.get("pull_requests", "")).lower() == "write"
+
+
 def list_installation_repos(installation_id: int) -> list[dict]:
     """Pull every repo the installation has access to.
 

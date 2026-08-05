@@ -123,6 +123,27 @@ def handle_pull_request_event(
         link_source = DecisionPullRequest.LINK_SOURCE_BADGE
 
     if not decision_ids:
+        # Nothing explicit to go on. Rather than give up silently — which is
+        # how zero of the recorded decisions ended up linked to a PR — offer a
+        # suggestion on the PR itself, where the author already is. It only
+        # proposes; the link is still created by a human adding the marker.
+        if action in {"opened", "reopened", "ready_for_review"}:
+            try:
+                from django.conf import settings
+                from apps.integrations.github_pr_suggest import maybe_comment_suggestion
+
+                maybe_comment_suggestion(
+                    installation=installation,
+                    repo=repo,
+                    pr=pr,
+                    base_url=getattr(settings, "FRONTEND_URL", "") or "",
+                )
+            except Exception:
+                # A failed suggestion must never fail the webhook: GitHub
+                # retries non-2xx, and a bad comment is not worth a retry storm.
+                logger.exception(
+                    "PR suggestion failed for %s#%s", repo.full_name, pr_number
+                )
         return
 
     for decision_id in decision_ids[:_MAX_AUTOLINKS_PER_PR]:

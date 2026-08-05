@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+import RichText from "../components/RichText";
 import {
   ArrowLeftIcon,
   ArrowRightIcon,
@@ -72,7 +71,6 @@ const DRIFT_BAND_META = {
   mixed: { label: "Mixed", tone: "moved", color: "#FF8B00" },
 };
 
-const MARKDOWN_PLUGINS = [remarkGfm];
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -565,21 +563,21 @@ function OverviewTab({ decision, predictions, retros }) {
       {decision.description ? (
         <PanelCard title="Description">
           <div className="di-md">
-            <ReactMarkdown remarkPlugins={MARKDOWN_PLUGINS}>{decision.description}</ReactMarkdown>
+            <RichText content={decision.description} />
           </div>
         </PanelCard>
       ) : null}
       {decision.rationale ? (
         <PanelCard title="Rationale">
           <div className="di-md">
-            <ReactMarkdown remarkPlugins={MARKDOWN_PLUGINS}>{decision.rationale}</ReactMarkdown>
+            <RichText content={decision.rationale} />
           </div>
         </PanelCard>
       ) : null}
       {decision.if_this_fails ? (
         <PanelCard title="If this fails…">
           <div className="di-md">
-            <ReactMarkdown remarkPlugins={MARKDOWN_PLUGINS}>{decision.if_this_fails}</ReactMarkdown>
+            <RichText content={decision.if_this_fails} />
           </div>
         </PanelCard>
       ) : null}
@@ -978,7 +976,7 @@ function TwinCard({ twin }) {
         <div className="di-twin-detail">
           {data.analysis ? (
             <div className="di-md">
-              <ReactMarkdown remarkPlugins={MARKDOWN_PLUGINS}>{data.analysis}</ReactMarkdown>
+              <RichText content={data.analysis} />
             </div>
           ) : data.status === "running" || data.status === "queued" ? (
             <p style={{ color: "var(--app-muted)", margin: 0 }}>The agent is still working…</p>
@@ -1041,19 +1039,19 @@ function RetroCard({ retro }) {
       {retro.summary ? (
         <div className="di-md di-retro-section">
           <p className="di-retro-label">Summary</p>
-          <ReactMarkdown remarkPlugins={MARKDOWN_PLUGINS}>{retro.summary}</ReactMarkdown>
+          <RichText content={retro.summary} />
         </div>
       ) : null}
       {retro.root_cause ? (
         <div className="di-md di-retro-section">
           <p className="di-retro-label">Root cause</p>
-          <ReactMarkdown remarkPlugins={MARKDOWN_PLUGINS}>{retro.root_cause}</ReactMarkdown>
+          <RichText content={retro.root_cause} />
         </div>
       ) : null}
       {retro.lesson ? (
         <div className="di-md di-retro-section di-retro-lesson">
           <p className="di-retro-label">Lesson</p>
-          <ReactMarkdown remarkPlugins={MARKDOWN_PLUGINS}>{retro.lesson}</ReactMarkdown>
+          <RichText content={retro.lesson} />
         </div>
       ) : null}
       {retro.tags?.length ? (

@@ -9,6 +9,7 @@ import {
   TrashIcon,
 } from "@heroicons/react/24/outline";
 import { useToast } from "../components/Toast";
+import RichText from "../components/RichText";
 import {
   Avatar,
   Breadcrumb,
@@ -295,7 +296,7 @@ export default function DocumentDetail() {
                 </div>
               ) : null}
               {doc.content ? (
-                <div className="atlas-article" dangerouslySetInnerHTML={{ __html: doc.content }} />
+                <RichText content={doc.content} className="atlas-article" />
               ) : (
                 <p style={{ color: "var(--app-text-disabled)", fontSize: 14 }}>This page has no content yet.</p>
               )}

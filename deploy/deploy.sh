@@ -33,12 +33,24 @@ echo "==> checking for uncommitted work"
 if [ -n "$(git status --porcelain)" ]; then
   echo "    working tree is dirty; these changes will be DISCARDED:"
   git status --porcelain | sed 's/^/      /'
-  printf "    continue? [y/N] "
-  read -r reply
-  case "$reply" in
-    [yY]) ;;
-    *) echo "    aborted"; exit 1 ;;
-  esac
+  # Only prompt when there is a human to answer. Run from a pipe or a
+  # non-interactive ssh the read gets EOF and the script hangs until something
+  # times out — which is exactly how a deploy silently fails to happen.
+  if [ -t 0 ]; then
+    printf "    continue? [y/N] "
+    read -r reply
+    case "$reply" in
+      [yY]) ;;
+      *) echo "    aborted"; exit 1 ;;
+    esac
+  else
+    echo "    non-interactive: refusing to discard uncommitted work."
+    echo "    re-run with --force, or commit/stash first."
+    case " $* " in
+      *" --force "*) echo "    --force given, continuing" ;;
+      *) exit 1 ;;
+    esac
+  fi
 fi
 
 echo "==> moving to $REF"

@@ -376,6 +376,15 @@ def github_app_resync(request):
             status=502,
         )
 
+    # Repos are not the only thing that drifts. If the admin accepted a
+    # permission change while a deploy was rolling, the webhook carrying it is
+    # gone for good — this button is then the only way back to the truth.
+    try:
+        meta = fetch_installation_metadata(installation.installation_id)
+        _refresh_permissions(installation, {"installation": meta})
+    except Exception as exc:
+        logger.warning("Permission refresh during manual resync failed: %s", exc)
+
     return Response({
         "message": f"Synced repos with GitHub. {enabled_count} enabled for decisions.",
         "results": [
@@ -492,6 +501,31 @@ def _summarize(event: str, action: str, payload: dict) -> str:
     return f"{event}{('.' + action) if action else ''}: {repo}"
 
 
+def _refresh_permissions(installation: GitHubAppInstallation, payload: dict) -> bool:
+    """Sync the stored permission set from an installation webhook payload.
+
+    Returns True when the stored set actually changed. Logs the transition,
+    because "the permission is granted but the feature is still off" is
+    otherwise invisible, and the grant happens on GitHub where we have no
+    other signal.
+    """
+    incoming = (payload.get("installation") or {}).get("permissions")
+    if not isinstance(incoming, dict) or not incoming:
+        return False
+
+    current = installation.permissions or {}
+    if incoming == current:
+        return False
+
+    installation.permissions = incoming
+    installation.save(update_fields=["permissions", "updated_at"])
+    logger.info(
+        "Installation %s permissions updated: %s -> %s",
+        installation.installation_id, current, incoming,
+    )
+    return True
+
+
 def _dispatch_event(event: str, action: str, payload: dict, installation: GitHubAppInstallation, repo):
     """Route an event to the right handler.
 
@@ -502,6 +536,13 @@ def _dispatch_event(event: str, action: str, payload: dict, installation: GitHub
       rows so the decision detail page stays accurate.
     """
     if event == "installation":
+        # Every installation event carries the current permission set, and it is
+        # the only thing that does. Without this the row keeps whatever was
+        # captured at install time forever: an admin can grant pull_requests:
+        # write, accept it on GitHub, see it granted there — and the feature
+        # stays dormant here with nothing anywhere saying why.
+        _refresh_permissions(installation, payload)
+
         if action in ("suspend", "suspended"):
             installation.suspended_at = timezone.now()
             installation.save(update_fields=["suspended_at", "updated_at"])

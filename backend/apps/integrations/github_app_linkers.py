@@ -137,6 +137,7 @@ def handle_pull_request_event(
                     repo=repo,
                     pr=pr,
                     base_url=getattr(settings, "FRONTEND_URL", "") or "",
+                    snapshot=snapshot,
                 )
             except Exception:
                 # A failed suggestion must never fail the webhook: GitHub

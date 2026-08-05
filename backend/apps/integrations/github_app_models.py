@@ -208,11 +208,13 @@ class DecisionPullRequest(models.Model):
     LINK_SOURCE_BADGE = "badge"
     LINK_SOURCE_BRANCH = "branch"
     LINK_SOURCE_ACTION = "action"
+    LINK_SOURCE_AUTO = "auto"
     LINK_SOURCE_CHOICES = [
         (LINK_SOURCE_MANUAL, "Manual link from decision page"),
         (LINK_SOURCE_BADGE, "Inline knoledgr-decision marker in PR body"),
         (LINK_SOURCE_BRANCH, "Branch name match"),
         (LINK_SOURCE_ACTION, "knoledgr/link-decision GitHub Action"),
+        (LINK_SOURCE_AUTO, "Inferred automatically from PR text"),
     ]
 
     organization = models.ForeignKey(
@@ -259,6 +261,13 @@ class DecisionPullRequest(models.Model):
         User, on_delete=models.SET_NULL, null=True, blank=True,
         related_name="github_pr_links",
     )
+
+    # Why an inferred link was made, kept so the inference can be audited
+    # later. A link created by a person needs no justification; one created
+    # by a heuristic does, and without recording the numbers there is no way
+    # to tell a well-tuned matcher from a lucky one.
+    match_score = models.IntegerField(null=True, blank=True)
+    match_runner_up_score = models.IntegerField(null=True, blank=True)
 
     linked_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

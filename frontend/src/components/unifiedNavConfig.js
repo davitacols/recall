@@ -148,67 +148,6 @@ export function buildUnifiedNavModel({ user, experienceMode = "standard", instal
           icon: ChartBarIcon,
           description: "Predicted outcomes vs. reality across every decision",
         },
-        {
-          name: "Meetings",
-          href: "/business/meetings",
-          icon: CalendarIcon,
-          description: "Capture meetings and keep follow-up visible",
-        },
-      ],
-    },
-    {
-      name: "Execute",
-      icon: RocketLaunchIcon,
-      summary: "Projects, goals, tasks, and sprint delivery",
-      items: [
-        {
-          name: "Projects",
-          href: "/projects",
-          icon: CubeIcon,
-          description: "Monitor project health, scope, and execution lanes",
-        },
-        {
-          name: "Goals",
-          href: "/business/goals",
-          icon: FlagIcon,
-          description: "Track outcomes, owners, and performance targets",
-        },
-        {
-          name: "Tasks",
-          href: "/business/tasks",
-          icon: ClipboardDocumentListIcon,
-          description: "Move day-to-day execution and ownership forward",
-        },
-        {
-          name: "Journeys",
-          href: "/business/journeys",
-          icon: Squares2X2Icon,
-          description: "Map work from signal to decision to delivered outcome",
-        },
-        {
-          name: "Calendar",
-          href: "/business/calendar",
-          icon: CalendarIcon,
-          description: "Find time, connect calendars, and slot work into the week",
-        },
-        {
-          name: "Team Health",
-          href: "/business/team-health",
-          icon: HeartIcon,
-          description: "Review load, sentiment, and burnout risk signals",
-        },
-        {
-          name: "Service Desk",
-          href: "/service-desk",
-          icon: TicketIcon,
-          description: "Capture support, access, bug, incident, and change requests",
-        },
-        {
-          name: "Sprints",
-          href: "/sprint-history",
-          icon: RocketLaunchIcon,
-          description: "Inspect sprint progress, rhythm, and delivery health",
-        },
       ],
     },
     {
@@ -360,13 +299,7 @@ export function buildUnifiedNavModel({ user, experienceMode = "standard", instal
       path: "/conversations",
       icon: ChatBubbleLeftIcon,
       label: "Collab",
-      match: ["/conversations", "/decisions", "/business/meetings"],
-    },
-    {
-      path: "/projects",
-      icon: RocketLaunchIcon,
-      label: "Execute",
-      match: ["/projects", "/business/goals", "/business/tasks", "/business/journeys", "/business/calendar", "/business/team-health", "/service-desk", "/sprint-history", "/sprints", "/sprint"],
+      match: ["/conversations", "/decisions"],
     },
   ];
 

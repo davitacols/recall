@@ -235,6 +235,73 @@
   color: var(--app-muted);
 }
 .conv-row-author { display: inline-flex; align-items: center; gap: 6px; color: var(--app-text-subtle); font-weight: 500; }
+
+/* Provenance chip. Sits where the author normally sits, because on a captured
+   record there is no single author to name. Deliberately quiet — it is a
+   qualifier on the row, not a call to action competing with the title. */
+.conv-source {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px 2px 6px;
+  border-radius: 999px;
+  border: 1px solid var(--app-border);
+  background: var(--app-surface-alt);
+  color: var(--app-text-subtle);
+  font-size: 14px;
+  font-weight: 560;
+  text-decoration: none;
+  transition: border-color 120ms ease, color 120ms ease;
+}
+.conv-source svg { width: 14px; height: 14px; }
+.conv-source:hover {
+  border-color: var(--app-border-strong);
+  color: var(--app-text);
+  text-decoration: none;
+}
+.conv-source-ref { color: var(--app-muted); font-variant-numeric: tabular-nums; }
+
+/* Empty-state paths. Two routes in, side by side, so the automatic one is as
+   visible as the manual one instead of being a feature nobody discovers. */
+.conv-empty-paths {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+  text-align: left;
+}
+.conv-empty-path {
+  border: 1px solid var(--app-border);
+  border-radius: 12px;
+  background: var(--app-surface);
+  padding: 18px 18px 20px;
+}
+.conv-empty-path-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  border: 1px solid var(--app-border);
+  background: var(--app-surface-alt);
+  color: var(--app-text-subtle);
+  margin-bottom: 12px;
+}
+.conv-empty-path-icon svg { width: 18px; height: 18px; }
+.conv-empty-path h4 {
+  margin: 0 0 6px;
+  font-size: 16.5px;
+  font-weight: 620;
+  letter-spacing: -0.01em;
+  color: var(--app-text);
+}
+.conv-empty-path p {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--app-muted);
+}
+.conv-empty-path a { font-weight: 600; }
 .conv-row-dot { width: 3px; height: 3px; border-radius: 999px; background: var(--app-border-strong); }
 .conv-row-tags { display: inline-flex; gap: 6px; flex-wrap: wrap; }
 .conv-row-tag {

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import RichText from "../components/RichText";
+import RichText, { toPlainExcerpt } from "../components/RichText";
 import {
   ArrowLeftIcon,
   ArrowRightIcon,
@@ -348,7 +348,7 @@ export default function DecisionDetail() {
               {decision.impact_level ? <Lozenge variant={impactVariant(decision.impact_level)}>{decision.impact_level} impact</Lozenge> : null}
             </span>
           }
-          subtitle={decision.description ? decision.description.slice(0, 220) : ""}
+          subtitle={toPlainExcerpt(decision.description, 220)}
           actions={
             <>
               <Button

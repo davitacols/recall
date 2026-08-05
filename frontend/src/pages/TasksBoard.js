@@ -16,6 +16,7 @@ import {
   SectionMessage,
   Tabs,
 } from "../components/atlas";
+import { toPlainExcerpt } from "../components/RichText";
 
 const COLUMNS = [
   { id: "todo", label: "To Do" },
@@ -323,7 +324,7 @@ function ListView({ tasks, onCreate }) {
             <tr key={t.id} style={{ borderBottom: "1px solid var(--app-border-subtle)" }}>
               <td style={td}>
                 <p style={{ margin: 0, fontWeight: 500 }}>{t.title}</p>
-                {t.description ? <p style={{ margin: "2px 0 0", fontSize: 12, color: "var(--app-muted)" }}>{t.description.slice(0, 120)}</p> : null}
+                {t.description ? <p style={{ margin: "2px 0 0", fontSize: 12, color: "var(--app-muted)" }}>{toPlainExcerpt(t.description, 120)}</p> : null}
               </td>
               <td style={td}><Lozenge status={t._status || t.status} /></td>
               <td style={td}><Lozenge variant={priorityVariant(t.priority)}>{t.priority || "medium"}</Lozenge></td>

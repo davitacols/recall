@@ -36,6 +36,50 @@ export function looksLikeHtml(value) {
   return HTML_RE.test(String(value || ""));
 }
 
+/**
+ * Plain-text excerpt for headers, cards, previews and anywhere else a body is
+ * shown outside a renderer.
+ *
+ * Slicing a stored body directly is what put `<p>Captured from <a href=…` in a
+ * page subtitle: the content is HTML or markdown, but the destination is a
+ * plain string, so the markup is displayed as prose. Cutting at a fixed offset
+ * also truncates mid-tag and mid-word.
+ */
+export function toPlainExcerpt(value, maxLength = 220) {
+  let text = String(value || "");
+
+  // Block-level tags carry a sentence break; without this, "…tenacity.</p><p>My
+  // first instinct…" becomes "…tenacity.My first instinct…".
+  text = text.replace(/<\/(p|div|li|h[1-6]|blockquote|tr)>/gi, " ");
+  text = text.replace(/<br\s*\/?>/gi, " ");
+  text = text.replace(/<[^>]*>/g, "");
+
+  // Entities, since the text came out of an HTML context.
+  const entities = {
+    "&nbsp;": " ", "&amp;": "&", "&lt;": "<", "&gt;": ">",
+    "&quot;": '"', "&#x27;": "'", "&#39;": "'", "&mdash;": "—", "&ndash;": "–",
+  };
+  text = text.replace(/&(nbsp|amp|lt|gt|quot|#x27|#39|mdash|ndash);/g, (m) => entities[m] || m);
+
+  // Markdown syntax, for bodies that were never HTML in the first place.
+  text = text
+    .replace(/!\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/^\s{0,3}#{1,6}\s+/gm, "")
+    .replace(/^\s{0,3}>\s?/gm, "")
+    .replace(/(\*\*|__)(.*?)\1/g, "$2")
+    .replace(/(^|\W)[*_]([^*_]+)[*_](\W|$)/g, "$1$2$3")
+    .replace(/`{1,3}([^`]*)`{1,3}/g, "$1");
+
+  text = text.replace(/\s+/g, " ").trim();
+
+  if (text.length <= maxLength) return text;
+  // Cut on a word boundary so the excerpt does not end mid-word.
+  const cut = text.slice(0, maxLength);
+  const lastSpace = cut.lastIndexOf(" ");
+  return `${(lastSpace > maxLength * 0.6 ? cut.slice(0, lastSpace) : cut).trimEnd()}…`;
+}
+
 const SANITIZE_CONFIG = {
   ALLOWED_TAGS: [
     "p", "br", "hr", "div", "span",

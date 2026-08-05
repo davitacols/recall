@@ -21,6 +21,7 @@ import {
   Tabs,
 } from "../components/atlas";
 import { useAgentContextHint } from "../components/AgentDock";
+import { toPlainExcerpt } from "../components/RichText";
 
 const TYPE_FACETS = [
   { id: "all", label: "All" },
@@ -287,7 +288,7 @@ function ResultRow({ item }) {
             {item.status ? <Lozenge status={item.status} /> : null}
           </div>
           {item.snippet || item.description ? (
-            <p style={resultSnippet}>{(item.snippet || item.description || "").slice(0, 220)}</p>
+            <p style={resultSnippet}>{toPlainExcerpt(item.snippet || item.description, 220)}</p>
           ) : null}
           <div style={resultMeta}>
             <span>{item.project_name || item.project_slug || "Workspace"}</span>

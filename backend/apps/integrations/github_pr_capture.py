@@ -33,6 +33,7 @@ high and most PRs produce nothing.
 
 from __future__ import annotations
 
+import html
 import logging
 
 from apps.integrations.github_app import github_get
@@ -131,27 +132,54 @@ def _capture_author(installation):
     return org_users.filter(role="admin").first() or org_users.first()
 
 
+def _paragraphs(text: str) -> str:
+    """Escape untrusted text and turn its line breaks into paragraphs."""
+    out = []
+    for line in str(text or "").strip().split("\n"):
+        line = line.strip()
+        if line:
+            out.append(f"<p>{html.escape(line)}</p>")
+    return "".join(out)
+
+
 def _build_transcript(pr: dict, comments: list[dict]) -> str:
-    lines = [
-        f"Captured from [{pr.get('html_url') or 'pull request'}]({pr.get('html_url')}) "
-        f"— merged {str(pr.get('merged_at') or '')[:10]}.",
-        "",
+    """Render the discussion as HTML.
+
+    HTML rather than markdown because conversation content is rendered with
+    dangerouslySetInnerHTML — it holds rich-text editor output everywhere else,
+    so markdown would display as literal ``**`` and ``>`` with its line breaks
+    collapsed.
+
+    That same renderer is why every value interpolated here is escaped. This
+    text is written by anyone who can comment on a connected repository, which
+    on a public repo is anyone at all. Unescaped, a comment containing markup
+    would be stored once and executed in the browser of every colleague who
+    later opened the record.
+    """
+    url = str(pr.get("html_url") or "")
+    safe_url = html.escape(url, quote=True)
+    merged_on = html.escape(str(pr.get("merged_at") or "")[:10])
+
+    parts = [
+        f'<p>Captured from <a href="{safe_url}" target="_blank" rel="noreferrer noopener">'
+        f'{html.escape(url)}</a> — merged {merged_on}.</p>'
     ]
+
     body = str(pr.get("body") or "").strip()
     if body:
-        lines += ["**Pull request description**", "", body[:2000], ""]
+        parts.append("<h3>Pull request description</h3>")
+        parts.append(_paragraphs(body[:2000]))
 
-    lines.append("**Review discussion**")
-    lines.append("")
+    parts.append("<h3>Review discussion</h3>")
     for c in comments:
-        who = (c["user"] or {}).get("login") or "someone"
-        where = f" on `{c['path']}`" if c.get("path") else ""
-        lines.append(f"**@{who}**{where}:")
-        for para in str(c["body"]).strip().split("\n"):
-            lines.append(f"> {para}")
-        lines.append("")
+        who = html.escape(str((c["user"] or {}).get("login") or "someone"))
+        where = (
+            f" on <code>{html.escape(str(c['path']))}</code>" if c.get("path") else ""
+        )
+        parts.append(f"<p><strong>@{who}</strong>{where}:</p>")
+        parts.append(f"<blockquote>{_paragraphs(c['body'])}</blockquote>")
 
-    return "\n".join(lines)[:_MAX_CONTENT_CHARS]
+    return "".join(parts)[:_MAX_CONTENT_CHARS]
 
 
 def maybe_capture_pr_discussion(installation, repo, pr: dict):

@@ -7,11 +7,16 @@ Three surfaces in the linking pipeline:
    ``<!-- knoledgr-decision:42 -->`` auto-creates the link with
    ``link_source=badge``. Teams add the marker to their PR template once
    and never have to use the picker.
-3. **Branch pattern** (this module, optional) — a head branch named
-   ``dec/42-…``, ``decision/42-…``, or ``knoledgr/42-…`` matches
-   decision 42 in the workspace. Off by default to avoid surprising teams
-   whose branch names happen to start with ``dec``; a workspace setting
-   could turn it on later if there is demand.
+3. **Branch pattern** (this module) — a head branch named ``dec/42-…``,
+   ``decision/42-…``, or ``knoledgr/42-…`` matches decision 42 in the
+   workspace, with ``link_source=branch``.
+
+   This previously claimed to be off by default and env-gated. It is
+   neither: the fallback below runs on every PR that carries no marker,
+   and there is no setting anywhere that disables it. The behaviour is
+   reasonable — the prefixes are specific and a wrong id simply finds no
+   decision in the workspace and is ignored — but the comment described a
+   safeguard that does not exist, which is worse than having no comment.
 
 Every PR webhook also refreshes the cached metadata on any existing
 ``DecisionPullRequest`` rows for that PR so the decision detail page

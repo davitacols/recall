@@ -19,10 +19,16 @@ import KnowledgeGraphCanvas from "../components/KnowledgeGraphCanvas";
 import { useAuth } from "../hooks/useAuth";
 import "./Homepage.css";
 
+// Every tag here has to be something a buyer could ask us to demonstrate on a
+// call. "SSO ready" was not: a workspace can store IdP settings, but no SAML
+// assertion is ever consumed and no login path reads that configuration.
+// Sitting in a list of security properties, a reader takes it as "supports
+// SSO" — and it is the single claim most likely to be relied on in
+// procurement. Put it back when there is a login flow behind it.
 const SECURITY_TAGS = [
   "Role-based access",
-  "SSO ready",
   "Workspace isolation",
+  "Encrypted in transit",
   "Audit logs",
   "Source-grounded answers",
 ];

@@ -1230,7 +1230,7 @@ const BASE_DOCUMENTATION_GROUPS = [
         summary: "Sprint boards plus an opinionated assistant that tells you what to drop, add, or worry about — with the evidence for each call.",
         readTime: "5 min",
         audience: "Delivery leads, managers",
-        routes: ["/business/sprints", "/business/sprints/:id", "/business/sprints/:id/history"],
+        routes: ["/sprint", "/sprints/:id", "/sprints/:id/retrospective"],
         sections: [
           {
             heading: "Sprints, in one paragraph",
@@ -1280,7 +1280,7 @@ const BASE_DOCUMENTATION_GROUPS = [
         summary: "Three roles, sensible defaults, and the few places it's worth being strict about access.",
         readTime: "4 min",
         audience: "Admins and managers",
-        routes: ["/settings/team", "/settings/security"],
+        routes: ["/settings", "/audit-logs"],
         sections: [
           {
             heading: "The three roles",
@@ -1321,42 +1321,50 @@ const BASE_DOCUMENTATION_GROUPS = [
         id: "security-compliance",
         slug: "admin/security-and-compliance",
         title: "Security and compliance",
-        summary: "SSO, MFA, audit logs, data export — the controls your security team will ask about, in plain terms.",
+        summary: "What Knoledgr actually enforces today, and — just as importantly — what it does not.",
         readTime: "4 min",
         audience: "Admins, security leads",
-        routes: ["/settings/security", "/settings/audit", "/security-annex"],
+        routes: ["/audit-logs", "/api-keys", "/import-export"],
         sections: [
           {
-            heading: "The controls that exist",
+            heading: "What exists today",
+            paragraphs: [
+              "This page lists only controls that are implemented and can be demonstrated. Anything a security review would ask about and Knoledgr does not yet have is named below rather than omitted, because a gap you know about is manageable and one you discover during procurement is not.",
+            ],
             bullets: [
-              "SSO — SAML 2.0 with any compatible IdP (Okta, Azure AD, Google Workspace). Available on team and enterprise plans.",
-              "MFA — required workspace-wide or optional per-user. Set the policy under Security → Authentication.",
-              "Audit log — every admin action and high-impact write. Exportable as JSON or CSV.",
-              "API keys — scoped per integration, revocable individually, never re-displayed after creation.",
-              "Data export — full workspace export as JSON; available to admins on demand.",
+              "Transport encryption — TLS 1.2+ on every domain, HSTS with a one-year max-age, includeSubDomains and preload. HTTP redirects to HTTPS.",
+              "Password authentication — bcrypt-hashed, with rate limiting on login and invite endpoints.",
+              "Role model — admin, manager, member. Enforced server-side on every write.",
+              "Workspace isolation — every query is scoped by organization; cross-workspace access is rejected at the queryset level, not the view.",
+              "API keys — scoped per integration and revocable individually.",
+              "Data export — full workspace export as JSON, available to admins on demand.",
+              "Audit log — a record of selected administrative actions, readable at /audit-logs.",
             ],
           },
           {
-            heading: "What's in the audit log",
+            heading: "Not implemented yet",
             paragraphs: [
-              "Anything that materially changes the workspace or its access: invites sent and accepted, role changes, integration installs and removals, security policy edits, exports, and API key lifecycle events.",
-              "Not in the audit log: routine reads, regular content edits, conversation replies. The audit log is meant to answer \"who did this admin thing?\" not \"who read this document?\"",
+              "These are commonly asked for and Knoledgr does not have them. Do not answer a security questionnaire as though it does.",
+            ],
+            bullets: [
+              "SSO / SAML — a workspace can store IdP settings, but no SAML assertion is ever consumed and no login path reads that configuration. Storing the settings does not authenticate anyone.",
+              "MFA — not implemented in any authentication path.",
+              "Encryption at rest — the database volume is not encrypted at the disk level. Individual integration secrets are encrypted in the database; the volume around them is not.",
+              "Data residency options — a single region. There is no per-workspace residency setting.",
+              "IP allowlisting, session-length policy, and enforced-SSO-without-password-fallback.",
+            ],
+          },
+          {
+            heading: "About the audit log",
+            paragraphs: [
+              "It captures a limited set of administrative events, not every write. Treat it as a starting point rather than a complete record, and check what is actually being written before relying on it for an attestation.",
             ],
           },
           {
             heading: "Compliance posture",
             paragraphs: [
-              "Knoledgr is SOC 2 Type II compliant; the report is available under NDA. Data residency for enterprise workspaces is US (default) or EU, set at workspace creation and not movable after. Encryption: TLS 1.2+ in transit, AES-256 at rest.",
-              "For the full security details — subprocessors, retention windows, breach notification — see the Security Annex linked from the footer.",
-            ],
-          },
-          {
-            heading: "When to escalate to enterprise controls",
-            bullets: [
-              "You need integration installs to require admin approval.",
-              "You need workspace-wide retention policies (auto-archive after N years).",
-              "You need to enforce SSO with no password fallback.",
-              "You need IP allowlisting or session length policies.",
+              "Knoledgr holds no third-party security certification at present. Any SOC 2, ISO 27001 or similar claim should come from a report you can produce on request — state it here only once that report exists, and name the audit period.",
+              "Infrastructure: a single dedicated server, with nightly database backups that are verified by restoring them, not merely by existing.",
             ],
           },
         ],

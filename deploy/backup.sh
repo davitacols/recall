@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # Nightly Knoledgr backup. Deliberately separate from ~/solakuti/backup.sh —
 # separate schedule, separate retention, separate failure mode, so neither
 # stack's backups can be broken by a change to the other.
@@ -17,7 +17,19 @@
 # timestamp is what makes a *missing* run detectable: a script that never
 # executes cannot report its own failure, but a stale marker is still there to
 # be noticed.
-set -e
+# bash, not sh, for `pipefail` — and pipefail is the entire point.
+#
+# The dump is a pipeline: pg_dump | gzip > file. A POSIX shell reports only the
+# *last* command's status, so when pg_dump failed, gzip still succeeded and the
+# script carried on believing it had a backup. gzip of empty input is a valid
+# ~20-byte file, so the "is it empty?" guard passed and so did gzip -t. A
+# completely failed dump was written, kept, and logged as "backup done".
+#
+# This was found by deliberately breaking pg_dump and watching the script
+# report success. It is the failure mode that matters most, because a backup
+# that is present but empty is worse than one that is missing: the missing one
+# is obvious.
+set -euo pipefail
 
 BACKUP_DIR=/home/deploy/backups/knoledgr
 ENV_FILE=/home/deploy/recall/deploy/.env.prod
@@ -78,24 +90,44 @@ DC="docker compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.prod
 $DC exec -T db pg_dump -U knoledgr --clean --if-exists knoledgr \
   | gzip > "$BACKUP_DIR/knoledgr-$STAMP.sql.gz"
 
-# A truncated dump is worse than no dump: it looks like a backup.
-if [ ! -s "$BACKUP_DIR/knoledgr-$STAMP.sql.gz" ]; then
-  rm -f "$BACKUP_DIR/knoledgr-$STAMP.sql.gz"
-  notify_failure "dump was empty"
+ARCHIVE="$BACKUP_DIR/knoledgr-$STAMP.sql.gz"
+
+# Three checks, because each catches something the others do not, and all three
+# were reachable in practice.
+reject() {
+  rm -f "$ARCHIVE"
+  notify_failure "$1"
   COMPLETED=1   # already reported; do not report twice on the way out
   exit 1
-fi
+}
 
-# gzip -t catches a stream truncated midway, which a size check does not.
-if ! gzip -t "$BACKUP_DIR/knoledgr-$STAMP.sql.gz" 2>/dev/null; then
-  rm -f "$BACKUP_DIR/knoledgr-$STAMP.sql.gz"
-  notify_failure "dump failed gzip integrity check"
-  COMPLETED=1
-  exit 1
+# 1. gzip integrity — catches a stream truncated midway.
+gzip -t "$ARCHIVE" 2>/dev/null || reject "dump failed gzip integrity check"
+
+# 2. Content — an empty dump still gzips to a valid ~20-byte file, so size
+#    alone proves nothing. pg_dump always writes this header when it ran.
+#
+#    Read into a variable rather than piping into grep. Under pipefail,
+#    `gzip -dc | head -c 4096 | grep -q` reports failure even when grep matches:
+#    head exits as soon as it has enough, gzip dies of SIGPIPE, and pipefail
+#    surfaces that 141 as the pipeline's status. That would have rejected every
+#    healthy backup — the check would have been worse than no check.
+header=$(gzip -dc "$ARCHIVE" 2>/dev/null | head -c 4096 || true)
+case "$header" in
+  *"PostgreSQL database dump"*) ;;
+  *) reject "dump does not look like a pg_dump (pg_dump probably failed)" ;;
+esac
+
+# 3. Size floor — guards against a dump that starts correctly and then stops.
+#    The database is ~900K compressed; anything under 100K means something
+#    went wrong partway through.
+size=$(stat -c%s "$ARCHIVE")
+if [ "$size" -lt 102400 ]; then
+  reject "dump is implausibly small (${size} bytes)"
 fi
 
 find "$BACKUP_DIR" -name 'knoledgr-*.sql.gz' -mtime +14 -delete
 
 date -u +%FT%TZ > "$STATUS_FILE"
 COMPLETED=1
-echo "backup done: $STAMP ($(du -h "$BACKUP_DIR/knoledgr-$STAMP.sql.gz" | cut -f1))"
+echo "backup done: $STAMP ($(du -h "$ARCHIVE" | cut -f1))"

@@ -78,6 +78,10 @@ COMPLETED=0
 on_exit() {
   status=$?
   [ "$COMPLETED" -eq 1 ] && exit 0
+  # Remove a half-written dump on any abnormal exit, including one from set -e
+  # at the pipeline itself — which is before PARTIAL exists, hence the :- guard
+  # under set -u.
+  rm -f "${PARTIAL:-}"
   notify_failure "exit status $status"
   exit "$status"
 }
@@ -86,23 +90,31 @@ trap on_exit EXIT
 cd /home/deploy/recall
 DC="docker compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.prod"
 
-# --clean --if-exists so the dump can be replayed into a non-empty database.
-$DC exec -T db pg_dump -U knoledgr --clean --if-exists knoledgr \
-  | gzip > "$BACKUP_DIR/knoledgr-$STAMP.sql.gz"
-
 ARCHIVE="$BACKUP_DIR/knoledgr-$STAMP.sql.gz"
+PARTIAL="$ARCHIVE.partial"
+
+# Write to a .partial and only rename once every check has passed, so a failed
+# run can neither leave something that looks like a backup nor overwrite a good
+# one. Both happened while testing: a failing dump wrote a 20-byte file over a
+# healthy 932K backup taken in the same minute, because the filename is derived
+# from the timestamp and the shell had already truncated the target before
+# pg_dump was even asked to run.
+rm -f "$PARTIAL"
+
+# --clean --if-exists so the dump can be replayed into a non-empty database.
+$DC exec -T db pg_dump -U knoledgr --clean --if-exists knoledgr | gzip > "$PARTIAL"
 
 # Three checks, because each catches something the others do not, and all three
 # were reachable in practice.
 reject() {
-  rm -f "$ARCHIVE"
+  rm -f "$PARTIAL"
   notify_failure "$1"
   COMPLETED=1   # already reported; do not report twice on the way out
   exit 1
 }
 
 # 1. gzip integrity — catches a stream truncated midway.
-gzip -t "$ARCHIVE" 2>/dev/null || reject "dump failed gzip integrity check"
+gzip -t "$PARTIAL" 2>/dev/null || reject "dump failed gzip integrity check"
 
 # 2. Content — an empty dump still gzips to a valid ~20-byte file, so size
 #    alone proves nothing. pg_dump always writes this header when it ran.
@@ -112,7 +124,7 @@ gzip -t "$ARCHIVE" 2>/dev/null || reject "dump failed gzip integrity check"
 #    head exits as soon as it has enough, gzip dies of SIGPIPE, and pipefail
 #    surfaces that 141 as the pipeline's status. That would have rejected every
 #    healthy backup — the check would have been worse than no check.
-header=$(gzip -dc "$ARCHIVE" 2>/dev/null | head -c 4096 || true)
+header=$(gzip -dc "$PARTIAL" 2>/dev/null | head -c 4096 || true)
 case "$header" in
   *"PostgreSQL database dump"*) ;;
   *) reject "dump does not look like a pg_dump (pg_dump probably failed)" ;;
@@ -121,10 +133,13 @@ esac
 # 3. Size floor — guards against a dump that starts correctly and then stops.
 #    The database is ~900K compressed; anything under 100K means something
 #    went wrong partway through.
-size=$(stat -c%s "$ARCHIVE")
+size=$(stat -c%s "$PARTIAL")
 if [ "$size" -lt 102400 ]; then
   reject "dump is implausibly small (${size} bytes)"
 fi
+
+# Every check passed: publish it under its real name.
+mv "$PARTIAL" "$ARCHIVE"
 
 find "$BACKUP_DIR" -name 'knoledgr-*.sql.gz' -mtime +14 -delete
 

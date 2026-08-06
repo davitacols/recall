@@ -55,3 +55,14 @@ CACHES = {
 }
 CELERY_TASK_ALWAYS_EAGER = True
 CELERY_TASK_EAGER_PROPAGATES = True
+
+# No test may reach a third-party API. Channels, cache and Celery were already
+# made inert above; email was not, and send_email only short-circuits when this
+# key is empty. Any suite run in a shell with a real RESEND_API_KEY — a
+# developer's own environment, or CI if the key were ever added there — was
+# issuing live HTTP requests to Resend on every notification created. It showed
+# up as a wall of "Resend email failed (422)" and a five-second test taking
+# twelve, and the only thing standing between that and real mail going out was
+# that example.com addresses are rejected.
+RESEND_API_KEY = ""
+EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"

@@ -5,6 +5,11 @@
 *.bak
 *.backup
 *.txt
+# requirements.txt survived only because someone force-added it; the dev file
+# did not, so `pip install -r requirements-dev.txt` -- printed by the skip
+# guard in tests_integration.py -- referred to a file no clone of this repo
+# contained. Dependency manifests are not scratch files.
+!requirements*.txt
 *.xml
 *_v2.py
 *_v3.py

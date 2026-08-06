@@ -5,11 +5,17 @@ import unittest
 # `import pytest` made the whole module fail to load, which surfaced as a hard
 # suite error rather than an honest "not installed". Skip cleanly instead, so
 # `manage.py test` is green without pytest and these run as soon as it is there.
+# The guard must cover every dev-only import this module makes, not just the
+# first one. It checked pytest alone while the module also needs factory_boy,
+# so installing requirements-dev.txt got you past the guard and straight into
+# `ModuleNotFoundError: No module named 'factory'` — the hard suite error the
+# guard exists to prevent, reachable only by following its own advice.
 try:
-    import pytest
-except ImportError:  # pragma: no cover - depends on the environment
+    import pytest  # noqa: F401
+    import factory  # noqa: F401
+except ImportError as exc:  # pragma: no cover - depends on the environment
     raise unittest.SkipTest(
-        "pytest not installed; run: pip install -r requirements-dev.txt"
+        f"{exc.name} not installed; run: pip install -r requirements-dev.txt"
     )
 
 from django.test import TestCase, Client

@@ -11,7 +11,10 @@ import { useAuth } from "../hooks/useAuth";
 import { buildUnifiedNavModel, isHrefActive } from "./unifiedNavConfig";
 import "./UnifiedNav.css";
 
-const OPEN_GROUPS_KEY = "knoledgr.sidebar.openGroupsV1";
+// V2: the groups were renamed and reordered, and the stored map is keyed by
+// group name. Reusing V1 would have left every returning user with all groups
+// collapsed and no idea why.
+const OPEN_GROUPS_KEY = "knoledgr.sidebar.openGroupsV2";
 
 export default function UnifiedNav({
   collapsed = false,
@@ -27,7 +30,10 @@ export default function UnifiedNav({
       const raw = localStorage.getItem(OPEN_GROUPS_KEY);
       if (raw) return JSON.parse(raw);
     } catch (_) {}
-    return { Knowledge: true, Collaborate: true, Execute: true, Resources: false };
+    // Memory open by default because it is the product; Resources closed
+    // because it is reference material. "Execute" was in this list long after
+    // the group itself was deleted.
+    return { Memory: true, Explore: true, Resources: false };
   });
 
   const experienceMode =

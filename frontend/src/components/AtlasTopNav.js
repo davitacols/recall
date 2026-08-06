@@ -122,13 +122,19 @@ export default function AtlasTopNav({
 
         {/* Right: actions + profile */}
         <div className="tn-right">
+          {/* Was "Create" → /projects?new=1. Projects left the navigation when
+              the agile surfaces were removed, so the most prominent action in
+              the product opened a page you could not otherwise reach. A global
+              create button should offer the thing the product is for, and say
+              which thing that is rather than hiding it behind a generic verb. */}
           <button
             type="button"
             className="tn-create"
-            onClick={() => navigate("/projects?new=1")}
+            onClick={() => navigate("/decisions/new")}
+            title="Record a decision"
           >
             <PlusIcon />
-            Create
+            New decision
           </button>
 
           <div className="tn-actions">
@@ -142,9 +148,9 @@ export default function AtlasTopNav({
             <IconAction label="Help & docs" onClick={() => docsDrawer.toggle()}>
               <QuestionMarkCircleIcon />
             </IconAction>
-            <IconAction label="Settings" onClick={() => navigate("/settings")}>
-              <Cog6ToothIcon />
-            </IconAction>
+            {/* The settings cog was a third route to the same page — it is in
+                the profile menu below and in the sidebar footer. Two were
+                already one too many. */}
           </div>
 
           <div className="tn-profile-wrap" ref={profileRef}>

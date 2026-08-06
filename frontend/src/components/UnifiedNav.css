@@ -81,7 +81,24 @@
   transition: color 100ms ease;
 }
 .nav-group-head:hover .nav-group-name { color: var(--app-text); }
-.nav-group.has-active .nav-group-name { color: var(--app-text-subtle, var(--app-text)); }
+/* A group holding the current page said so only by shifting its label one step
+   along the grey scale. Collapse that group and the signal disappeared
+   entirely: the sidebar showed no trace of where you were. A dot survives
+   collapsing, which is the case that needed it. */
+.nav-group.has-active .nav-group-name {
+  color: var(--app-text-subtle, var(--app-text));
+  font-weight: 750;
+}
+.nav-group.has-active .nav-group-head::before {
+  content: "";
+  position: absolute;
+  left: 2px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--app-text);
+}
+.nav-group-head { position: relative; }
 
 .nav-group-chev {
   width: 10px;

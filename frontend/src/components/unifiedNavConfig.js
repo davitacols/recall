@@ -93,11 +93,41 @@ export function buildUnifiedNavModel({ user, experienceMode = "standard", instal
     summary: "Autonomous workspace agent with tool use.",
   };
 
+  // Memory leads. The navigation opened with "Knowledge" — the search tooling —
+  // while the decision record sat under "Collaborate", a name that describes an
+  // activity rather than the thing being built. The record *is* the product;
+  // search is how you get back into it. Ordering them the other way round asked
+  // every new user to find the point of the tool on their own.
   const workstreamGroupsBase = [
     {
-      name: "Knowledge",
+      name: "Memory",
+      icon: DocumentCheckIcon,
+      summary: "What the team decided, and why",
+      items: [
+        {
+          name: "Decisions",
+          href: "/decisions",
+          icon: DocumentCheckIcon,
+          description: "Committed choices, the reasoning behind them, and the code that implemented them",
+        },
+        {
+          name: "Conversations",
+          href: "/conversations",
+          icon: ChatBubbleLeftIcon,
+          description: "The discussions decisions come from — written here or captured from merged PRs",
+        },
+        {
+          name: "Decision Intelligence",
+          href: "/decisions/intelligence",
+          icon: ChartBarIcon,
+          description: "Predicted outcomes vs. reality across every decision",
+        },
+      ],
+    },
+    {
+      name: "Explore",
       icon: Squares2X2Icon,
-      summary: "The context engine behind grounded AI",
+      summary: "Ways back into the record",
       items: [
         {
           name: "Search",
@@ -122,31 +152,6 @@ export function buildUnifiedNavModel({ user, experienceMode = "standard", instal
           href: "/knowledge/insights",
           icon: ChartBarIcon,
           description: "Measure AI context coverage, freshness, and flow",
-        },
-      ],
-    },
-    {
-      name: "Collaborate",
-      icon: ChatBubbleLeftIcon,
-      summary: "Conversations, decisions, and meetings in motion",
-      items: [
-        {
-          name: "Conversations",
-          href: "/conversations",
-          icon: ChatBubbleLeftIcon,
-          description: "Review discussion threads and linked follow-through",
-        },
-        {
-          name: "Decisions",
-          href: "/decisions",
-          icon: DocumentCheckIcon,
-          description: "Track committed choices, rationale, and owners",
-        },
-        {
-          name: "Decision Intelligence",
-          href: "/decisions/intelligence",
-          icon: ChartBarIcon,
-          description: "Predicted outcomes vs. reality across every decision",
         },
       ],
     },
@@ -208,20 +213,15 @@ export function buildUnifiedNavModel({ user, experienceMode = "standard", instal
       ? workstreamGroupsBase
       : workstreamGroupsBase
           .map((group) => {
-            if (group.name === "Knowledge") {
+            if (group.name === "Explore") {
               return {
                 ...group,
                 items: group.items.filter((item) => ["/knowledge"].includes(item.href)),
               };
             }
-            if (group.name === "Execute") {
-              return {
-                ...group,
-                items: group.items.filter((item) =>
-                  ["/projects", "/business/goals", "/business/tasks", "/business/calendar", "/service-desk"].includes(item.href)
-                ),
-              };
-            }
+            // The Execute branch that used to live here filtered a group that
+            // no longer exists — it was removed with the agile surfaces and
+            // this arm went on matching nothing.
             if (group.name === "Resources") {
               return {
                 ...group,
@@ -292,15 +292,20 @@ export function buildUnifiedNavModel({ user, experienceMode = "standard", instal
       : []),
   ];
 
+  // Three tabs, so each should earn its place. "Collab" pointed at
+  // Conversations while claiming Decisions in its match list, which meant the
+  // tab lit up for a page it would not take you to. Decisions is the
+  // destination that matters, and Ask Recall is the fastest way back into the
+  // record on a phone.
   const bottomNavItems = [
     { path: homeItem.href, icon: homeItem.icon, label: "Home", match: [homeItem.href] },
-    { path: "/knowledge", icon: Squares2X2Icon, label: "Knowledge", match: ["/knowledge"] },
     {
-      path: "/conversations",
-      icon: ChatBubbleLeftIcon,
-      label: "Collab",
-      match: ["/conversations", "/decisions"],
+      path: "/decisions",
+      icon: DocumentCheckIcon,
+      label: "Decisions",
+      match: ["/decisions", "/conversations"],
     },
+    { path: askRecallItem.href, icon: SparklesIcon, label: "Ask", match: [askRecallItem.href] },
   ];
 
   const mobileMenuSections = [

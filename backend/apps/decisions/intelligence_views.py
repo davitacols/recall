@@ -728,12 +728,45 @@ def intelligence_overview(request):
     )
 
     # Workspace counts.
+    #
+    # The prediction/outcome/retro numbers describe the intelligence layer,
+    # which only means anything after months of history. They were the whole
+    # scorecard, which left the dashboard unable to answer the question the
+    # product exists to answer: is the memory any good?
+    #
+    # A decision without its reasoning is a row in a list — six months later it
+    # is exactly as useless as the ticket that prompted it. So the share of
+    # decisions carrying a rationale is the real health metric, and the share
+    # linked to the code that implemented them is the second.
+    from django.db.models.functions import Length, Trim
+
+    from apps.conversations.models import Conversation
+    from apps.integrations.github_app_models import DecisionPullRequest
+
+    decisions_qs = Decision.objects.filter(organization=org)
+    conversations_qs = Conversation.objects.filter(organization=org)
+
     totals = {
-        "decisions": Decision.objects.filter(organization=org).count(),
+        "decisions": decisions_qs.count(),
         "predictions": DecisionPrediction.objects.filter(organization=org).count(),
         "outcome_checks": DecisionOutcomeCheck.objects.filter(organization=org).count(),
         "retrospectives": DecisionRetrospective.objects.filter(organization=org).count(),
         "twin_runs": DecisionTwinRun.objects.filter(organization=org).count(),
+        # Trim before measuring: a rationale of spaces is an empty one, and
+        # counting it would flatter the number the whole product turns on.
+        "decisions_with_rationale": (
+            decisions_qs.annotate(_len=Length(Trim("rationale")))
+            .filter(_len__gt=0)
+            .count()
+        ),
+        "decisions_linked_to_code": (
+            DecisionPullRequest.objects.filter(organization=org)
+            .values("decision_id")
+            .distinct()
+            .count()
+        ),
+        "conversations": conversations_qs.count(),
+        "conversations_captured": conversations_qs.exclude(source="").count(),
     }
 
     drift_signals_payload = [

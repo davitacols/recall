@@ -44,12 +44,17 @@ def _display_user_name(user):
 
 
 def _truncate_text(value, limit=180):
-    text = (value or '').strip()
-    if not text:
-        return ''
-    if len(text) <= limit:
-        return text
-    return f"{text[: limit - 1].rstrip()}…"
+    """Flatten and shorten a stored body for display outside a renderer.
+
+    This used to truncate the string as-is. The briefing summaries it produces
+    are rendered as plain text, and the fields feeding it hold editor HTML, so
+    every summary on the dashboard briefing read
+    "<p>Captured from <a href=..." — and truncating at a fixed offset cut it
+    mid-tag.
+    """
+    from apps.knowledge.text_utils import to_plain_text
+
+    return to_plain_text(value, limit=limit, ellipsis='…')
 
 
 def _briefing_priority_rank(value):
@@ -1279,7 +1284,7 @@ def before_you_ask(request):
             'id': q.id,
             'type': 'question',
             'title': q.title,
-            'summary': q.ai_summary or q.content[:150],
+            'summary': _truncate_text(q.ai_summary or q.content, 150),
             'reply_count': q.reply_count
         })
     
@@ -1288,7 +1293,7 @@ def before_you_ask(request):
             'id': d.id,
             'type': 'decision',
             'title': d.title,
-            'summary': d.description[:150],
+            'summary': _truncate_text(d.description, 150),
             'impact': d.impact_level
         })
     
@@ -1297,7 +1302,7 @@ def before_you_ask(request):
             'id': c.id,
             'type': c.post_type,
             'title': c.title,
-            'summary': c.ai_summary or c.content[:150]
+            'summary': _truncate_text(c.ai_summary or c.content, 150)
         })
     
     return Response({

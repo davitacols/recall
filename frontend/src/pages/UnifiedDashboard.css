@@ -81,18 +81,21 @@
 
 /* ─── stat strip — plain numbers, hairlines between ───────── */
 
+/* Four numbers, not six. The strip now answers 'is the memory any good?'
+   rather than reporting intelligence-layer telemetry that needs months of
+   history before it says anything. */
 .dash-stats {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   border: 1px solid var(--app-border);
   border-radius: 10px;
   background: var(--app-surface);
   overflow: hidden;
 }
 @media (max-width: 880px) {
-  .dash-stats { grid-template-columns: repeat(3, 1fr); }
-  .dash-stat:nth-child(3n) { border-right: none; }
-  .dash-stat:nth-child(n+4) { border-top: 1px solid var(--app-border); }
+  .dash-stats { grid-template-columns: repeat(2, 1fr); }
+  .dash-stat:nth-child(2n) { border-right: none; }
+  .dash-stat:nth-child(n+3) { border-top: 1px solid var(--app-border); }
 }
 @media (max-width: 560px) {
   .dash-stats { grid-template-columns: repeat(2, 1fr); }
@@ -129,6 +132,25 @@
   font-size: 14px;
   color: var(--app-text-disabled, var(--app-muted));
 }
+
+/* A share is easier to judge against a bar than as a bare percentage. */
+.dash-stat-bar {
+  display: block;
+  height: 3px;
+  margin-top: 8px;
+  border-radius: 999px;
+  background: var(--app-border);
+  overflow: hidden;
+}
+.dash-stat-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--app-text-subtle, var(--app-text));
+  transition: width 220ms ease;
+}
+.dash-stat.is-emphasized .dash-stat-bar > span { background: #ef4444; }
+
 
 /* ─── card grid ─────────────────────────────────────────────── */
 
@@ -175,6 +197,12 @@
   font-size: 15px;
   color: var(--app-muted);
   font-feature-settings: "tnum" 1;
+}
+/* Off-track moved here from the headline strip. Colour is reserved for a real
+   alert, which this is: a prediction that landed wrong. */
+.dash-card-count.is-alert {
+  color: #ef4444;
+  font-weight: 600;
 }
 .dash-card-link {
   font-size: 15px;

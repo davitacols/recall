@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import AtlasTopNav from "./AtlasTopNav";
 import UnifiedNav from "./UnifiedNav";
-import { MobileNav } from "./MobileNav";
 import { AgentDock, AgentDockFab, AgentDockProvider } from "./AgentDock";
 import { DocsDrawer, DocsDrawerProvider } from "./DocsDrawer";
 
@@ -85,7 +84,12 @@ export default function UnifiedLayout({ children }) {
           <div className="app-page-shell">{children}</div>
         </main>
 
-        {isMobile ? <MobileNav /> : null}
+        {/* MobileNav is mounted by App.js, which owns the global search state
+            it needs. Mounting it here as well put two position:fixed bars at
+            the same coordinates — they overlapped exactly, so it looked like
+            one bar, but the taps landed on this one, the copy with no search
+            handler. MobileNav already returns null above 768px, so App.js
+            covers both cases on its own. */}
 
         {/* Global agent dock: FAB launcher + slide-over panel. */}
         <AgentDockFab />

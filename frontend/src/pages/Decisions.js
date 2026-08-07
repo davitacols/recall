@@ -107,7 +107,7 @@ export default function Decisions() {
   }));
 
   return (
-    <div style={{ padding: "0 32px 32px" }}>
+    <div style={{ padding: "0 var(--page-x) 32px" }}>
       <PageHeader
         breadcrumb={[{ label: "Knoledgr", to: "/" }, { label: "Decisions" }]}
         title="Decisions"

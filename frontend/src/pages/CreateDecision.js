@@ -172,7 +172,7 @@ export default function CreateDecision() {
         </div>
       </div>
 
-      <div style={{ padding: "0 32px" }}>
+      <div style={{ padding: "0 var(--page-x)" }}>
         <PageHeader
           title="New decision"
           subtitle="As you write, we'll surface similar past decisions and their outcomes. Acknowledge the lessons that should inform this one — they'll be recorded on the decision."

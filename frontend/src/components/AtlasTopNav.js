@@ -134,7 +134,10 @@ export default function AtlasTopNav({
             title="Record a decision"
           >
             <PlusIcon />
-            New decision
+            {/* Wrapped, because the narrow-screen rule hides `.tn-create span`
+                and the label has always been a bare text node — so it never
+                matched and the label stayed on phones regardless. */}
+            <span>New decision</span>
           </button>
 
           <div className="tn-actions">

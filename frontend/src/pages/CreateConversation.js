@@ -272,7 +272,7 @@ const heroNoteBody = {
 
 const layout = {
   display: "grid",
-  gridTemplateColumns: "minmax(0,1fr) minmax(260px,340px)",
+  gridTemplateColumns: "var(--split-main)",
   gap: 12,
 };
 

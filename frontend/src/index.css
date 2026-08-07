@@ -10,6 +10,39 @@
  * Light theme is default. Dark theme via [data-theme="dark"] or .dark on <html>.
  */
 
+/* ── Responsive layout tokens ──────────────────────────────────────────────
+   Inline styles cannot carry a media query, and 31 pages set their gutter and
+   several set their grid template inline. A custom property can be read from
+   an inline style and redefined by a media query, so the breakpoint lives here
+   once instead of being unreachable in each file.
+
+   --page-x        horizontal page gutter
+   --split-main    a main column beside a fixed right rail; one column on
+                   narrow screens, because the rail's fixed width otherwise
+                   forces the grid wider than the viewport
+   --split-even    two comparable columns, stacked when there is no room
+
+   This matters more than it looks: body has overflow-x: hidden, so a grid
+   that is too wide does not scroll — it is silently clipped, and the content
+   past the edge simply cannot be reached. */
+:root {
+  --page-x: 32px;
+  --split-main: minmax(0, 1fr) 320px;
+  --split-even: minmax(0, 1fr) minmax(0, 1fr);
+}
+@media (max-width: 1024px) {
+  :root { --split-main: minmax(0, 1fr); }
+}
+@media (max-width: 860px) {
+  :root { --split-even: minmax(0, 1fr); }
+}
+@media (max-width: 720px) {
+  :root { --page-x: 16px; }
+}
+@media (max-width: 420px) {
+  :root { --page-x: 12px; }
+}
+
 :root,
 [data-theme="light"] {
   --font-primary: "League Spartan", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;

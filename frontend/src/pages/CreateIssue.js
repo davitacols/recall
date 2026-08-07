@@ -142,7 +142,7 @@ export default function CreateIssue() {
         </div>
       </div>
 
-      <div style={{ padding: "0 32px" }}>
+      <div style={{ padding: "0 var(--page-x)" }}>
         <PageHeader
           title="New issue"
           subtitle="As you draft, we'll surface similar past issues and how they were resolved — so you don't reopen ground that's already been worked."

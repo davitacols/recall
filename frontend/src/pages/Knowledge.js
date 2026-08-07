@@ -158,7 +158,7 @@ export default function Knowledge() {
   );
 
   return (
-    <div style={{ padding: "0 32px 32px" }}>
+    <div style={{ padding: "0 var(--page-x) 32px" }}>
       <PageHeader
         breadcrumb={[
           { label: "Knoledgr", to: "/" },
@@ -212,7 +212,7 @@ export default function Knowledge() {
 
       {error ? <SectionMessage tone="error" style={{ marginTop: 16 }}>{error}</SectionMessage> : null}
 
-      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 320px", gap: 32, marginTop: 16 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "var(--split-main)", gap: 32, marginTop: 16 }}>
         <section>
           {query.trim() ? (
             loading ? (

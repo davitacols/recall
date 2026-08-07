@@ -475,7 +475,7 @@ export default function Conversations() {
   const hasAnything = filtered.length > 0;
 
   return (
-    <div className="conv-page" style={{ padding: "0 32px 32px" }}>
+    <div className="conv-page" style={{ padding: "0 var(--page-x) 32px" }}>
       <PageHeader
         breadcrumb={[{ label: "Knoledgr", to: "/" }, { label: "Conversations" }]}
         title="Conversations"

@@ -141,14 +141,23 @@ export default function AtlasTopNav({
           </button>
 
           <div className="tn-actions">
+            {/* Both are marked optional: on a phone Ask Recall is a tab in the
+                bottom bar and Docs is in the mobile menu under Resources, so
+                they cost width here without adding a route. Notifications
+                stays — nothing else surfaces it. */}
             <IconAction
               label="Ask Recall"
+              className="tn-icon--optional"
               onClick={() => navigate("/ask")}
             >
               <SparklesIcon />
             </IconAction>
             <NotificationBell />
-            <IconAction label="Help & docs" onClick={() => docsDrawer.toggle()}>
+            <IconAction
+              label="Help & docs"
+              className="tn-icon--optional"
+              onClick={() => docsDrawer.toggle()}
+            >
               <QuestionMarkCircleIcon />
             </IconAction>
             {/* The settings cog was a third route to the same page — it is in
@@ -211,11 +220,11 @@ export default function AtlasTopNav({
   );
 }
 
-function IconAction({ children, label, onClick }) {
+function IconAction({ children, label, onClick, className = "" }) {
   return (
     <button
       type="button"
-      className="tn-icon"
+      className={`tn-icon ${className}`.trim()}
       onClick={onClick}
       aria-label={label}
       title={label}

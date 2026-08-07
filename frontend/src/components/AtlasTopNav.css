@@ -189,6 +189,8 @@
   .tn-search kbd { display: none; }
 }
 
+
+
 /* ─── right: actions + profile ─────────────────────────── */
 
 .tn-right {
@@ -378,4 +380,43 @@
 .tn-menu-item.is-danger svg { color: #ef4444; }
 .tn-menu-item.is-danger:hover {
   background: rgba(239, 68, 68, 0.08);
+}
+
+/* ── Phones ────────────────────────────────────────────────────────────────
+   The bar carried nine controls. At its narrowest the left cluster needed
+   ~110px, the search column had a 220px floor and the right cluster ~190px —
+   about 584px of minimum before padding and gaps, against a 375px screen.
+   body sets overflow-x: hidden, so the excess was clipped rather than
+   scrolled and the right end simply vanished.
+
+   What stays is what nothing else provides: identity, search, notifications,
+   account. Everything removed is reachable elsewhere on a phone:
+
+     toggle     — dead here. UnifiedNav is not rendered below 768px and
+                  MobileNav carries its own menu button.
+     workspace  — "Switch workspace" is in the account menu.
+     create     — pages carry their own create actions.
+     Ask Recall — a tab in the bottom bar.
+     help/docs  — the mobile menu lists Docs under Resources. */
+@media (max-width: 640px) {
+  .tn {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 8px;
+    padding: 0 12px;
+  }
+  .tn-toggle,
+  .tn-divider,
+  .tn-workspace,
+  .tn-create,
+  .tn-icon--optional { display: none; }
+
+  .tn-left { gap: 6px; }
+  .tn-right { gap: 4px; }
+  .tn-brand { padding: 4px; }
+
+  /* Avatar only — the name and chevron are the first things to go when the
+     row cannot fit, and tapping the avatar still opens the same menu. */
+  .tn-profile-name,
+  .tn-profile .tn-chev { display: none; }
+  .tn-profile { padding: 2px; gap: 0; }
 }

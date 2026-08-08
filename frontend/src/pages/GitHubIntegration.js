@@ -53,6 +53,9 @@ export default function GitHubIntegration() {
   const [installing, setInstalling] = useState(false);
   const [resyncing, setResyncing] = useState(false);
   const [filter, setFilter] = useState("");
+  // Other workspaces this person belongs to. Empty for most users, which
+  // is why the control below only appears when there is somewhere to move to.
+  const [workspaces, setWorkspaces] = useState([]);
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
@@ -62,6 +65,7 @@ export default function GitHubIntegration() {
       const inst = data?.github_app;
       setInstallation(inst && inst.connected ? inst : null);
       setRepos(Array.isArray(data?.results) ? data.results : []);
+      setWorkspaces(Array.isArray(data?.available_workspaces) ? data.available_workspaces : []);
     } catch (err) {
       setError(err?.response?.data?.error || err?.message || "Could not load GitHub integration");
     } finally {
@@ -120,6 +124,20 @@ export default function GitHubIntegration() {
       toast.addToast?.(err?.response?.data?.error || "Resync failed", "error");
     } finally {
       setResyncing(false);
+    }
+  };
+
+  const moveRepo = async (repo, orgId) => {
+    if (!orgId) return;
+    try {
+      await api.patch(`${REPOS_ENDPOINT}${repo.id}/workspace/`, { org_id: Number(orgId) });
+      // It leaves this workspace, so drop it from the list rather than
+      // showing a row that now belongs somewhere else.
+      setRepos((prev) => prev.filter((r) => r.id !== repo.id));
+    } catch (err) {
+      setError(
+        err?.response?.data?.error || err?.message || "Could not move that repository"
+      );
     }
   };
 
@@ -265,6 +283,20 @@ export default function GitHubIntegration() {
                       {repo.last_synced_at ? <span className="gh-relative">synced {relTime(repo.last_synced_at)}</span> : null}
                     </span>
                   </div>
+                  {workspaces.length ? (
+                    <select
+                      className="gh-move"
+                      value=""
+                      aria-label={`Move ${repo.full_name} to another workspace`}
+                      title="Move this repository to another workspace"
+                      onChange={(e) => moveRepo(repo, e.target.value)}
+                    >
+                      <option value="">Move to…</option>
+                      {workspaces.map((w) => (
+                        <option key={w.org_id} value={w.org_id}>{w.org_name}</option>
+                      ))}
+                    </select>
+                  ) : null}
                   <label className="gh-toggle" title={repo.is_enabled_for_decisions ? "Enabled for decisions" : "Disabled"}>
                     <input
                       type="checkbox"

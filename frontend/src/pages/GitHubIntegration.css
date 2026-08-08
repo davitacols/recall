@@ -238,3 +238,27 @@
   color: var(--app-muted);
 }
 .gh-foot a { color: #93b6ff; }
+
+/* Move a repository to another workspace.
+   Only rendered when the user belongs to more than one, so most people never
+   see it. GitHub allows a single installation per account; this is how one
+   account's repos get split across the workspaces that should own them. */
+.gh-move {
+  flex-shrink: 0;
+  height: 30px;
+  max-width: 160px;
+  padding: 0 8px;
+  border-radius: 8px;
+  border: 1px solid var(--app-border);
+  background: var(--app-surface);
+  color: var(--app-text-subtle, var(--app-text));
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+.gh-move:hover { border-color: var(--app-border-strong); color: var(--app-text); }
+
+@media (max-width: 640px) {
+  .gh-repo { flex-wrap: wrap; }
+  .gh-move { max-width: none; flex: 1; }
+}

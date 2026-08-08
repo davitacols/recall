@@ -253,6 +253,52 @@ def list_installation_repos(installation_id: int) -> list[dict]:
     return repos
 
 
+#: A pull request touching more files than this is a bulk move, a generated
+#: lockfile sweep, or a vendored dependency drop. Attributing a decision to all
+#: of them would bury the handful of files the decision is actually about, so
+#: the whole PR is skipped rather than paged through.
+MAX_PR_FILES = 300
+
+
+def list_pr_files(installation_id: int, repo_full_name: str, pr_number: int) -> list[dict]:
+    """Return the files a pull request touched.
+
+    This is the join that makes "why is this code here?" answerable: a
+    decision knows its pull request, and a pull request knows its files, so a
+    file can be traced back to the reasoning behind it.
+
+    Returns an empty list when the PR exceeds MAX_PR_FILES — a caller cannot
+    tell that from "no files", and should not need to: in both cases there is
+    nothing worth attributing.
+    """
+    files: list[dict] = []
+    url = f"{GITHUB_API}/repos/{repo_full_name}/pulls/{pr_number}/files?per_page=100"
+    token = get_installation_token(installation_id)
+    while url:
+        resp = requests.get(
+            url,
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Accept": "application/vnd.github+json",
+                "X-GitHub-Api-Version": "2022-11-28",
+            },
+            timeout=20,
+        )
+        if resp.status_code != 200:
+            raise RuntimeError(
+                f"GitHub rejected pulls/{pr_number}/files ({resp.status_code}): {resp.text[:200]}"
+            )
+        files.extend(resp.json())
+        if len(files) > MAX_PR_FILES:
+            logger.info(
+                "Skipping file attribution for %s#%s: %d+ files changed",
+                repo_full_name, pr_number, len(files),
+            )
+            return []
+        url = _next_page_url(resp.headers.get("Link", ""))
+    return files
+
+
 def fetch_installation_metadata(installation_id: int) -> dict:
     """Read the GitHub-side installation record for our local copy."""
     cfg = get_app_config()

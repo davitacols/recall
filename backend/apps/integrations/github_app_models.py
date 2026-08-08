@@ -284,3 +284,56 @@ class DecisionPullRequest(models.Model):
 
     def __str__(self) -> str:
         return f"DecisionPullRequest(decision={self.decision_id}, {self.repo.full_name}#{self.pr_number})"
+
+
+class DecisionFile(models.Model):
+    """A file a decision was implemented in, derived from its linked PRs.
+
+    git blame answers who and when. Nothing answers why, and that is the
+    question someone reading unfamiliar code actually has. A decision knows
+    its pull request and a pull request knows its files, so the reasoning
+    behind a line of code is already reachable — it was simply never stored in
+    a shape you could query from the file end.
+
+    decision and repo are denormalised off the link deliberately. Every read
+    of this table goes file -> decisions, on a webhook, while a reviewer is
+    waiting; walking back through DecisionPullRequest for each row would turn
+    one indexed lookup into a join per candidate file.
+
+    Rows are derived data. They are rebuilt from GitHub rather than edited,
+    and deleting a link deletes them with it.
+    """
+
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name="decision_files", db_index=True
+    )
+    link = models.ForeignKey(
+        DecisionPullRequest, on_delete=models.CASCADE, related_name="files"
+    )
+    decision = models.ForeignKey(
+        Decision, on_delete=models.CASCADE, related_name="files", db_index=True
+    )
+    repo = models.ForeignKey(
+        GitHubRepo, on_delete=models.CASCADE, related_name="decision_files", db_index=True
+    )
+
+    # 512 rather than 255: deeply nested paths in a monorepo run long, and a
+    # truncated path silently stops matching the file it names.
+    path = models.CharField(max_length=512, db_index=True)
+    status = models.CharField(max_length=16, blank=True)  # added|modified|removed|renamed
+    changes = models.IntegerField(default=0)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "decision_files"
+        unique_together = [("link", "path")]
+        indexes = [
+            # The lookup this table exists for: which decisions govern this
+            # file, in this repo, in this workspace.
+            models.Index(fields=["organization", "repo", "path"]),
+            models.Index(fields=["decision"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"DecisionFile(decision={self.decision_id}, {self.path})"

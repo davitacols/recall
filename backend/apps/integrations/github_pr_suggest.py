@@ -253,7 +253,7 @@ def maybe_comment_suggestion(installation, repo, pr: dict, base_url: str, snapsh
         fields.setdefault("title", str(pr.get("title") or "")[:512])
         fields.setdefault("html_url", str(pr.get("html_url") or "")[:512])
         try:
-            DecisionPullRequest.objects.create(
+            new_link = DecisionPullRequest.objects.create(
                 organization=org,
                 decision=decision,
                 repo=repo,
@@ -264,6 +264,15 @@ def maybe_comment_suggestion(installation, repo, pr: dict, base_url: str, snapsh
                 match_runner_up_score=runner_up,
                 **fields,
             )
+            # Record the files, so this decision is reachable from the code it
+            # was implemented in. Separately guarded: losing the attribution
+            # must not turn a successful link into a failed one.
+            try:
+                from apps.integrations.github_decision_files import sync_link_files
+
+                sync_link_files(new_link)
+            except Exception:
+                logger.exception("File attribution failed for link %s", new_link.id)
         except Exception:
             # If the row cannot be written, do not claim in a comment that it
             # was. Fall back to suggesting, which is still useful and true.

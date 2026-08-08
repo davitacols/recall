@@ -124,6 +124,31 @@ def handle_pull_request_event(
                 "PR discussion capture failed for %s#%s", repo.full_name, pr_number
             )
 
+    # 2.6: what was already decided about the files this PR touches?
+    #
+    # Runs independently of every linking rule below, because it answers the
+    # opposite question. Those ask which decision this PR implements; this asks
+    # what the code already carries. A PR can be linked to nothing and still be
+    # about to unpick a choice made deliberately last spring.
+    #
+    # On open only: a reviewer forms their opinion once, and the reasoning is
+    # worth most before that happens.
+    if action in {"opened", "reopened", "ready_for_review"}:
+        try:
+            from django.conf import settings
+            from apps.integrations.github_pr_context import maybe_comment_context
+
+            maybe_comment_context(
+                installation=installation,
+                repo=repo,
+                pr=pr,
+                base_url=getattr(settings, "FRONTEND_URL", "") or "",
+            )
+        except Exception:
+            logger.exception(
+                "PR context comment failed for %s#%s", repo.full_name, pr_number
+            )
+
     # 3: parse inline markers from the body.
     body = pr.get("body") or ""
     decision_ids = _extract_marker_decision_ids(body)
@@ -305,6 +330,17 @@ def _auto_link(
         "Auto-linked decision=%s to %s#%s via %s",
         decision_id, repo.full_name, pr_number, link_source,
     )
+
+    # Record which files this decision was implemented in, so the reasoning is
+    # reachable from the code later. Best effort, and deliberately not fatal:
+    # the link is the valuable part and must survive a failure here.
+    try:
+        from apps.integrations.github_decision_files import sync_link_files
+
+        sync_link_files(link)
+    except Exception:
+        logger.exception("File attribution failed for link %s", link.id)
+
     return link
 
 

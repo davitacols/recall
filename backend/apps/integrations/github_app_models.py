@@ -21,12 +21,23 @@ from apps.organizations.models import Organization, User
 
 
 class GitHubAppInstallation(models.Model):
-    """One row per Knoledgr-organization × GitHub-account install.
+    """One row per GitHub App installation.
 
-    The OneToOneField on organization deliberately mirrors the legacy
-    GitHubIntegration model — a Knoledgr workspace can connect to exactly
-    one GitHub org install at a time. Switching workspaces between GitHub
-    orgs requires uninstalling first, which is the right safety boundary.
+    ``organization`` is the workspace that installed it — who administers the
+    connection and can disconnect it. It is *not* the only workspace the
+    installation can serve.
+
+    It used to be a OneToOneField, mirroring the legacy PAT integration, and
+    that turned out to be a real constraint rather than a safety boundary.
+    GitHub permits one installation per account, so a single developer with two
+    projects under one GitHub login could connect only one of their workspaces:
+    connecting the second silently revoked the first. Whichever project they
+    were not looking at stopped recording anything, and nothing said so.
+
+    Which workspace a repository feeds is a property of the repository, and
+    GitHubRepo has always carried its own organization. The binding lives
+    there now, so one installation can serve several workspaces with the repos
+    split between them.
     """
 
     SELECTION_ALL = "all"
@@ -43,10 +54,10 @@ class GitHubAppInstallation(models.Model):
         (ACCOUNT_ORG, "Organization"),
     ]
 
-    organization = models.OneToOneField(
+    organization = models.ForeignKey(
         Organization,
         on_delete=models.CASCADE,
-        related_name="github_app_installation",
+        related_name="github_app_installations_owned",
     )
 
     # GitHub side
@@ -128,7 +139,12 @@ class GitHubRepo(models.Model):
 
     class Meta:
         db_table = "github_repos"
-        unique_together = [("organization", "repo_id")]
+        # Keyed on the installation rather than the workspace. A repository is
+        # single-homed: it feeds exactly one workspace, and moving it changes
+        # which. Keyed on (organization, repo_id) instead, the same repository
+        # could exist once per workspace — two rows for one GitHub repo, both
+        # receiving its webhooks, each writing into a different record.
+        unique_together = [("installation", "repo_id")]
         ordering = ["full_name"]
         indexes = [
             models.Index(fields=["organization", "is_enabled_for_decisions"]),

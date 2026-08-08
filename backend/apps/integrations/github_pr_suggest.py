@@ -227,7 +227,7 @@ def maybe_comment_suggestion(installation, repo, pr: dict, base_url: str, snapsh
     if DecisionPullRequest.objects.filter(repo=repo, pr_number=pr_number).exists():
         return False
 
-    org = installation.organization
+    org = repo.organization
     decisions = list(
         Decision.objects.filter(organization=org).only("id", "title", "rationale")[:200]
     )

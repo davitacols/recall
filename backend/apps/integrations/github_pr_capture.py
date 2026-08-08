@@ -117,7 +117,7 @@ def _collect_comments(installation, repo, pr_number: int) -> list[dict]:
     return collected[:_MAX_COMMENTS]
 
 
-def _capture_author(installation):
+def _capture_author(installation, org):
     """Pick the Knoledgr user a captured conversation is attributed to.
 
     Conversation.author is required and GitHub participants are usually not
@@ -126,9 +126,13 @@ def _capture_author(installation):
     """
     from apps.organizations.models import User
 
-    if installation.installed_by_id:
-        return installation.installed_by
-    org_users = User.objects.filter(organization=installation.organization)
+    # The installer only qualifies if they are actually in the workspace the
+    # conversation lands in — with one installation serving several, they may
+    # not be.
+    installer = installation.installed_by
+    if installer and installer.organization_id == org.id:
+        return installer
+    org_users = User.objects.filter(organization=org)
     return org_users.filter(role="admin").first() or org_users.first()
 
 
@@ -197,7 +201,7 @@ def maybe_capture_pr_discussion(installation, repo, pr: dict):
         return None
 
     external_id = f"{repo.repo_id}:{pr_number}"
-    org = installation.organization
+    org = repo.organization
 
     if Conversation.objects.filter(
         organization=org,
@@ -220,7 +224,7 @@ def maybe_capture_pr_discussion(installation, repo, pr: dict):
         )
         return None
 
-    author = _capture_author(installation)
+    author = _capture_author(installation, org)
     if not author:
         logger.warning(
             "PR capture: no user to attribute %s#%s to in org %s",

@@ -102,7 +102,7 @@ def maybe_comment_context(installation, repo, pr: dict, base_url: str) -> bool:
         return False
 
     entries = decisions_for_paths(
-        installation.organization, repo, paths, limit=MAX_DECISIONS + 3
+        repo.organization, repo, paths, limit=MAX_DECISIONS + 3
     )
     if not entries:
         return False

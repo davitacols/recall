@@ -103,29 +103,47 @@ def _sync_installation_repos(installation: GitHubAppInstallation) -> int:
     for r in repos:
         repo_id = int(r["id"])
         seen_repo_ids.add(repo_id)
-        GitHubRepo.objects.update_or_create(
-            organization=installation.organization,
-            repo_id=repo_id,
-            defaults={
-                "installation": installation,
-                "full_name": r.get("full_name", ""),
-                "owner_login": (r.get("owner") or {}).get("login", ""),
-                "name": r.get("name", ""),
-                "default_branch": r.get("default_branch", ""),
-                "private": bool(r.get("private")),
-                "archived": bool(r.get("archived")),
-                "html_url": r.get("html_url", ""),
-                "last_synced_at": now,
-            },
-        )
+        metadata = {
+            "full_name": r.get("full_name", ""),
+            "owner_login": (r.get("owner") or {}).get("login", ""),
+            "name": r.get("name", ""),
+            "default_branch": r.get("default_branch", ""),
+            "private": bool(r.get("private")),
+            "archived": bool(r.get("archived")),
+            "html_url": r.get("html_url", ""),
+            "last_synced_at": now,
+        }
+        existing = GitHubRepo.objects.filter(
+            installation=installation, repo_id=repo_id
+        ).first()
+        if existing is None:
+            # New to us: it starts in the workspace that owns the installation.
+            # That is a default, not a rule — it can be reassigned afterwards.
+            GitHubRepo.objects.create(
+                organization=installation.organization,
+                installation=installation,
+                repo_id=repo_id,
+                **metadata,
+            )
+        else:
+            # Metadata only. organization is deliberately excluded: this runs
+            # on every webhook and every manual resync, and including it would
+            # drag a repo assigned to another workspace back to the installing
+            # one, silently, on a schedule.
+            for field, value in metadata.items():
+                setattr(existing, field, value)
+            existing.save(update_fields=list(metadata.keys()) + ["updated_at"])
+
     # Repos the install no longer has access to should be detached. We
     # disable rather than delete so historical delivery rows still resolve.
-    stale = GitHubRepo.objects.filter(
-        organization=installation.organization, installation=installation
-    ).exclude(repo_id__in=seen_repo_ids)
+    # Keyed on the installation rather than the organization so repos handed
+    # to other workspaces are still covered.
+    stale = GitHubRepo.objects.filter(installation=installation).exclude(
+        repo_id__in=seen_repo_ids
+    )
     stale.update(is_enabled_for_decisions=False)
     return GitHubRepo.objects.filter(
-        organization=installation.organization, is_enabled_for_decisions=True
+        installation=installation, is_enabled_for_decisions=True
     ).count()
 
 
@@ -313,18 +331,48 @@ def github_app_installation(request):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def github_app_repos(request):
-    """List the workspace's connected repos with their enable/disable state."""
-    installation = GitHubAppInstallation.objects.filter(
-        organization=request.user.organization
-    ).first()
-    if not installation:
+    """List the workspace's connected repos with their enable/disable state.
+
+    Repos are found by workspace, not by who owns the installation. A
+    workspace can be served by an installation another workspace administers —
+    that is the point of allowing one GitHub account to feed several — and
+    looking the installation up first would show such a workspace nothing.
+    """
+    org = request.user.organization
+    repos = list(GitHubRepo.objects.filter(organization=org).order_by("full_name"))
+
+    installation = GitHubAppInstallation.objects.filter(organization=org).first()
+    if installation is None and repos:
+        installation = repos[0].installation
+
+    if installation is None:
         return Response({"results": [], "github_app": _serialize_installation(None)})
 
-    repos = GitHubRepo.objects.filter(organization=request.user.organization).order_by("full_name")
     return Response({
         "results": [_serialize_repo(r) for r in repos],
         "github_app": _serialize_installation(installation),
+        # Where else this user could send a repo. Empty for the common case of
+        # someone who only belongs to one workspace.
+        "available_workspaces": _sibling_workspaces(request.user),
     })
+
+
+def _sibling_workspaces(user) -> list[dict]:
+    """Workspaces this user belongs to, other than their current one.
+
+    Membership is one User row per workspace, keyed by email — the same rule
+    the workspace switcher uses. Reassignment is checked against this so a
+    repo can never be handed to a workspace the requester cannot already see.
+    """
+    from apps.organizations.models import User
+
+    return [
+        {"org_id": u.organization_id, "org_name": u.organization.name}
+        for u in User.objects.filter(email__iexact=user.email, is_active=True)
+        .exclude(organization_id=user.organization_id)
+        .select_related("organization")
+        .order_by("organization__name")
+    ]
 
 
 @api_view(["PATCH"])
@@ -345,6 +393,79 @@ def github_app_repo_toggle(request, repo_pk: int):
         return Response({"error": "is_enabled_for_decisions is required"}, status=400)
     repo.is_enabled_for_decisions = bool(is_enabled)
     repo.save(update_fields=["is_enabled_for_decisions", "updated_at"])
+    return Response(_serialize_repo(repo))
+
+
+@api_view(["PATCH"])
+@permission_classes([IsAuthenticated])
+def github_app_repo_workspace(request, repo_pk: int):
+    """Move a repo to another workspace this user belongs to.
+
+    GitHub allows one installation per account, so a developer with two
+    projects under one login used to be able to connect only one workspace —
+    connecting the second silently revoked the first. Which workspace a repo
+    feeds is now a property of the repo, and this is how it gets set.
+
+    Two checks, and both matter. The requester must be able to see the repo
+    where it is, and must already belong to where it is going: without the
+    second, an authenticated user could push a repo into any workspace by id
+    and start streaming its pull requests, decisions and review discussion
+    into a workspace they have no access to — the same shape of hole as the
+    installation rebinding fixed earlier, arriving by a different door.
+    """
+    from apps.organizations.models import Organization, User
+
+    if not check_rate_limit(f"github_app_move:{request.user.id}", limit=60, window=3600):
+        return Response({"error": "Too many requests"}, status=429)
+
+    repo = GitHubRepo.objects.filter(
+        organization=request.user.organization, pk=repo_pk
+    ).first()
+    if not repo:
+        return Response({"error": "Repo not found"}, status=404)
+
+    target_id = request.data.get("org_id")
+    if not target_id:
+        return Response({"error": "org_id is required"}, status=400)
+    try:
+        target_id = int(target_id)
+    except (TypeError, ValueError):
+        return Response({"error": "org_id must be numeric"}, status=400)
+
+    if target_id == repo.organization_id:
+        return Response(_serialize_repo(repo))
+
+    member = User.objects.filter(
+        email__iexact=request.user.email, is_active=True, organization_id=target_id
+    ).first()
+    if not member:
+        logger.warning(
+            "Refused to move repo %s to org %s: user %s is not a member",
+            repo.full_name, target_id, request.user.id,
+        )
+        return Response(
+            {"error": "You do not have access to that workspace."}, status=403
+        )
+
+    target = Organization.objects.filter(id=target_id).first()
+    if not target:
+        return Response({"error": "Workspace not found"}, status=404)
+
+    previous = repo.organization_id
+    repo.organization = target
+    # A repo arriving in a new workspace starts disabled. Its decisions and
+    # links live in the workspace it came from, so leaving it on would have it
+    # commenting immediately against a record that has nothing to say.
+    repo.is_enabled_for_decisions = False
+    repo.save(update_fields=["organization", "is_enabled_for_decisions", "updated_at"])
+
+    logger.info(
+        "Moved repo %s from org %s to org %s (user %s)",
+        repo.full_name, previous, target_id, request.user.id,
+    )
+    # Existing links and file attributions deliberately stay behind: they point
+    # at decisions that live in the old workspace, and following the repo would
+    # orphan them.
     return Response(_serialize_repo(repo))
 
 
@@ -454,15 +575,18 @@ def github_app_webhook(request):
     repo_payload = payload.get("repository") or {}
     repo = None
     if repo_payload.get("id"):
+        # Keyed on the installation, not its owning workspace. A repo assigned
+        # to a different workspace still belongs to this installation, and
+        # filtering by organization here would silently drop every event for it.
         repo = GitHubRepo.objects.filter(
-            organization=installation.organization,
+            installation=installation,
             repo_id=int(repo_payload["id"]),
         ).first()
 
     action = (payload.get("action") or "")[:64]
 
     GitHubAppDelivery.objects.create(
-        organization=installation.organization,
+        organization=(repo.organization if repo else installation.organization),
         installation=installation,
         repo=repo,
         event=(event or "")[:64],

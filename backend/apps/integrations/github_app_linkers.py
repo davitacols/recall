@@ -297,7 +297,9 @@ def _auto_link(
     decision id doesn't belong to the workspace (the most common rejection
     case — a marker for a decision that lives elsewhere).
     """
-    org = installation.organization
+    # The repo decides the workspace, not the installation: one
+    # installation can now serve several, with repos split between them.
+    org = repo.organization
     decision = Decision.objects.filter(id=decision_id, organization=org).first()
     if not decision:
         logger.info(

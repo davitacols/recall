@@ -122,6 +122,17 @@ export function buildUnifiedNavModel({ user, experienceMode = "standard", instal
           icon: ChartBarIcon,
           description: "Predicted outcomes vs. reality across every decision",
         },
+        // Documents sits here rather than in a group of its own. It is not a
+        // place to go and write — Notion and Confluence do that better, and ten
+        // documents in five months says nobody was using it that way. It is the
+        // material the record cites: indexed for search, and already the target
+        // of 41 content links. So it belongs beside the record, quietly.
+        {
+          name: "Documents",
+          href: "/business/documents",
+          icon: DocumentTextIcon,
+          description: "Briefs and specs the record cites — indexed, so Ask Recall can quote them",
+        },
       ],
     },
     {
@@ -155,57 +166,6 @@ export function buildUnifiedNavModel({ user, experienceMode = "standard", instal
         },
       ],
     },
-    {
-      name: "Resources",
-      icon: DocumentTextIcon,
-      summary: "Docs, templates, and operational assets",
-      items: [
-        {
-          name: "Docs",
-          href: "/docs",
-          icon: DocumentTextIcon,
-          description: "Reference product docs, guides, and system notes",
-        },
-        {
-          name: "Documents",
-          href: "/business/documents",
-          icon: DocumentTextIcon,
-          description: "Open working documents, briefs, and deliverables",
-        },
-        {
-          name: "Templates",
-          href: "/business/templates",
-          icon: DocumentTextIcon,
-          description: "Reuse structured working documents and starter assets",
-        },
-        ...(user?.is_staff || user?.is_superuser
-          ? [
-              {
-                name: "Feedback Inbox",
-                href: "/feedback/inbox",
-                icon: ChatBubbleLeftIcon,
-                description: "Review incoming customer product feedback",
-              },
-              {
-                name: "Partner Inbox",
-                href: "/partners/inbox",
-                icon: ClipboardDocumentListIcon,
-                description: "Track partner-facing operational conversations",
-              },
-            ]
-          : []),
-        ...(user?.role === "admin"
-          ? [
-              {
-                name: "Import/Export",
-                href: "/import-export",
-                icon: DocumentTextIcon,
-                description: "Move structured data into and out of the workspace",
-              },
-            ]
-          : []),
-      ],
-    },
   ];
 
   const workstreamGroups =
@@ -219,15 +179,10 @@ export function buildUnifiedNavModel({ user, experienceMode = "standard", instal
                 items: group.items.filter((item) => ["/knowledge"].includes(item.href)),
               };
             }
-            // The Execute branch that used to live here filtered a group that
-            // no longer exists — it was removed with the agile surfaces and
-            // this arm went on matching nothing.
-            if (group.name === "Resources") {
-              return {
-                ...group,
-                items: group.items.filter((item) => ["/docs"].includes(item.href)),
-              };
-            }
+            // Two arms used to live here, for Execute and Resources. Both
+            // filtered groups that have since been dissolved, so both went on
+            // matching nothing — the same dead branch twice over. Simple mode
+            // now only has to narrow Explore.
             return group;
           })
           .filter((group) => group.items.length > 0);
@@ -274,8 +229,34 @@ export function buildUnifiedNavModel({ user, experienceMode = "standard", instal
       icon: CubeIcon,
       description: "Connected tools, credentials, and service setup.",
     },
+    // Staff and admin tooling moved here from the Resources group when that
+    // group was dissolved. Hiding them outright would have left them reachable
+    // only by typing a URL, which is not the same thing as tidying up — and
+    // the footer is where workspace tooling already lives.
+    ...(user?.is_staff || user?.is_superuser
+      ? [
+          {
+            name: "Feedback Inbox",
+            href: "/feedback/inbox",
+            icon: ChatBubbleLeftIcon,
+            description: "Review incoming customer product feedback.",
+          },
+          {
+            name: "Partner Inbox",
+            href: "/partners/inbox",
+            icon: ClipboardDocumentListIcon,
+            description: "Track partner-facing operational conversations.",
+          },
+        ]
+      : []),
     ...(user?.role === "admin"
       ? [
+          {
+            name: "Import/Export",
+            href: "/import-export",
+            icon: DocumentTextIcon,
+            description: "Move structured data into and out of the workspace.",
+          },
           {
             name: "Analytics",
             href: "/analytics",

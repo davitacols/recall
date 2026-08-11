@@ -93,6 +93,8 @@
   content: "";
   position: absolute;
   left: 2px;
+  top: 50%;
+  transform: translateY(-50%);
   width: 4px;
   height: 4px;
   border-radius: 50%;
@@ -109,12 +111,33 @@
 }
 .nav-group-chev.is-open { transform: rotate(0deg); }
 
+/* The spine.
+   A decision record is a thread running through the work, so the grouped
+   items hang off one rather than floating as a list. It is a hairline, not a
+   flourish — the same restraint as everywhere else — but it is the one shape
+   in the interface that belongs to this product and not to every other SaaS
+   sidebar.
+
+   The active item cuts through it, which is why the marker sits on the spine
+   rather than at the panel edge. */
 .nav-group-list {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 1px;
-  padding: 0 8px 4px;
+  padding: 0 8px 4px 18px;
+  margin-left: 14px;
 }
+.nav-group-list::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 2px;
+  bottom: 6px;
+  width: 1px;
+  background: var(--app-border);
+}
+.nav-group.has-active .nav-group-list::before { background: var(--app-border-strong); }
 
 /* ─── nav item ───────────────────────────────────────────────── */
 
@@ -142,15 +165,31 @@
   color: var(--app-text);
   font-weight: 600;
 }
+/* Sits on the spine, not at the panel edge: the current page is a point on
+   the thread. Grouped items are inset past the line, so -18px lands on it. */
 .nav-item.is-active::before {
   content: "";
   position: absolute;
+  left: -18px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--app-text);
+  box-shadow: 0 0 0 3px var(--app-surface);
+}
+/* Pinned and footer items are not on the spine, so they keep the edge bar. */
+.nav-pinned .nav-item.is-active::before,
+.nav-footer .nav-item.is-active::before {
   left: 0;
   top: 6px;
   bottom: 6px;
+  transform: none;
   width: 2px;
+  height: auto;
   border-radius: 1px;
-  background: var(--app-text);
+  box-shadow: none;
 }
 .nav-item.is-small {
   padding: 6px 10px;
@@ -180,6 +219,13 @@
   left: 4px;
   top: 8px;
   bottom: 8px;
+  /* Reset the round spine marker: collapsed groups render flat, with no line
+     for a dot to sit on. */
+  transform: none;
+  width: 2px;
+  height: auto;
+  border-radius: 1px;
+  box-shadow: none;
 }
 
 /* ─── footer ────────────────────────────────────────────────── */
@@ -198,3 +244,73 @@
 @media (max-width: 768px) {
   .nav { display: none; }
 }
+
+/* ── Memory meter ──────────────────────────────────────────────────────────
+   The foot of the sidebar carries the state of the record itself.
+
+   Every sidebar is a list of links. This one ends with the number the product
+   lives or dies by: what share of recorded decisions actually carry their
+   reasoning. A decision without its why is a row in a list, and if that share
+   falls the tool is failing at the only thing it is for.
+
+   In the nav it is visible on every page rather than only on a dashboard
+   somebody remembers to open — which is the difference between a metric and a
+   conscience. Quiet by default; it earns colour only below half. */
+.nav-memory {
+  display: block;
+  margin: 0 8px 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--app-border);
+  border-radius: 10px;
+  background: var(--app-surface-alt);
+  text-decoration: none;
+  color: inherit;
+  flex-shrink: 0;
+  transition: border-color 120ms ease;
+}
+.nav-memory:hover {
+  border-color: var(--app-border-strong);
+  text-decoration: none;
+}
+.nav-memory-head {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+.nav-memory-count {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--app-text);
+  font-feature-settings: "tnum" 1;
+}
+.nav-memory-label {
+  font-size: 13.5px;
+  color: var(--app-muted);
+  line-height: 1.2;
+}
+.nav-memory-bar {
+  display: block;
+  height: 3px;
+  margin: 8px 0 6px;
+  border-radius: 999px;
+  background: var(--app-border);
+  overflow: hidden;
+}
+.nav-memory-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--app-text-subtle, var(--app-text));
+  transition: width 260ms ease;
+}
+.nav-memory-foot {
+  font-size: 13px;
+  color: var(--app-muted);
+}
+.nav-memory.is-thin .nav-memory-bar > span { background: #ef4444; }
+.nav-memory.is-thin .nav-memory-foot { color: #ef4444; }
+
+/* Collapsed, there is no room for it and no room for the sentence that gives
+   it meaning. A bare number would be worse than nothing. */
+.nav.is-collapsed .nav-memory { display: none; }

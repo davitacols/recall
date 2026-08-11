@@ -48,6 +48,7 @@ urlpatterns = [
     path('twins/<int:twin_id>/', intelligence_views.twin_detail, name='twin_detail'),
     # Workspace-wide scorecard + manual sweep trigger
     path('intelligence/overview/', intelligence_views.intelligence_overview, name='intelligence_overview'),
+    path('memory-health/', intelligence_views.memory_health, name='memory_health'),
     path('intelligence/sweep/', intelligence_views.trigger_intelligence_sweep, name='intelligence_sweep'),
     # Before-you-decide: similar past decisions with outcomes
     path('intelligence/similar/', intelligence_views.similar_decisions, name='intelligence_similar'),

@@ -39,6 +39,39 @@ logger = logging.getLogger(__name__)
 # Helpers
 # ----------------------------------------------------------------------------
 
+def count_with_rationale(decisions_qs) -> int:
+    """How many of these decisions actually record why they were made.
+
+    Trim() alone is not enough: both SQLite and Postgres trim *spaces* by
+    default, so a rationale of "   \\n  " survives it with length 1 and counts
+    as reasoning. That flatters the one number the product turns on, which is
+    the opposite of what it is for — a blank invites someone to fill it in, and
+    a falsely-full count means nobody ever does.
+
+    Newlines and tabs are folded to spaces first, so whitespace of any kind
+    reduces to empty.
+    """
+    from django.db.models import Value
+    from django.db.models.functions import Length, Replace, Trim
+
+    return (
+        decisions_qs.annotate(
+            _clean=Trim(
+                Replace(
+                    Replace(
+                        Replace("rationale", Value("\r"), Value(" ")),
+                        Value("\n"), Value(" "),
+                    ),
+                    Value("\t"), Value(" "),
+                )
+            )
+        )
+        .annotate(_len=Length("_clean"))
+        .filter(_len__gt=0)
+        .count()
+    )
+
+
 def _user_org_or_400(request):
     org = getattr(request.user, "organization", None)
     if not org:
@@ -754,11 +787,7 @@ def intelligence_overview(request):
         "twin_runs": DecisionTwinRun.objects.filter(organization=org).count(),
         # Trim before measuring: a rationale of spaces is an empty one, and
         # counting it would flatter the number the whole product turns on.
-        "decisions_with_rationale": (
-            decisions_qs.annotate(_len=Length(Trim("rationale")))
-            .filter(_len__gt=0)
-            .count()
-        ),
+        "decisions_with_rationale": count_with_rationale(decisions_qs),
         "decisions_linked_to_code": (
             DecisionPullRequest.objects.filter(organization=org)
             .values("decision_id")
@@ -816,4 +845,29 @@ def intelligence_overview(request):
             }
             for r in retros
         ],
+    })
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def memory_health(request):
+    """Two numbers: decisions recorded, and how many record why.
+
+    Separate from intelligence_overview because the sidebar shows this on every
+    page and that view runs about ten queries — drift signals, pending checks,
+    retrospectives, twin runs — to produce a scorecard. Paying for all of it to
+    render two numbers in a nav panel would be a real cost on every page load,
+    for data the panel does not use.
+
+    Trim before measuring: a rationale of spaces is an empty one, and counting
+    it would flatter the number the whole product turns on.
+    """
+    org, err = _user_org_or_400(request)
+    if err:
+        return err
+
+    decisions = Decision.objects.filter(organization=org)
+    return Response({
+        "decisions": decisions.count(),
+        "decisions_with_rationale": count_with_rationale(decisions),
     })

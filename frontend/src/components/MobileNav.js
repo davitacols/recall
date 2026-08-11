@@ -137,11 +137,10 @@ export const MobileNav = () => {
   } = useMemo(
     () =>
       buildUnifiedNavModel({
-        user,
         experienceMode,
         installedApps,
       }),
-    [experienceMode, installedApps, user]
+    [experienceMode, installedApps]
   );
 
   const workspaceName = formatWorkspaceName(user?.organization_slug);

@@ -1,24 +1,14 @@
 import {
-  BoltIcon,
-  CalendarIcon,
   ChartBarIcon,
   ChatBubbleLeftIcon,
-  ClipboardDocumentListIcon,
-  Cog6ToothIcon,
   CpuChipIcon,
   CubeIcon,
   DocumentCheckIcon,
   DocumentTextIcon,
-  FlagIcon,
-  HeartIcon,
   HomeIcon,
   MagnifyingGlassIcon,
-  RocketLaunchIcon,
   SparklesIcon,
   Squares2X2Icon,
-  TicketIcon,
-  UserCircleIcon,
-  RectangleGroupIcon,
 } from "@heroicons/react/24/outline";
 
 export function getAppLaunchTarget(app) {
@@ -69,7 +59,7 @@ export function getFirstNavTarget(item) {
   return item?.items?.[0]?.href || "/dashboard";
 }
 
-export function buildUnifiedNavModel({ user, experienceMode = "standard", installedApps = [] }) {
+export function buildUnifiedNavModel({ experienceMode = "standard", installedApps = [] }) {
   const homeItem = {
     name: "Home",
     href: "/dashboard",
@@ -210,74 +200,32 @@ export function buildUnifiedNavModel({ user, experienceMode = "standard", instal
     items: appItems,
   };
 
+  // One item.
+  //
+  // This was eight: Profile, Settings, Integrations, two staff inboxes,
+  // Import/Export, Analytics and Dashboards. Profile and Settings are both in
+  // the account menu in the top bar, so they were a second route to a page
+  // already one click away. Of the rest, saved dashboards number zero, partner
+  // inquiries one, and search analytics four rows — surfaces that exist rather
+  // than surfaces anyone uses.
+  //
+  // Integrations stays because it is the only way to connect GitHub and
+  // nothing else offers it.
+  //
+  // I moved three of these here an hour ago arguing that hiding them would
+  // orphan them. That was the wrong trade: it swapped an unreachable page for
+  // a permanently cluttered footer on every screen. They remain reachable by
+  // URL, and if any of them turns out to matter it belongs in Settings, which
+  // already has sections, rather than back in the nav.
   const utilityItems = [
-    {
-      name: "Profile",
-      href: "/profile",
-      icon: UserCircleIcon,
-      description: "Identity, personal preferences, and how you work across Knoledgr.",
-    },
-    {
-      name: "Settings",
-      href: "/settings",
-      icon: Cog6ToothIcon,
-      description: "Workspace configuration, access, and experience controls.",
-    },
     {
       name: "Integrations",
       href: "/integrations",
       icon: CubeIcon,
       description: "Connected tools, credentials, and service setup.",
     },
-    // Staff and admin tooling moved here from the Resources group when that
-    // group was dissolved. Hiding them outright would have left them reachable
-    // only by typing a URL, which is not the same thing as tidying up — and
-    // the footer is where workspace tooling already lives.
-    ...(user?.is_staff || user?.is_superuser
-      ? [
-          {
-            name: "Feedback Inbox",
-            href: "/feedback/inbox",
-            icon: ChatBubbleLeftIcon,
-            description: "Review incoming customer product feedback.",
-          },
-          {
-            name: "Partner Inbox",
-            href: "/partners/inbox",
-            icon: ClipboardDocumentListIcon,
-            description: "Track partner-facing operational conversations.",
-          },
-        ]
-      : []),
-    ...(user?.role === "admin"
-      ? [
-          {
-            name: "Import/Export",
-            href: "/import-export",
-            icon: DocumentTextIcon,
-            description: "Move structured data into and out of the workspace.",
-          },
-          {
-            name: "Analytics",
-            href: "/analytics",
-            icon: ChartBarIcon,
-            description: "Workspace metrics, briefing signals, and activity trends.",
-          },
-          {
-            name: "Dashboards",
-            href: "/dashboards",
-            icon: RectangleGroupIcon,
-            description: "Reusable dashboard views for operating reviews.",
-          },
-        ]
-      : []),
   ];
 
-  // Three tabs, so each should earn its place. "Collab" pointed at
-  // Conversations while claiming Decisions in its match list, which meant the
-  // tab lit up for a page it would not take you to. Decisions is the
-  // destination that matters, and Ask Recall is the fastest way back into the
-  // record on a phone.
   const bottomNavItems = [
     { path: homeItem.href, icon: homeItem.icon, label: "Home", match: [homeItem.href] },
     {

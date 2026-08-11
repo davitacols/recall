@@ -7,7 +7,6 @@ import {
   SparklesIcon,
 } from "@heroicons/react/24/outline";
 import api from "../services/api";
-import { useAuth } from "../hooks/useAuth";
 import { buildUnifiedNavModel, isHrefActive } from "./unifiedNavConfig";
 import "./UnifiedNav.css";
 
@@ -22,7 +21,6 @@ export default function UnifiedNav({
   width = 248,
   collapsedWidth = 60,
 }) {
-  const { user } = useAuth();
   const location = useLocation();
   const [installedApps, setInstalledApps] = useState([]);
   const [openGroups, setOpenGroups] = useState(() => {
@@ -97,8 +95,8 @@ export default function UnifiedNav({
   }, []);
 
   const navModel = useMemo(
-    () => buildUnifiedNavModel({ user, experienceMode, installedApps }),
-    [user, experienceMode, installedApps]
+    () => buildUnifiedNavModel({ experienceMode, installedApps }),
+    [experienceMode, installedApps]
   );
 
   const toggleGroup = (name) => {

@@ -130,6 +130,26 @@ class GitHubRepo(models.Model):
     archived = models.BooleanField(default=False)
     html_url = models.URLField(blank=True, max_length=512)
 
+    # Which project in the workspace this repository is the code for.
+    #
+    # One repo, one project. GitHub is the source of the code; Knoledgr is the
+    # ground truth for what the team decided and why — and a workspace with
+    # several projects needs those two to line up, or every decision lands in
+    # one undifferentiated pool and "why is this like this?" has to be answered
+    # across work that has nothing to do with each other.
+    #
+    # OneToOne enforces the rule: a repository cannot be the code for two
+    # projects. Nullable because a repo can be connected before anyone has
+    # decided which project it belongs to, and because a workspace may not use
+    # projects at all.
+    project = models.OneToOneField(
+        "agile.Project",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="repo",
+    )
+
     # Workspace-side toggles
     is_enabled_for_decisions = models.BooleanField(default=True, db_index=True)
 

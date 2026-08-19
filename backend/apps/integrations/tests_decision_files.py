@@ -59,7 +59,15 @@ class NoiseFilterTests(TestCase):
             self.assertFalse(is_noise(path), f"{path} should not be treated as noise")
 
 
-class SyncLinkFilesTests(TestCase):
+class _Fixture:
+    """Shared setup. Deliberately not a TestCase.
+
+    A TestCase subclass inherits its parent's test methods, so the two
+    classes below were silently re-running every sync test — three times
+    over — against fixtures they had modified for their own purposes.
+    Harmless here, but the same shape that broke the project tests.
+    """
+
     def setUp(self):
         self.org = Organization.objects.create(name="Files QA", slug="files-qa")
         self.user = User.objects.create_user(
@@ -93,6 +101,8 @@ class SyncLinkFilesTests(TestCase):
         with patch("apps.integrations.github_decision_files.list_pr_files", return_value=files):
             return sync_link_files(self.link)
 
+
+class SyncLinkFilesTests(_Fixture, TestCase):
     def test_records_source_files(self):
         count = self._sync_with([
             _gh_file("src/client/retry.py"),
@@ -130,7 +140,7 @@ class SyncLinkFilesTests(TestCase):
             self.assertEqual(sync_link_files(self.link), 0)
 
 
-class DecisionsForPathsTests(SyncLinkFilesTests):
+class DecisionsForPathsTests(_Fixture, TestCase):
     def test_finds_the_decision_behind_a_file(self):
         self._sync_with([_gh_file("src/client/retry.py")])
         found = decisions_for_paths(self.org, self.repo, ["src/client/retry.py"])
@@ -181,7 +191,7 @@ class DecisionsForPathsTests(SyncLinkFilesTests):
         )
 
 
-class ContextCommentTests(SyncLinkFilesTests):
+class ContextCommentTests(_Fixture, TestCase):
     def setUp(self):
         super().setUp()
         self.installation.permissions = {"pull_requests": "write"}

@@ -264,6 +264,12 @@ def maybe_comment_suggestion(installation, repo, pr: dict, base_url: str, snapsh
                 match_runner_up_score=runner_up,
                 **fields,
             )
+            # One repo, one project: an inferred link is still a statement
+            # that this decision is about this repository's project.
+            from apps.integrations.decision_project import adopt_project_from_repo
+
+            adopt_project_from_repo(decision, repo)
+
             # Record the files, so this decision is reachable from the code it
             # was implemented in. Separately guarded: losing the attribution
             # must not turn a successful link into a failed one.

@@ -89,6 +89,8 @@ def _serialize_repo(repo: GitHubRepo) -> dict:
         "html_url": repo.html_url,
         "is_enabled_for_decisions": repo.is_enabled_for_decisions,
         "last_synced_at": repo.last_synced_at.isoformat() if repo.last_synced_at else None,
+        "project_id": repo.project_id,
+        "project_name": repo.project.name if repo.project_id else None,
     }
 
 
@@ -354,7 +356,18 @@ def github_app_repos(request):
         # Where else this user could send a repo. Empty for the common case of
         # someone who only belongs to one workspace.
         "available_workspaces": _sibling_workspaces(request.user),
+        # Which projects a repo in this workspace can be the code for.
+        "available_projects": _workspace_projects(org),
     })
+
+
+def _workspace_projects(org) -> list[dict]:
+    from apps.agile.models import Project
+
+    return [
+        {"id": p.id, "name": p.name, "key": p.key}
+        for p in Project.objects.filter(organization=org).order_by("name")
+    ]
 
 
 def _sibling_workspaces(user) -> list[dict]:
@@ -393,6 +406,70 @@ def github_app_repo_toggle(request, repo_pk: int):
         return Response({"error": "is_enabled_for_decisions is required"}, status=400)
     repo.is_enabled_for_decisions = bool(is_enabled)
     repo.save(update_fields=["is_enabled_for_decisions", "updated_at"])
+    return Response(_serialize_repo(repo))
+
+
+@api_view(["PATCH"])
+@permission_classes([IsAuthenticated])
+def github_app_repo_project(request, repo_pk: int):
+    """Say which project a repository is the code for.
+
+    One repo, one project. GitHub holds the code; Knoledgr holds what the team
+    decided and why — and in a workspace with several projects those two have
+    to line up, or the record becomes one pool covering unrelated work and
+    "why is this like this?" gets answered from the wrong project.
+
+    The link is what makes attribution automatic afterwards: a decision reached
+    through this repository inherits its project without anyone remembering to
+    say so.
+
+    Pass a null org_id to clear it. The project must live in the same workspace
+    as the repo — a project from elsewhere would put this workspace's decisions
+    under another workspace's heading.
+    """
+    from apps.agile.models import Project
+
+    if not check_rate_limit(f"github_app_project:{request.user.id}", limit=60, window=3600):
+        return Response({"error": "Too many requests"}, status=429)
+
+    repo = GitHubRepo.objects.filter(
+        organization=request.user.organization, pk=repo_pk
+    ).first()
+    if not repo:
+        return Response({"error": "Repo not found"}, status=404)
+
+    raw = request.data.get("project_id", "__missing__")
+    if raw == "__missing__":
+        return Response({"error": "project_id is required (null to clear)"}, status=400)
+
+    if raw in (None, "", "null"):
+        repo.project = None
+        repo.save(update_fields=["project", "updated_at"])
+        return Response(_serialize_repo(repo))
+
+    try:
+        project_id = int(raw)
+    except (TypeError, ValueError):
+        return Response({"error": "project_id must be numeric or null"}, status=400)
+
+    project = Project.objects.filter(
+        id=project_id, organization=request.user.organization
+    ).first()
+    if not project:
+        return Response({"error": "Project not found in this workspace"}, status=404)
+
+    # OneToOne means the database would reject this anyway; catching it here
+    # turns a 500 into an explanation of the rule.
+    taken = GitHubRepo.objects.filter(project=project).exclude(pk=repo.pk).first()
+    if taken:
+        return Response(
+            {"error": f"{project.name} is already the project for {taken.full_name}."},
+            status=409,
+        )
+
+    repo.project = project
+    repo.save(update_fields=["project", "updated_at"])
+    logger.info("Repo %s is now the code for project %s", repo.full_name, project_id)
     return Response(_serialize_repo(repo))
 
 

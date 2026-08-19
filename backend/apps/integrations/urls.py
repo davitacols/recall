@@ -43,6 +43,7 @@ urlpatterns = [
     path('github/app/repos/', github_app_views.github_app_repos, name='github_app_repos'),
     path('github/app/repos/<int:repo_pk>/', github_app_views.github_app_repo_toggle, name='github_app_repo_toggle'),
     path('github/app/repos/<int:repo_pk>/workspace/', github_app_views.github_app_repo_workspace, name='github_app_repo_workspace'),
+    path('github/app/repos/<int:repo_pk>/project/', github_app_views.github_app_repo_project, name='github_app_repo_project'),
     path('github/app/resync/', github_app_views.github_app_resync, name='github_app_resync'),
     path('github/app/webhook/', github_app_views.github_app_webhook, name='github_app_webhook'),
 

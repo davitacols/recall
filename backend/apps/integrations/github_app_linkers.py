@@ -333,6 +333,12 @@ def _auto_link(
         decision_id, repo.full_name, pr_number, link_source,
     )
 
+    # One repo, one project — so a decision about this repo is a decision about
+    # that project, and nobody has to remember to say so.
+    from apps.integrations.decision_project import adopt_project_from_repo
+
+    adopt_project_from_repo(decision, repo)
+
     # Record which files this decision was implemented in, so the reasoning is
     # reachable from the code later. Best effort, and deliberately not fatal:
     # the link is the valuable part and must survive a failure here.

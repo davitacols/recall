@@ -56,6 +56,8 @@ export default function GitHubIntegration() {
   // Other workspaces this person belongs to. Empty for most users, which
   // is why the control below only appears when there is somewhere to move to.
   const [workspaces, setWorkspaces] = useState([]);
+  // Projects in this workspace a repo can be the code for.
+  const [projects, setProjects] = useState([]);
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
@@ -66,6 +68,7 @@ export default function GitHubIntegration() {
       setInstallation(inst && inst.connected ? inst : null);
       setRepos(Array.isArray(data?.results) ? data.results : []);
       setWorkspaces(Array.isArray(data?.available_workspaces) ? data.available_workspaces : []);
+      setProjects(Array.isArray(data?.available_projects) ? data.available_projects : []);
     } catch (err) {
       setError(err?.response?.data?.error || err?.message || "Could not load GitHub integration");
     } finally {
@@ -124,6 +127,32 @@ export default function GitHubIntegration() {
       toast.addToast?.(err?.response?.data?.error || "Resync failed", "error");
     } finally {
       setResyncing(false);
+    }
+  };
+
+  // One repo, one project. Setting it here is what makes attribution
+  // automatic afterwards: a decision reached through this repo inherits the
+  // project without anyone remembering to say so.
+  const setProject = async (repo, projectId) => {
+    const previous = repo.project_id ?? null;
+    const next = projectId === "" ? null : Number(projectId);
+    setRepos((prev) =>
+      prev.map((r) => (r.id === repo.id ? { ...r, project_id: next } : r))
+    );
+    try {
+      const { data } = await api.patch(`${REPOS_ENDPOINT}${repo.id}/project/`, {
+        project_id: next,
+      });
+      setRepos((prev) => prev.map((r) => (r.id === repo.id ? { ...r, ...data } : r)));
+    } catch (err) {
+      // Put the old value back rather than leaving the row showing a change
+      // that did not happen — a 409 here means another repo already holds it.
+      setRepos((prev) =>
+        prev.map((r) => (r.id === repo.id ? { ...r, project_id: previous } : r))
+      );
+      setError(
+        err?.response?.data?.error || err?.message || "Could not set the project"
+      );
     }
   };
 
@@ -283,6 +312,20 @@ export default function GitHubIntegration() {
                       {repo.last_synced_at ? <span className="gh-relative">synced {relTime(repo.last_synced_at)}</span> : null}
                     </span>
                   </div>
+                  {projects.length ? (
+                    <select
+                      className="gh-project"
+                      value={repo.project_id ?? ""}
+                      aria-label={`Project for ${repo.full_name}`}
+                      title="Which project is this repository the code for?"
+                      onChange={(e) => setProject(repo, e.target.value)}
+                    >
+                      <option value="">No project</option>
+                      {projects.map((p) => (
+                        <option key={p.id} value={p.id}>{p.name}</option>
+                      ))}
+                    </select>
+                  ) : null}
                   {workspaces.length ? (
                     <select
                       className="gh-move"

@@ -39,8 +39,8 @@ logger = logging.getLogger(__name__)
 # Helpers
 # ----------------------------------------------------------------------------
 
-def count_with_rationale(decisions_qs) -> int:
-    """How many of these decisions actually record why they were made.
+def _annotate_rationale_length(decisions_qs):
+    """Annotate _len: the length of the rationale once whitespace is folded.
 
     Trim() alone is not enough: both SQLite and Postgres trim *spaces* by
     default, so a rationale of "   \\n  " survives it with length 1 and counts
@@ -51,25 +51,41 @@ def count_with_rationale(decisions_qs) -> int:
     Newlines and tabs are folded to spaces first, so whitespace of any kind
     reduces to empty.
     """
-    from django.db.models import Value
+    from django.db.models import TextField, Value
     from django.db.models.functions import Length, Replace, Trim
 
-    return (
-        decisions_qs.annotate(
-            _clean=Trim(
+    # output_field is required, not decorative: Replace mixes the TextField
+    # column with CharField literals, and Django refuses to guess. count()
+    # happened not to need the annotation resolved, so this only surfaced once
+    # something selected the rows rather than counting them.
+    return decisions_qs.annotate(
+        _clean=Trim(
+            Replace(
                 Replace(
-                    Replace(
-                        Replace("rationale", Value("\r"), Value(" ")),
-                        Value("\n"), Value(" "),
-                    ),
-                    Value("\t"), Value(" "),
-                )
-            )
+                    Replace("rationale", Value("\r"), Value(" ")),
+                    Value("\n"), Value(" "),
+                ),
+                Value("\t"), Value(" "),
+            ),
+            output_field=TextField(),
         )
-        .annotate(_len=Length("_clean"))
-        .filter(_len__gt=0)
-        .count()
-    )
+    ).annotate(_len=Length("_clean"))
+
+
+def count_with_rationale(decisions_qs) -> int:
+    """How many of these decisions actually record why they were made."""
+    return _annotate_rationale_length(decisions_qs).filter(_len__gt=0).count()
+
+
+def decisions_missing_rationale(decisions_qs):
+    """The complement of count_with_rationale, as a queryset.
+
+    Shares one definition of "blank" with the counter deliberately. Two
+    implementations would drift, and then the dashboard percentage and the
+    backfill worklist would disagree about the same rows — with no way to tell
+    from either which one was wrong.
+    """
+    return _annotate_rationale_length(decisions_qs).filter(_len=0)
 
 
 def _user_org_or_400(request):

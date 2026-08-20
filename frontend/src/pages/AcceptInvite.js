@@ -9,7 +9,7 @@ export default function AcceptInvite() {
   const apiBase = process.env.REACT_APP_API_URL || "";
 
   const [invitation, setInvitation] = useState(null);
-  const [form, setForm] = useState({ username: "", password: "", full_name: "" });
+  const [form, setForm] = useState({ email: "", password: "", full_name: "" });
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -32,7 +32,7 @@ export default function AcceptInvite() {
         const data = await res.json();
         if (res.ok) {
           setInvitation(data);
-          if (data?.email) setForm((f) => ({ ...f, username: data.email }));
+          if (data?.email) setForm((f) => ({ ...f, email: data.email }));
         } else {
           setError(data.error || "Invalid invitation");
         }
@@ -119,8 +119,8 @@ export default function AcceptInvite() {
             <span className="lg-label">Email</span>
             <input
               type="email"
-              value={form.username}
-              onChange={(e) => setForm({ ...form, username: e.target.value })}
+              value={form.email}
+              onChange={(e) => setForm({ ...form, email: e.target.value })}
               className="lg-input"
               disabled={!!invitation?.email}
               required

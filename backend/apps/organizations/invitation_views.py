@@ -178,13 +178,17 @@ def accept_invitation(request, token):
         invitation = Invitation.objects.get(token=token)
         if not invitation.is_valid():
             return Response({'error': 'Invitation expired or already used'}, status=status.HTTP_400_BAD_REQUEST)
-        username = (request.data.get('username') or '').strip()
+        # The form shows the invited address in a disabled field and posts it
+        # back. Older bundles send it as "username", which is what it was
+        # called before the field was labelled Email. Read either, and do not
+        # validate it as a username: it is an email, it is only ever used as a
+        # seed for the generated username below, and the account's address is
+        # taken from the invitation regardless of what was submitted.
         password = request.data.get('password') or ''
         full_name = (request.data.get('full_name') or '').strip()
-        if not username or not password:
-            return Response({'error': 'Username and password are required'}, status=status.HTTP_400_BAD_REQUEST)
+        if not password:
+            return Response({'error': 'Password is required'}, status=status.HTTP_400_BAD_REQUEST)
         try:
-            validate_username(username)
             validate_password(password)
         except ValidationError as exc:
             return Response({'error': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
@@ -221,7 +225,9 @@ def accept_invitation(request, token):
                 user.full_name = full_name
             user.save(update_fields=['password', 'role', 'is_active', 'full_name'])
         else:
-            generated_username = generate_unique_org_username(username, invitation.organization.slug)
+            generated_username = generate_unique_org_username(
+                invitation.email, invitation.organization.slug
+            )
 
             # Create user with the organization from the invitation
             user = User.objects.create_user(

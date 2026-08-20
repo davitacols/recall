@@ -17,18 +17,28 @@ test that reaches a third party is not a test.
 from unittest.mock import patch
 
 from django.core.management import call_command
+from django.core.management.base import CommandError
 from django.test import TestCase
 from io import StringIO
 
 from apps.conversations.models import Conversation
 from apps.decisions.management.commands.backfill_rationale import collect_source
 from apps.decisions.models import Decision
+from apps.decisions.rationale import RationaleUnavailable
 from apps.organizations.models import Organization, User
 
 TARGET = "apps.decisions.management.commands.backfill_rationale.generate_decision_rationale"
 
 
-class BackfillRationaleTests(TestCase):
+class _Fixture:
+    """Shared setup only. Deliberately not a TestCase.
+
+    Inheriting from a TestCase to borrow its fixture also inherits its test
+    methods, which then run a second time under the child's name - and, when
+    the child changes the fixture, run against a world they were not written
+    about.
+    """
+
     def setUp(self):
         self.org = Organization.objects.create(name="Backfill Org", slug="backfill-org")
         self.user = User.objects.create_user(
@@ -55,6 +65,8 @@ class BackfillRationaleTests(TestCase):
         call_command("backfill_rationale", stdout=out, sleep=0, **kwargs)
         return out.getvalue()
 
+
+class BackfillRationaleTests(_Fixture, TestCase):
     # ---------------------------------------------------------------- sources
 
     def test_description_alone_is_a_readable_source(self):
@@ -201,3 +213,45 @@ class BackfillRationaleTests(TestCase):
         mine.refresh_from_db()
         self.assertEqual(theirs.rationale, "")
         self.assertEqual(mine.rationale, "Extracted reasoning.")
+
+
+class ExtractorUnavailableTests(_Fixture, TestCase):
+    """An outage must never be reported as a verdict about the record.
+
+    Both "the source states no reason" and "the API refused the request" used
+    to come back as an empty string, so a credit balance running out was
+    reported as eight decisions containing no reasoning - a confident
+    statement about records nothing had read.
+    """
+
+    @patch(TARGET, side_effect=RationaleUnavailable("credit balance is too low"))
+    def test_stops_instead_of_reporting_a_verdict(self, _mock):
+        self._decision(title="One", description="We chose it for the JSON support.")
+        self._decision(title="Two", description="We chose it for the throughput.")
+
+        with self.assertRaises(CommandError):
+            self._run()
+
+        # The wording matters as much as the stop: no line may claim these
+        # decisions lack reasoning.
+        self.assertEqual(Decision.objects.filter(rationale="").count(), 2)
+
+    @patch(TARGET, side_effect=RationaleUnavailable("credit balance is too low"))
+    def test_stops_at_the_first_failure_rather_than_hammering(self, mock):
+        for i in range(5):
+            self._decision(title=f"D{i}", description="We chose it for the JSON support.")
+
+        with self.assertRaises(CommandError):
+            self._run()
+
+        self.assertEqual(mock.call_count, 1, "one failure is enough to know")
+
+    @patch(TARGET, side_effect=RationaleUnavailable("no key"))
+    def test_writes_nothing_when_unavailable(self, _mock):
+        decision = self._decision(description="We chose it for the JSON support.")
+
+        with self.assertRaises(CommandError):
+            self._run()
+
+        decision.refresh_from_db()
+        self.assertEqual(decision.rationale, "")

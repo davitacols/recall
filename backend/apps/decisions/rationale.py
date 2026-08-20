@@ -51,12 +51,27 @@ _SENTINEL = "NO_RATIONALE"
 _MAX_CONTENT = 6000
 
 
-def generate_decision_rationale(title: str, content: str) -> str:
+class RationaleUnavailable(Exception):
+    """The source could not be examined at all.
+
+    Distinct from "the source contains no reasoning", and the distinction is
+    the whole point. Both used to come back as an empty string, so a caller
+    reporting on the result told the user their decisions had no reasoning in
+    them when in fact the API had refused every request — a confident verdict
+    about records nothing had read. An expired API key or an exhausted credit
+    balance would quietly become a statement about the quality of the record.
+    """
+
+
+def generate_decision_rationale(title: str, content: str, *, strict: bool = False) -> str:
     """Return the reasoning behind a decision, or '' when there is none to find.
 
-    Never raises: capture must not fail because an LLM call did. A decision
-    recorded without a rationale is recoverable; a decision not recorded at all
-    is lost.
+    Never raises by default: capture must not fail because an LLM call did. A
+    decision recorded without a rationale is recoverable; a decision not
+    recorded at all is lost.
+
+    Pass strict=True when the caller reports its results to a person and the
+    difference between "no reasoning here" and "could not check" matters.
     """
     text = str(content or "").strip()
     if not text:
@@ -67,6 +82,8 @@ def generate_decision_rationale(title: str, content: str) -> str:
         # No silent degradation to a word-count "summary" — that is what filled
         # the field with restatements in the first place. Better empty.
         logger.info("Rationale extraction skipped: no ANTHROPIC_API_KEY configured")
+        if strict:
+            raise RationaleUnavailable("No ANTHROPIC_API_KEY is configured")
         return ""
 
     try:
@@ -83,7 +100,11 @@ def generate_decision_rationale(title: str, content: str) -> str:
         )
         parts = getattr(message, "content", None) or []
         answer = "".join(getattr(p, "text", "") for p in parts).strip()
-    except Exception:
+    except Exception as exc:
+        # Under strict the caller surfaces this, so a traceback per decision is
+        # just noise burying the one line that matters.
+        if strict:
+            raise RationaleUnavailable(str(exc)) from exc
         logger.exception("Rationale extraction failed for %r", str(title)[:80])
         return ""
 

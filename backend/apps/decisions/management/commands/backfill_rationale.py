@@ -37,11 +37,11 @@ Safety properties, since this writes to live records:
 
 import time
 
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 
 from apps.decisions.intelligence_views import decisions_missing_rationale
 from apps.decisions.models import Decision
-from apps.decisions.rationale import generate_decision_rationale
+from apps.decisions.rationale import RationaleUnavailable, generate_decision_rationale
 from apps.knowledge.text_utils import to_plain_text
 
 # Fields that can carry reasoning, beyond the discussion and the description.
@@ -145,8 +145,19 @@ class Command(BaseCommand):
         self.stdout.write("")
 
         filled = skipped = 0
+        unavailable = None
         for decision, text, labels in candidates:
-            rationale = generate_decision_rationale(decision.title, text)
+            try:
+                rationale = generate_decision_rationale(
+                    decision.title, text, strict=True
+                )
+            except RationaleUnavailable as exc:
+                # Stop at the first one. Every remaining call fails the same
+                # way, and reporting a run of identical outages as a run of
+                # verdicts about the record is exactly the confusion this
+                # exists to prevent.
+                unavailable = str(exc)
+                break
             if not rationale:
                 skipped += 1
                 self.stdout.write(
@@ -166,6 +177,20 @@ class Command(BaseCommand):
 
         self.stdout.write("")
         verb = "would fill" if dry_run else "filled"
+        if unavailable:
+            remaining = len(candidates) - filled - skipped
+            self.stdout.write(self.style.ERROR(
+                f"STOPPED: the extractor could not be reached — {unavailable}"
+            ))
+            self.stdout.write(
+                f"{verb} {filled}, {skipped} had no reasoning, "
+                f"{remaining} never examined."
+            )
+            self.stdout.write(
+                "Nothing above says anything about those "
+                f"{remaining} decisions. Fix the extractor and re-run."
+            )
+            raise CommandError("extraction unavailable")
         self.stdout.write(self.style.SUCCESS(
             f"{verb} {filled}, left {skipped} alone (no reasoning to extract)"
         ))

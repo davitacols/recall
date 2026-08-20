@@ -21,6 +21,7 @@ import logging
 import secrets
 from typing import Optional
 
+from django.core.cache import cache
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework.decorators import api_view, permission_classes
@@ -149,26 +150,41 @@ def _sync_installation_repos(installation: GitHubAppInstallation) -> int:
     ).count()
 
 
-# Per-user install_url state cache. Memory-only is fine for a CSRF token
-# that lives for one minute and can fall back to "missing state" message.
-_install_states: dict[str, dict] = {}
+# Per-user install_url state, held in the shared cache.
+#
+# This was a module-level dict, on the reasoning that a CSRF token living for
+# one minute does not need durable storage. That is true, but it does need to
+# be *shared*: production runs gunicorn with 3 workers, so install-url/ and
+# callback/ are almost never served by the same process. The state was written
+# into one worker's memory and looked up in another's, so a legitimate install
+# failed with "Install state did not match" about two times in three, and
+# retrying only re-rolled the dice. Restarting the backend wiped any in flight.
+#
+# The cache is Redis (see CACHES in settings), which every worker shares, and
+# the TTL replaces the manual sweep the dict needed.
+_STATE_PREFIX = "ghapp:install-state:"
+_STATE_TTL_SECONDS = 600
+
+
+def _state_key(token: str) -> str:
+    return f"{_STATE_PREFIX}{token}"
 
 
 def _put_state(token: str, user_id: int, org_id: int) -> None:
-    _install_states[token] = {
-        "user_id": user_id,
-        "org_id": org_id,
-        "created_at": timezone.now().timestamp(),
-    }
-    # Sweep stale states older than 10 minutes
-    now = timezone.now().timestamp()
-    for k in list(_install_states.keys()):
-        if now - _install_states[k]["created_at"] > 600:
-            _install_states.pop(k, None)
+    cache.set(
+        _state_key(token),
+        {"user_id": user_id, "org_id": org_id},
+        timeout=_STATE_TTL_SECONDS,
+    )
 
 
 def _pop_state(token: str) -> Optional[dict]:
-    return _install_states.pop(token, None)
+    """Read a state once. Single-use: a replayed token must not validate."""
+    key = _state_key(token)
+    record = cache.get(key)
+    if record is not None:
+        cache.delete(key)
+    return record
 
 
 # ---------------------------------------------------------------------------

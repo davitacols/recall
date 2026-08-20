@@ -248,6 +248,28 @@ CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = 'UTC'
 CELERY_TASK_TRACK_STARTED = True
 CELERY_TASK_TIME_LIMIT = 30 * 60
+
+# Shared cache. Without this Django falls back to LocMemCache, which is
+# per-process — and production runs gunicorn with 3 workers. Anything written
+# by one worker is invisible to the other two, which silently broke two things:
+#
+#   - The GitHub install CSRF state. It was issued by whichever worker served
+#     install-url/ and looked up by whichever worker served callback/, so the
+#     connection failed roughly two times in three with "Install state did not
+#     match" and no way for the user to make progress by retrying.
+#   - Rate limiting. Every counter was per-worker, so the real ceiling was
+#     three times the configured limit.
+#
+# Redis is already a hard dependency here (Celery broker and channel layer),
+# so this adds no new failure mode. The key prefix keeps cache keys from
+# colliding with Celery's on the same database.
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+        'LOCATION': redis_url,
+        'KEY_PREFIX': 'knoledgr',
+    }
+}
 NOTIFICATIONS_USE_CELERY = _env_bool('NOTIFICATIONS_USE_CELERY', default=False)
 
 # AI Configuration

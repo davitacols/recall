@@ -287,3 +287,54 @@
 @media (max-width: 640px) {
   .gh-project { max-width: none; flex: 1; }
 }
+
+/* Creating the project inline, from the dropdown that needed one.
+   The only field is a name. Knoledgr is not a tracker: a project here is the
+   namespace that keeps one repo's decisions from blurring into another's, and
+   asking for a key, a lead and a description to record that would teach the
+   wrong mental model at the moment of first contact. */
+.gh-project-new {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.gh-project-input {
+  height: 30px;
+  width: 190px;
+  max-width: 190px;
+  padding: 0 8px;
+  border-radius: 8px;
+  border: 1px solid var(--app-border-strong, var(--app-border));
+  background: var(--app-surface);
+  color: var(--app-text);
+  font: inherit;
+  font-size: 14px;
+}
+
+.gh-project-input:focus {
+  outline: none;
+  border-color: var(--app-accent, var(--app-border-strong));
+}
+
+.gh-mini {
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid var(--app-border);
+  background: var(--app-surface);
+  color: var(--app-text);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.gh-mini:hover:not(:disabled) { border-color: var(--app-border-strong); }
+.gh-mini:disabled { opacity: 0.5; cursor: default; }
+.gh-mini-quiet { color: var(--app-text-subtle, var(--app-text)); border-color: transparent; }
+
+@media (max-width: 640px) {
+  .gh-project-new { flex: 1; }
+  .gh-project-input { width: auto; max-width: none; flex: 1; }
+}

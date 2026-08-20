@@ -150,6 +150,46 @@ def _sync_installation_repos(installation: GitHubAppInstallation) -> int:
     ).count()
 
 
+def _create_project(organization, name: str):
+    """Create a project from a name alone. Returns None if no key is free.
+
+    Knoledgr never asks anyone for a project key. It exists because the column
+    is NOT NULL and globally unique — a tenancy wart inherited from the agile
+    app, where one workspace's choice of key constrains every other
+    workspace's. Deriving it keeps that entirely out of the user's way.
+
+    The retry is not paranoia: two people connecting repos at the same moment
+    can derive the same key, and the loser gets an IntegrityError rather than
+    a project.
+    """
+    import re
+
+    from django.db import IntegrityError
+
+    from apps.agile.models import Project
+
+    token = re.sub(r"[^A-Z0-9]", "", (name or "").upper())[:6] or "PRJ"
+
+    for attempt in range(6):
+        if attempt == 0:
+            key = token
+        elif attempt < 5:
+            suffix = str(attempt + 1)
+            key = f"{token[: 10 - len(suffix)]}{suffix}"
+        else:
+            key = secrets.token_hex(5).upper()[:10]
+
+        if Project.objects.filter(key=key).exists():
+            continue
+        try:
+            return Project.objects.create(
+                organization=organization, name=name, key=key
+            )
+        except IntegrityError:
+            continue
+    return None
+
+
 # Per-user install_url state, held in the shared cache.
 #
 # This was a module-level dict, on the reasoning that a CSRF token living for
@@ -454,25 +494,62 @@ def github_app_repo_project(request, repo_pk: int):
     if not repo:
         return Response({"error": "Repo not found"}, status=404)
 
+    # Two ways in. project_id selects something that already exists;
+    # project_name creates it in the same breath as assigning it.
+    #
+    # The second exists because the only route to a new project was the agile
+    # Projects page: a Jira-shaped form asking for a key, a lead and a
+    # description, sitting on a page that counts issues and sprints. Knoledgr
+    # is not a tracker. A project here is only the namespace that keeps one
+    # repo's decisions from blurring into another's, and asking someone to
+    # fill in a sprint board's worth of fields to record that teaches exactly
+    # the wrong mental model at the moment of first contact.
+    #
+    # So: a name, and nothing else. The key is derived because the column
+    # demands one, not because anyone should have to think of it.
+    project_name = (request.data.get("project_name") or "").strip()
     raw = request.data.get("project_id", "__missing__")
-    if raw == "__missing__":
-        return Response({"error": "project_id is required (null to clear)"}, status=400)
 
-    if raw in (None, "", "null"):
+    if project_name:
+        if len(project_name) > 255:
+            return Response({"error": "That project name is too long"}, status=400)
+        # Reuse rather than duplicate. Typing a name that already exists here
+        # means "that one" — two projects with the same name are
+        # indistinguishable in the dropdown that has to show them.
+        project = Project.objects.filter(
+            organization=request.user.organization, name__iexact=project_name
+        ).first()
+        if not project:
+            project = _create_project(request.user.organization, project_name)
+            if project is None:
+                return Response(
+                    {"error": "Could not allocate a project key. Try a different name."},
+                    status=409,
+                )
+            logger.info(
+                "Created project %s (%s) in workspace %s",
+                project.name, project.key, request.user.organization_id,
+            )
+    elif raw == "__missing__":
+        return Response(
+            {"error": "project_id or project_name is required (project_id null to clear)"},
+            status=400,
+        )
+    elif raw in (None, "", "null"):
         repo.project = None
         repo.save(update_fields=["project", "updated_at"])
         return Response(_serialize_repo(repo))
+    else:
+        try:
+            project_id = int(raw)
+        except (TypeError, ValueError):
+            return Response({"error": "project_id must be numeric or null"}, status=400)
 
-    try:
-        project_id = int(raw)
-    except (TypeError, ValueError):
-        return Response({"error": "project_id must be numeric or null"}, status=400)
-
-    project = Project.objects.filter(
-        id=project_id, organization=request.user.organization
-    ).first()
-    if not project:
-        return Response({"error": "Project not found in this workspace"}, status=404)
+        project = Project.objects.filter(
+            id=project_id, organization=request.user.organization
+        ).first()
+        if not project:
+            return Response({"error": "Project not found in this workspace"}, status=404)
 
     # OneToOne means the database would reject this anyway; catching it here
     # turns a 500 into an explanation of the rule.
@@ -485,7 +562,7 @@ def github_app_repo_project(request, repo_pk: int):
 
     repo.project = project
     repo.save(update_fields=["project", "updated_at"])
-    logger.info("Repo %s is now the code for project %s", repo.full_name, project_id)
+    logger.info("Repo %s is now the code for project %s", repo.full_name, project.id)
     return Response(_serialize_repo(repo))
 
 

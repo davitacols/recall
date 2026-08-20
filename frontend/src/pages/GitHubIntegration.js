@@ -18,6 +18,9 @@ import "./GitHubIntegration.css";
 const INSTALL_URL_ENDPOINT = "/api/integrations/github/app/install-url/";
 const INSTALLATION_ENDPOINT = "/api/integrations/github/app/";
 const REPOS_ENDPOINT = "/api/integrations/github/app/repos/";
+
+// Sentinel value for the dropdown row that starts a new project.
+const NEW_PROJECT = "__new__";
 const RESYNC_ENDPOINT = "/api/integrations/github/app/resync/";
 
 function GitHubGlyph({ size = 22 }) {
@@ -58,6 +61,8 @@ export default function GitHubIntegration() {
   const [workspaces, setWorkspaces] = useState([]);
   // Projects in this workspace a repo can be the code for.
   const [projects, setProjects] = useState([]);
+  const [creatingFor, setCreatingFor] = useState(null);
+  const [newProjectName, setNewProjectName] = useState("");
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
@@ -134,6 +139,14 @@ export default function GitHubIntegration() {
   // automatic afterwards: a decision reached through this repo inherits the
   // project without anyone remembering to say so.
   const setProject = async (repo, projectId) => {
+    // The dropdown doubles as the way in to creating one. A project here is
+    // just the namespace the record hangs off, so the only thing worth asking
+    // for is its name.
+    if (projectId === NEW_PROJECT) {
+      setCreatingFor(repo.id);
+      setNewProjectName("");
+      return;
+    }
     const previous = repo.project_id ?? null;
     const next = projectId === "" ? null : Number(projectId);
     setRepos((prev) =>
@@ -154,6 +167,39 @@ export default function GitHubIntegration() {
         err?.response?.data?.error || err?.message || "Could not set the project"
       );
     }
+  };
+
+  // Create and assign in one call. Two round trips would leave a project
+  // stranded in the workspace if the second failed, and a stranded project is
+  // indistinguishable from one somebody meant to keep.
+  const createProject = async (repo) => {
+    const name = newProjectName.trim();
+    if (!name) return;
+    try {
+      const { data } = await api.patch(`${REPOS_ENDPOINT}${repo.id}/project/`, {
+        project_name: name,
+      });
+      setRepos((prev) => prev.map((r) => (r.id === repo.id ? { ...r, ...data } : r)));
+      if (data?.project_id) {
+        setProjects((prev) =>
+          prev.some((p) => p.id === data.project_id)
+            ? prev
+            : [...prev, { id: data.project_id, name: data.project_name || name }]
+        );
+      }
+      setCreatingFor(null);
+      setNewProjectName("");
+      setError("");
+    } catch (err) {
+      setError(
+        err?.response?.data?.error || err?.message || "Could not create the project"
+      );
+    }
+  };
+
+  const cancelCreate = () => {
+    setCreatingFor(null);
+    setNewProjectName("");
   };
 
   const moveRepo = async (repo, orgId) => {
@@ -312,7 +358,33 @@ export default function GitHubIntegration() {
                       {repo.last_synced_at ? <span className="gh-relative">synced {relTime(repo.last_synced_at)}</span> : null}
                     </span>
                   </div>
-                  {projects.length ? (
+                  {creatingFor === repo.id ? (
+                    <span className="gh-project-new">
+                      <input
+                        className="gh-project-input"
+                        value={newProjectName}
+                        autoFocus
+                        placeholder="What is this code for?"
+                        aria-label={`New project for ${repo.full_name}`}
+                        onChange={(e) => setNewProjectName(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") createProject(repo);
+                          if (e.key === "Escape") cancelCreate();
+                        }}
+                      />
+                      <button
+                        type="button"
+                        className="gh-mini"
+                        disabled={!newProjectName.trim()}
+                        onClick={() => createProject(repo)}
+                      >
+                        Save
+                      </button>
+                      <button type="button" className="gh-mini gh-mini-quiet" onClick={cancelCreate}>
+                        Cancel
+                      </button>
+                    </span>
+                  ) : (
                     <select
                       className="gh-project"
                       value={repo.project_id ?? ""}
@@ -324,8 +396,9 @@ export default function GitHubIntegration() {
                       {projects.map((p) => (
                         <option key={p.id} value={p.id}>{p.name}</option>
                       ))}
+                      <option value={NEW_PROJECT}>+ New project...</option>
                     </select>
-                  ) : null}
+                  )}
                   {workspaces.length ? (
                     <select
                       className="gh-move"

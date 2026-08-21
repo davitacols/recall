@@ -428,6 +428,42 @@ def decisions_timeline(request):
     
     return Response(timeline_data)
 
+@api_view(['PATCH'])
+def decision_rationale(request, decision_id):
+    """Record or correct the why on a decision.
+
+    Deliberately narrow. Decisions had no update endpoint at all, so a missing
+    rationale could be pointed at and never fixed - the list could say this
+    decision cannot answer anything and offer no way to change that.
+
+    This edits one field rather than opening a general decision editor. The
+    why is the field the product exists to hold; the rest (status, impact,
+    ownership) carries its own rules about who may change what and when, and
+    bundling them here would decide those questions by accident.
+    """
+    decision = Decision.objects.filter(
+        id=decision_id, organization=request.user.organization
+    ).first()
+    if not decision:
+        return Response({'error': 'Decision not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    if 'rationale' not in (request.data or {}):
+        return Response({'error': 'rationale is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+    rationale = str(request.data.get('rationale') or '').strip()
+    if len(rationale) > 20000:
+        return Response({'error': 'That reasoning is too long'}, status=status.HTTP_400_BAD_REQUEST)
+
+    decision.rationale = rationale
+    decision.save(update_fields=['rationale'])
+
+    return Response({
+        'id': decision.id,
+        'rationale': decision.rationale,
+        'has_rationale': bool(rationale),
+    })
+
+
 @api_view(['GET'])
 def decision_detail(request, decision_id):
     try:

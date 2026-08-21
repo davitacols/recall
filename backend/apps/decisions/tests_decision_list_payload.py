@@ -140,3 +140,90 @@ class DecisionListPayloadTests(TestCase):
         response = self.client.get(self.URL)
 
         self.assertNotIn(theirs.id, [r["id"] for r in response.data])
+
+
+class RationaleUpdateTests(TestCase):
+    """Recording the why from the interface.
+
+    Decisions had no update endpoint at all, so the list could say a decision
+    cannot answer anything and offer no way to change that - pointing at a
+    problem nobody could fix.
+    """
+
+    def setUp(self):
+        self.org = Organization.objects.create(name="Edit Org", slug="edit-org")
+        self.user = User.objects.create_user(
+            username="edit_user", email="edit@example.com", password="pass1234",
+            organization=self.org, role="member",
+        )
+        self.decision = Decision.objects.create(
+            organization=self.org, title="A decision", description="x",
+            decision_maker=self.user, status="proposed", rationale="",
+        )
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.user)
+
+    def url(self, decision=None):
+        return f"/api/decisions/{(decision or self.decision).id}/rationale/"
+
+    def test_records_a_why(self):
+        response = self.client.patch(
+            self.url(), {"rationale": "The retry loop had no jitter."}, format="json"
+        )
+
+        self.assertEqual(response.status_code, 200, response.data)
+        self.decision.refresh_from_db()
+        self.assertEqual(self.decision.rationale, "The retry loop had no jitter.")
+        self.assertTrue(response.data["has_rationale"])
+
+    def test_corrects_an_existing_why(self):
+        self.decision.rationale = "The old reason."
+        self.decision.save(update_fields=["rationale"])
+
+        self.client.patch(
+            self.url(), {"rationale": "The corrected reason."}, format="json"
+        )
+
+        self.decision.refresh_from_db()
+        self.assertEqual(self.decision.rationale, "The corrected reason.")
+
+    def test_whitespace_only_is_stored_as_empty(self):
+        """Otherwise it would count as recorded and hide the gap again."""
+        response = self.client.patch(
+            self.url(), {"rationale": "   \n\t "}, format="json"
+        )
+
+        self.assertFalse(response.data["has_rationale"])
+        self.decision.refresh_from_db()
+        self.assertEqual(self.decision.rationale, "")
+
+    def test_missing_field_is_a_400(self):
+        response = self.client.patch(self.url(), {}, format="json")
+
+        self.assertEqual(response.status_code, 400)
+
+    def test_cannot_edit_another_workspaces_decision(self):
+        other_org = Organization.objects.create(name="Theirs", slug="theirs-edit")
+        other_user = User.objects.create_user(
+            username="other_edit", email="otheredit@example.com", password="pass1234",
+            organization=other_org, role="admin",
+        )
+        theirs = Decision.objects.create(
+            organization=other_org, title="Theirs", description="x",
+            decision_maker=other_user, status="proposed", rationale="Their reason.",
+        )
+
+        response = self.client.patch(
+            self.url(theirs), {"rationale": "Overwritten."}, format="json"
+        )
+
+        self.assertEqual(response.status_code, 404)
+        theirs.refresh_from_db()
+        self.assertEqual(theirs.rationale, "Their reason.")
+
+    def test_requires_authentication(self):
+        anon = APIClient()
+
+        response = anon.patch(self.url(), {"rationale": "x"}, format="json")
+
+        self.assertEqual(response.status_code, 401)

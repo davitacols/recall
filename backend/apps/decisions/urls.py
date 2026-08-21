@@ -14,6 +14,7 @@ urlpatterns = [
     path('outcomes/calibration/', views.team_calibration_analytics, name='team_calibration_analytics'),
     path('<int:decision_id>/related-sprints/', linking_views.decision_related_sprints, name='decision_related_sprints'),
     path('<int:decision_id>/', views.decision_detail, name='decision_detail'),
+    path('<int:decision_id>/rationale/', views.decision_rationale, name='decision_rationale'),
     path('<int:decision_id>/impact-trail/', views.decision_impact_trail, name='decision_impact_trail'),
     path('<int:decision_id>/replay-simulator/', views.decision_replay_simulator, name='decision_replay_simulator'),
     path('<int:decision_id>/replay-simulator/create-follow-up/', views.create_replay_followup_tasks, name='create_replay_followup_tasks'),

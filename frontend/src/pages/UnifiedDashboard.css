@@ -442,3 +442,51 @@
   .dash { padding: 16px 18px 28px; }
   .dash-hero-title { font-size: 25px; }
 }
+
+/* The ask box in the hero. This is the product's output, and it belongs where
+   the reader's own first name used to be — a greeting tells someone they have
+   an account, not what the workspace holds. */
+.dash-ask {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 12px 0 0;
+  max-width: 560px;
+}
+
+.dash-ask-input {
+  flex: 1;
+  min-width: 0;
+  height: 40px;
+  padding: 0 14px;
+  border-radius: 10px;
+  border: 1px solid var(--app-border-strong, var(--app-border));
+  background: var(--app-surface);
+  color: var(--app-text);
+  font: inherit;
+  font-size: 15px;
+}
+
+.dash-ask-input::placeholder { color: var(--app-text-disabled, var(--app-muted)); }
+
+.dash-ask-input:focus {
+  outline: none;
+  border-color: var(--app-accent, var(--app-border-strong));
+}
+
+.dash-ask .dash-btn { flex-shrink: 0; }
+.dash-ask .dash-btn:disabled { opacity: 0.5; cursor: default; }
+
+/* The gap, stated as something to do rather than a percentage to admire. */
+.dash-hero-gap {
+  margin: 10px 0 0;
+  font-size: 13px;
+  color: var(--app-danger, #bf2600);
+}
+
+.dash-hero-gap a { color: inherit; font-weight: 600; }
+
+@media (max-width: 640px) {
+  .dash-ask { flex-wrap: wrap; }
+  .dash-ask-input { width: 100%; }
+}

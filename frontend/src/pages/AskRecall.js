@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   ArrowRightIcon,
   BoltIcon,
@@ -384,6 +384,23 @@ export default function AskRecall() {
     e?.preventDefault();
     runQuery(query);
   };
+
+  // Arriving with a question already typed, from the dashboard or a link.
+  // Runs it rather than only filling the box: someone who pressed enter on a
+  // question has already asked, and making them press enter twice reads as
+  // the first one having failed.
+  const [searchParams, setSearchParams] = useSearchParams();
+  useEffect(() => {
+    const seeded = (searchParams.get("q") || "").trim();
+    if (!seeded) return;
+    setQuery(seeded);
+    runQuery(seeded);
+    // Drop it from the URL so a refresh does not silently re-ask, and a
+    // copied link does not carry someone else's question.
+    searchParams.delete("q");
+    setSearchParams(searchParams, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleExecute = async (turn) => {
     if (!canExecute || !turn?.nextActions?.length) return;

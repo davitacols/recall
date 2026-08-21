@@ -130,6 +130,60 @@ export default function DecisionDetail() {
   const [error, setError] = useState("");
   const [tab, setTab] = useState("overview");
 
+  // Recording the why, in place. Decisions had no edit surface at all, so a
+  // missing rationale could be pointed at and never fixed.
+  const [editingWhy, setEditingWhy] = useState(false);
+  const [whyDraft, setWhyDraft] = useState("");
+  const [savingWhy, setSavingWhy] = useState(false);
+  const [whyError, setWhyError] = useState("");
+
+  const hasWhy = Boolean(String(decision?.rationale || "").trim());
+
+  const startEditWhy = () => {
+    setWhyDraft(decision?.rationale || "");
+    setWhyError("");
+    setEditingWhy(true);
+  };
+
+  const cancelEditWhy = () => {
+    setEditingWhy(false);
+    setWhyError("");
+  };
+
+  const saveWhy = async () => {
+    setSavingWhy(true);
+    setWhyError("");
+    try {
+      const { data } = await api.patch(`/api/decisions/${id}/rationale/`, {
+        rationale: whyDraft,
+      });
+      setDecision((prev) => (prev ? { ...prev, rationale: data.rationale } : prev));
+      setEditingWhy(false);
+    } catch (err) {
+      setWhyError(
+        err?.response?.data?.error || err?.message || "Could not save the why"
+      );
+    } finally {
+      setSavingWhy(false);
+    }
+  };
+
+  const why = {
+    hasWhy, editingWhy, whyDraft, setWhyDraft, savingWhy, whyError,
+    startEditWhy, cancelEditWhy, saveWhy,
+  };
+
+  // Arriving from the list's "Add why" button opens the editor directly.
+  useEffect(() => {
+    if (!decision) return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("focus") === "rationale" && !hasWhy && !editingWhy) {
+      startEditWhy();
+      document.getElementById("why")?.scrollIntoView({ block: "center" });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [decision]);
+
   // Intelligence state
   const [predictions, setPredictions] = useState([]);
   const [retros, setRetros] = useState([]);
@@ -387,7 +441,7 @@ export default function DecisionDetail() {
       <div className="di-grid" style={{ padding: "16px 32px 32px" }}>
         <section style={{ minWidth: 0 }}>
           {tab === "overview" ? (
-            <OverviewTab decision={decision} predictions={predictions} retros={retros} />
+            <OverviewTab decision={decision} predictions={predictions} retros={retros} why={why} />
           ) : null}
           {tab === "predictions" ? (
             <PredictionsTab
@@ -539,7 +593,11 @@ function DriftHeadline({ band, drift }) {
 
 // ─── overview tab ───────────────────────────────────────────────────────────
 
-function OverviewTab({ decision, predictions, retros }) {
+function OverviewTab({ decision, predictions, retros, why }) {
+  const {
+    hasWhy, editingWhy, whyDraft, setWhyDraft, savingWhy, whyError,
+    startEditWhy, cancelEditWhy, saveWhy,
+  } = why;
   const latestLesson = retros[0];
   const informedBy = Array.isArray(decision.informed_by_decisions) ? decision.informed_by_decisions : [];
   return (
@@ -560,17 +618,66 @@ function OverviewTab({ decision, predictions, retros }) {
           </div>
         </PanelCard>
       ) : null}
+      {/* Why comes first, and appears even when it is missing. Description
+          used to lead, and an absent rationale rendered nothing at all - so
+          the field the product exists to hold was the one thing a reader
+          could not tell was missing. */}
+      <PanelCard
+        title="Why"
+        id="why"
+        actions={
+          hasWhy && !editingWhy ? (
+            <button type="button" className="di-why-edit" onClick={startEditWhy}>
+              Edit
+            </button>
+          ) : null
+        }
+      >
+        {editingWhy ? (
+          <div className="di-why-editor">
+            <textarea
+              className="di-why-input"
+              value={whyDraft}
+              autoFocus
+              rows={5}
+              placeholder="Why was this chosen? The goal it serves, what it was weighed against, or the constraint that forced it."
+              onChange={(e) => setWhyDraft(e.target.value)}
+            />
+            <div className="di-why-actions">
+              <button
+                type="button"
+                className="di-why-save"
+                disabled={savingWhy}
+                onClick={saveWhy}
+              >
+                {savingWhy ? "Saving…" : "Save"}
+              </button>
+              <button type="button" className="di-why-cancel" onClick={cancelEditWhy}>
+                Cancel
+              </button>
+            </div>
+            {whyError ? <p className="di-why-error">{whyError}</p> : null}
+          </div>
+        ) : hasWhy ? (
+          <div className="di-md">
+            <RichText content={decision.rationale} />
+          </div>
+        ) : (
+          <div className="di-why-missing">
+            <p>
+              No why recorded. This decision cannot answer a question about
+              itself later, which is the one thing it is here to do.
+            </p>
+            <button type="button" className="di-why-save" onClick={startEditWhy}>
+              Add why
+            </button>
+          </div>
+        )}
+      </PanelCard>
       {decision.description ? (
         <PanelCard title="Description">
           <div className="di-md">
             <RichText content={decision.description} />
-          </div>
-        </PanelCard>
-      ) : null}
-      {decision.rationale ? (
-        <PanelCard title="Rationale">
-          <div className="di-md">
-            <RichText content={decision.rationale} />
           </div>
         </PanelCard>
       ) : null}
@@ -618,10 +725,13 @@ function OverviewTab({ decision, predictions, retros }) {
   );
 }
 
-function PanelCard({ title, children, accent }) {
+function PanelCard({ title, children, accent, id, actions }) {
   return (
-    <div className={`di-panel ${accent ? `di-panel--${accent}` : ""}`}>
-      <p className="di-panel-title">{title}</p>
+    <div id={id} className={`di-panel ${accent ? `di-panel--${accent}` : ""}`}>
+      <div className="di-panel-head">
+        <p className="di-panel-title">{title}</p>
+        {actions ? <div className="di-panel-actions">{actions}</div> : null}
+      </div>
       <div>{children}</div>
     </div>
   );

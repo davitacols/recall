@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import api from "../services/api";
 import "./UnifiedDashboard.css";
@@ -38,6 +38,7 @@ function bandLabel(band) {
 
 export default function UnifiedDashboard() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [overview, setOverview] = useState(null);
   const [personal, setPersonal] = useState(null);
@@ -154,6 +155,19 @@ export default function UnifiedDashboard() {
       linkedPct: pct(linked, decisions),
     };
   }, [totals]);
+
+  const [askQuery, setAskQuery] = useState("");
+
+  const askSubmit = (e) => {
+    e.preventDefault();
+    const q = askQuery.trim();
+    if (!q) return;
+    navigate(`/ask?q=${encodeURIComponent(q)}`);
+  };
+
+  // Decisions that record no reasoning. The percentage is already on the stat
+  // strip; this is the same fact phrased as something to do about it.
+  const missingWhy = Math.max(0, (memory.decisions || 0) - (memory.withWhy || 0));
 
   const stats = useMemo(
     () => [
@@ -313,7 +327,7 @@ export default function UnifiedDashboard() {
             })}
           </p>
           <h1 className="dash-hero-title">
-            {isNewWorkspace ? `Welcome, ${firstName || "there"}` : firstName || "Welcome back"}
+            {isNewWorkspace ? `Welcome, ${firstName || "there"}` : "Ask why"}
           </h1>
           {isNewWorkspace ? (
             <p className="dash-hero-summary">
@@ -321,12 +335,42 @@ export default function UnifiedDashboard() {
               repository and Knoledgr begins recording decisions against the pull
               requests that implement them.
             </p>
-          ) : awaiting.length > 0 ? (
-            <p className="dash-hero-summary">
-              {awaiting.length} item{awaiting.length === 1 ? "" : "s"} waiting on you.
-            </p>
           ) : (
-            <p className="dash-hero-summary">No open items waiting on you.</p>
+            <>
+              {/* The product's output, on landing. The largest thing on this
+                  page used to be the reader's own first name, which tells
+                  them they have an account rather than what this holds. */}
+              <form className="dash-ask" onSubmit={askSubmit}>
+                <input
+                  className="dash-ask-input"
+                  value={askQuery}
+                  onChange={(e) => setAskQuery(e.target.value)}
+                  placeholder="Why did we…"
+                  aria-label="Ask why"
+                />
+                <button
+                  type="submit"
+                  className="dash-btn dash-btn-primary"
+                  disabled={!askQuery.trim()}
+                >
+                  Ask
+                </button>
+              </form>
+              {missingWhy > 0 ? (
+                <p className="dash-hero-gap">
+                  {missingWhy} of {memory.decisions} decision
+                  {memory.decisions === 1 ? "" : "s"} cannot answer anything —
+                  no why recorded.{" "}
+                  <Link to="/decisions">Fix them</Link>
+                </p>
+              ) : awaiting.length > 0 ? (
+                <p className="dash-hero-summary">
+                  {awaiting.length} item{awaiting.length === 1 ? "" : "s"} waiting on you.
+                </p>
+              ) : (
+                <p className="dash-hero-summary">No open items waiting on you.</p>
+              )}
+            </>
           )}
         </div>
         <div className="dash-hero-actions">
@@ -343,9 +387,6 @@ export default function UnifiedDashboard() {
             <>
               <Link to="/decisions/new" className="dash-btn dash-btn-primary">
                 Draft a decision
-              </Link>
-              <Link to="/ask" className="dash-btn">
-                Ask Recall
               </Link>
               <Link to="/agent" className="dash-btn">
                 Run agent

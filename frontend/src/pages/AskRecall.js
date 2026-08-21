@@ -196,6 +196,19 @@ export default function AskRecall() {
 
   // Pull the org's members so the copilot can scope by person and so we can
   // detect who's involved in any given answer.
+  // Whether the model API is actually answering. Accepting a question,
+  // spinning, and returning an error reads as the product being broken rather
+  // than the balance being empty.
+  const [aiState, setAiState] = useState(null);
+  useEffect(() => {
+    let live = true;
+    api
+      .get("/api/decisions/memory-health/")
+      .then((r) => { if (live) setAiState(r?.data?.ai || null); })
+      .catch(() => {});
+    return () => { live = false; };
+  }, []);
+
   useEffect(() => {
     let mounted = true;
     api
@@ -574,6 +587,13 @@ export default function AskRecall() {
           )}
 
           <div className="ar-composer-wrap">
+            {aiState && aiState.available === false ? (
+              <p className="ar-unavailable" role="status">
+                {aiState.reason || "The AI service is not responding."}{" "}
+                Questions cannot be answered until it is restored. Everything
+                already recorded is unaffected, and search still works.
+              </p>
+            ) : null}
             <form className="ar-composer" onSubmit={handleSubmit}>
               <div className="ar-modes">
                 {MODES.map((m) => (

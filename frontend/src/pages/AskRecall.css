@@ -832,3 +832,17 @@
   font-size: 14px;
   color: var(--app-muted);
 }
+
+/* Said before the question, not after it. Accepting a question, spinning, and
+   returning an error reads as the product being broken rather than the credit
+   balance being empty. */
+.ar-unavailable {
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--app-border);
+  border-radius: 10px;
+  background: var(--app-surface);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--app-muted);
+}

@@ -1,3 +1,5 @@
+import logging
+
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
@@ -12,6 +14,8 @@ from .models import Decision
 from apps.integrations.github_engineering import link_manual_pr_to_decision
 from apps.organizations.activity import log_activity
 from apps.knowledge.unified_models import UnifiedActivity
+
+logger = logging.getLogger(__name__)
 
 
 def _clamp(value, minimum, maximum):
@@ -1428,11 +1432,34 @@ def convert_to_decision(request, conversation_id):
         # this sprint update" — so the rationale field ended up restating what
         # was said rather than why it was chosen. Returns '' rather than
         # inventing a why when the discussion does not contain one.
-        from apps.decisions.rationale import generate_decision_rationale
-        ai_rationale = generate_decision_rationale(
-            conversation.title,
-            conversation.content
+        from apps.decisions.rationale import (
+            RationaleUnavailable,
+            generate_decision_rationale,
         )
+
+        # Two different empties, and the client has to be able to tell them
+        # apart. "The discussion stated no reason" is a finding about the
+        # source. "The model API refused the request" is a finding about us,
+        # and reporting it as the former quietly degrades the record: every
+        # conversion during an outage adds a why-less decision that looks like
+        # the discussion's fault.
+        rationale_unavailable = ""
+        try:
+            ai_rationale = generate_decision_rationale(
+                conversation.title,
+                conversation.content,
+                strict=True,
+            )
+        except RationaleUnavailable as exc:
+            # Still create the decision. Losing the record because an API is
+            # down would be worse than recording it without a why - the
+            # conversion is the deliberate act, and it can be filled in.
+            ai_rationale = ""
+            rationale_unavailable = str(exc)
+            logger.warning(
+                "Converted conversation %s without a rationale: %s",
+                conversation.id, exc,
+            )
 
         # Create decision from conversation
         decision = Decision.objects.create(
@@ -1465,6 +1492,10 @@ def convert_to_decision(request, conversation_id):
             # Empty when the discussion contained no reasoning to extract. The
             # client says so plainly rather than implying the why was captured.
             'rationale': ai_rationale,
+            # Set only when nothing examined the discussion at all, so the
+            # client can say "we could not check" instead of "there was no
+            # reason here".
+            'rationale_unavailable': rationale_unavailable,
         }, status=status.HTTP_201_CREATED)
         
     except Conversation.DoesNotExist:

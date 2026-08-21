@@ -2,7 +2,10 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   ChartBarIcon,
+  ChatBubbleLeftRightIcon,
+  CodeBracketIcon,
   DocumentCheckIcon,
+  FolderIcon,
   MagnifyingGlassIcon,
   PlusIcon,
   SparklesIcon,
@@ -111,7 +114,7 @@ export default function Decisions() {
       <PageHeader
         breadcrumb={[{ label: "Knoledgr", to: "/" }, { label: "Decisions" }]}
         title="Decisions"
-        subtitle="Track committed choices, rationale, and impact across the workspace."
+        subtitle="What your team decided, and why. A decision without its why cannot answer anything later."
         actions={
           <>
             <Button
@@ -170,54 +173,81 @@ export default function Decisions() {
         <EmptyState
           icon={<DocumentCheckIcon style={{ width: "100%", height: "100%" }} />}
           title={tab === "all" ? "No decisions yet" : "No decisions in this state"}
-          description="Capture a decision to record the rationale and lock in the outcome."
+          description="A decision here records the reasoning behind a choice, so the next person does not have to guess at it."
           primaryAction={<Button appearance="primary" onClick={() => navigate("/decisions/new")}>New decision</Button>}
         />
       ) : (
-        <div style={tableWrap}>
-          <table style={tableStyle}>
-            <thead>
-              <tr style={tableHeadRow}>
-                <th style={{ ...th, width: "45%" }}>Title</th>
-                <th style={th}>Status</th>
-                <th style={th}>Owner</th>
-                <th style={th}>Impact</th>
-                <th style={th}>Decided</th>
-                <th style={{ ...th, textAlign: "right" }} />
-              </tr>
-            </thead>
-            <tbody>
-              {visible.map((d) => (
-                <tr key={d.id} style={tableRow}>
-                  <td style={td}>
-                    <Link to={`/decisions/${d.id}`} style={titleLink}>
-                      <span style={titleText}>{d.title || "Untitled decision"}</span>
-                      {d.summary ? <span style={excerptText}>{stripHtml(d.summary).slice(0, 160)}</span> : null}
-                    </Link>
-                  </td>
-                  <td style={td}>
-                    <Lozenge variant={statusToVariant(d.status)}>{(d.status || "proposed").replace(/_/g, " ")}</Lozenge>
-                  </td>
-                  <td style={td}>
-                    <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-                      <Avatar size="sm" name={d.owner_name || d.author_name || d.created_by_name || "—"} />
-                      <span style={{ fontSize: 13, color: "var(--app-text)" }}>{d.owner_name || d.author_name || d.created_by_name || "—"}</span>
-                    </span>
-                  </td>
-                  <td style={td}>
-                    {d.impact ? <Lozenge>{d.impact}</Lozenge> : <span style={{ color: "var(--app-text-disabled)", fontSize: 13 }}>—</span>}
-                  </td>
-                  <td style={td}>
-                    <span style={{ fontSize: 13, color: "var(--app-muted)" }}>{formatDate(d.decided_at || d.updated_at || d.created_at)}</span>
-                  </td>
-                  <td style={{ ...td, textAlign: "right" }}>
-                    <Button appearance="subtle" size="sm" onClick={() => navigate(`/decisions/${d.id}`)}>Open</Button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <ul style={cardList}>
+          {visible.map((d) => (
+            <li key={d.id} style={card}>
+              <div style={cardTop}>
+                <Link to={`/decisions/${d.id}`} style={titleLink}>
+                  <span style={cardRef}>DEC-{d.id}</span>
+                  <span style={titleText}>{d.title || "Untitled decision"}</span>
+                </Link>
+                <Lozenge variant={statusToVariant(d.status)}>
+                  {(d.status || "proposed").replace(/_/g, " ")}
+                </Lozenge>
+              </div>
+
+              {/* The why is the body. It was previously searchable and never
+                  rendered, which is how a record reaches 44% with nobody
+                  noticing: a gap nobody can see is a gap nobody fills. */}
+              {d.has_rationale ? (
+                <p style={whyText}>{d.rationale}</p>
+              ) : (
+                <div style={whyMissing}>
+                  <span>No why recorded — this decision cannot answer anything later.</span>
+                  <Button
+                    appearance="subtle"
+                    size="sm"
+                    onClick={() => navigate(`/decisions/${d.id}?focus=rationale`)}
+                  >
+                    Add why
+                  </Button>
+                </div>
+              )}
+
+              <div style={cardMeta}>
+                {d.pull_request_count ? (
+                  <Link to={`/decisions/${d.id}#code`} style={metaLink}>
+                    <CodeBracketIcon style={metaIcon} />
+                    {d.pull_request_count} pull request{d.pull_request_count === 1 ? "" : "s"}
+                  </Link>
+                ) : (
+                  <span style={metaMuted}>
+                    <CodeBracketIcon style={metaIcon} />
+                    Not linked to code
+                  </span>
+                )}
+
+                {d.conversation_id ? (
+                  <Link to={`/conversations/${d.conversation_id}`} style={metaLink}>
+                    <ChatBubbleLeftRightIcon style={metaIcon} />
+                    Source discussion
+                  </Link>
+                ) : null}
+
+                {d.project_name ? (
+                  <span style={metaMuted}>
+                    <FolderIcon style={metaIcon} />
+                    {d.project_name}
+                  </span>
+                ) : null}
+
+                <span style={{ flex: 1 }} />
+
+                <span style={metaMuted}>
+                  <Avatar size="sm" name={d.decision_maker_name || d.owner_name || "—"} />
+                  {d.decision_maker_name || d.owner_name || "Unattributed"}
+                </span>
+                <span style={metaMuted}>
+                  {formatDate(d.decided_at || d.updated_at || d.created_at)}
+                </span>
+              </div>
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   );
@@ -238,11 +268,17 @@ function SkeletonTable() {
 const toolbar = { display: "flex", alignItems: "center", gap: 8, padding: "16px 0" };
 const searchIcon = { position: "absolute", left: 8, top: 8, width: 16, height: 16, color: "var(--app-muted)", pointerEvents: "none" };
 const tableWrap = { background: "var(--app-surface)", border: "1px solid var(--app-border)", borderRadius: 10, overflow: "hidden" };
-const tableStyle = { width: "100%", borderCollapse: "collapse" };
-const tableHeadRow = { background: "var(--app-surface-alt)" };
-const th = { textAlign: "left", fontSize: 11, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--app-muted)", padding: "10px 16px", borderBottom: "1px solid var(--app-border)" };
-const tableRow = { borderBottom: "1px solid var(--app-border-subtle)" };
-const td = { padding: "12px 16px", fontSize: 14, color: "var(--app-text)", verticalAlign: "middle" };
 const titleLink = { display: "block", color: "inherit", textDecoration: "none" };
+const cardList = { listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 10 };
+const card = { background: "var(--app-surface)", border: "1px solid var(--app-border)", borderRadius: 10, padding: "14px 16px" };
+const cardTop = { display: "flex", alignItems: "center", gap: 10 };
+const cardRef = { fontSize: 12, fontWeight: 600, color: "var(--app-muted)", marginRight: 8, fontVariantNumeric: "tabular-nums" };
+/* The reasoning, at reading size. It is the content of the row, not a hint
+   under the title, so it gets normal body treatment and room to wrap. */
+const whyText = { margin: "8px 0 0", fontSize: 14, lineHeight: 1.5, color: "var(--app-text)", maxWidth: "72ch" };
+const whyMissing = { display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", margin: "8px 0 0", padding: "8px 10px", borderRadius: 8, border: "1px dashed var(--app-border-strong, var(--app-border))", fontSize: 13, color: "var(--app-muted)" };
+const cardMeta = { display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap", marginTop: 12, fontSize: 12, color: "var(--app-muted)" };
+const metaLink = { display: "inline-flex", alignItems: "center", gap: 5, color: "var(--app-muted)", textDecoration: "none" };
+const metaMuted = { display: "inline-flex", alignItems: "center", gap: 5, color: "var(--app-muted)" };
+const metaIcon = { width: 13, height: 13 };
 const titleText = { display: "block", fontSize: 14, fontWeight: 600, color: "var(--app-text)", letterSpacing: "-0.005em" };
-const excerptText = { display: "block", marginTop: 2, fontSize: 12, color: "var(--app-muted)", maxWidth: 540, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" };

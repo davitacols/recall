@@ -1,7 +1,9 @@
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from django.db.models import Q
+from django.db.models import Count, Q
+
+from apps.knowledge.text_utils import to_plain_text
 from django.utils import timezone
 from datetime import timedelta
 from django.contrib.contenttypes.models import ContentType
@@ -168,6 +170,17 @@ def decisions(request):
         else:
             limit = None
 
+        # The list used to return description and not rationale, so the one
+        # field the product exists to preserve was searchable and invisible.
+        # Hiding an empty why is also why it stays empty: a gap nobody can see
+        # is a gap nobody fills.
+        #
+        # select_related is not decoration either - this loop touched the
+        # decision maker, project and conversation once per row.
+        queryset = queryset.select_related(
+            'decision_maker', 'project', 'conversation'
+        ).annotate(_pr_count=Count('github_pull_requests', distinct=True))
+
         decision_iterable = queryset.order_by('-created_at')[:limit] if limit else queryset.order_by('-created_at')
         for decision in decision_iterable:
             confidence = calculate_confidence(decision)
@@ -184,6 +197,17 @@ def decisions(request):
                 'confidence': confidence,
                 'review_completed_at': decision.review_completed_at,
                 'was_successful': decision.was_successful,
+                # Python's strip() folds newlines and tabs, matching the
+                # whitespace-aware definition the dashboard percentage uses.
+                # Whitespace-only is not a rationale.
+                'has_rationale': bool(str(decision.rationale or '').strip()),
+                'rationale': to_plain_text(decision.rationale, limit=260),
+                # What this decision is connected to. Without these the list
+                # cannot show whether a decision reaches the code at all.
+                'pull_request_count': getattr(decision, '_pr_count', 0),
+                'conversation_id': decision.conversation_id,
+                'project_id': decision.project_id,
+                'project_name': decision.project.name if decision.project_id else None,
             })
         
         return Response(decisions_data)

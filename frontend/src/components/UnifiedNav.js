@@ -196,7 +196,9 @@ function MemoryMeter({ decisions, withWhy }) {
 
   return (
     <Link
-      to="/decisions"
+      // Straight to the gap when there is one. The meter was a number you
+      // could only look at, on every page, with no route to acting on it.
+      to={thin ? "/decisions?missing=why" : "/decisions"}
       className={`nav-memory${thin ? " is-thin" : ""}`}
       title={`${withWhy} of ${decisions} decisions record why they were made`}
     >

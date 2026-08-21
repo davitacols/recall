@@ -54,6 +54,7 @@ function statusToVariant(status) {
 export default function Decisions() {
   const navigate = useNavigate();
   const location = useLocation();
+  const [missingOnly, setMissingOnly] = useState(false);
   const [decisions, setDecisions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -85,10 +86,14 @@ export default function Decisions() {
     if (nextStatus && STATUS_TABS.some((t) => t.id === nextStatus)) setTab(nextStatus);
     const nextQuery = params.get("q") || "";
     if (nextQuery) setSearch(nextQuery);
+    // Arriving from the sidebar meter, which used to be a number you could
+    // only look at.
+    setMissingOnly(params.get("missing") === "why");
   }, [location.search]);
 
   const visible = useMemo(() => {
     let list = decisions;
+    if (missingOnly) list = list.filter((d) => !d.has_rationale);
     if (tab !== "all") list = list.filter((d) => (d.status || "").toLowerCase() === tab);
     const q = search.trim().toLowerCase();
     if (q) {
@@ -101,7 +106,7 @@ export default function Decisions() {
     if (sort === "oldest") list = [...list].sort((a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0));
     if (sort === "title") list = [...list].sort((a, b) => String(a.title || "").localeCompare(String(b.title || "")));
     return list;
-  }, [decisions, tab, search, sort]);
+  }, [decisions, tab, search, sort, missingOnly]);
 
   const tabs = STATUS_TABS.map((t) => ({
     id: t.id,
@@ -166,6 +171,17 @@ export default function Decisions() {
       </div>
 
       {error ? <SectionMessage tone="error" style={{ marginBottom: 16 }}>{error}</SectionMessage> : null}
+
+      {/* Filtered views must announce themselves. A list quietly showing a
+          subset looks like missing data, and the reader has no way to tell
+          the difference. */}
+      {missingOnly ? (
+        <SectionMessage tone="warning" style={{ marginBottom: 16 }}>
+          Showing only decisions with no why recorded. These cannot answer a
+          question about themselves later.{" "}
+          <Link to="/decisions">Show all decisions</Link>
+        </SectionMessage>
+      ) : null}
 
       {loading ? (
         <SkeletonTable />

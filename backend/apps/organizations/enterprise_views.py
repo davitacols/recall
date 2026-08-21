@@ -75,10 +75,36 @@ def ensure_default_marketplace_apps():
         )
 
 
+_SSO_NOT_ACTIVE = {
+    # Always false. Not a feature flag to be turned on by configuration: there
+    # is no code path that would honour it.
+    'active': False,
+    'reason': (
+        'Single sign-on is not available yet. These settings are stored but '
+        'no login uses them.'
+    ),
+}
+
+
 @api_view(['GET', 'POST', 'PUT'])
 @permission_classes([IsAuthenticated])
 def sso_config(request):
-    """Get or configure SSO settings"""
+    """Store single sign-on settings that nothing yet signs anyone in with.
+
+    The settings are real and they persist. The sign-on does not exist: no
+    authentication path anywhere reads this model, there is no assertion
+    consumer endpoint, and require_sso is read by nothing. An administrator
+    could previously fill in their identity provider, toggle enabled, receive
+    "SSO configuration saved", and reasonably conclude their workspace was
+    protected by it.
+
+    That is worse than a marketing claim, because the product itself affirms
+    it. So the response now always reports active: false with the reason, and
+    never echoes enabled as though it meant logins go through it.
+
+    The settings are kept rather than deleted so nothing is lost when the
+    sign-on is actually built.
+    """
     org = request.user.organization
     
     if request.method == 'GET':
@@ -93,9 +119,10 @@ def sso_config(request):
                 'sso_url': config.sso_url,
                 'auto_provision_users': config.auto_provision_users,
                 'default_role': default_role,
+                **_SSO_NOT_ACTIVE,
             })
         except SSOConfig.DoesNotExist:
-            return Response({'enabled': False})
+            return Response({'enabled': False, **_SSO_NOT_ACTIVE})
     
     elif request.method in ['POST', 'PUT']:
         if request.user.role != 'admin':
@@ -116,7 +143,14 @@ def sso_config(request):
         config.default_role = requested_default_role
         config.save()
         
-        return Response({'message': 'SSO configuration saved', 'id': config.id})
+        return Response({
+            'message': (
+                'Settings saved. Single sign-on is not available yet, so these '
+                'are stored for when it is — logins still use a password.'
+            ),
+            'id': config.id,
+            **_SSO_NOT_ACTIVE,
+        })
 
 
 @api_view(['GET'])

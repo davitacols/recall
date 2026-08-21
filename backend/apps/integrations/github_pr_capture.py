@@ -255,4 +255,29 @@ def maybe_capture_pr_discussion(installation, repo, pr: dict):
         "Captured discussion from %s#%s as conversation %s (%d comments)",
         repo.full_name, pr_number, conversation.id, len(human),
     )
+
+    # Say so. Capture is the one thing here that happens without anyone
+    # typing, and it used to happen in silence - a row and a log line - so
+    # the only way to learn it was working was to open the list on a hunch.
+    # Neither of these may take the capture down with them: the conversation
+    # is the valuable part and it is already saved.
+    try:
+        from apps.notifications.helpers import notify_conversation_captured
+        notify_conversation_captured(conversation, repo.full_name, pr_number)
+    except Exception:
+        logger.exception("Capture notification failed for conversation %s", conversation.id)
+
+    try:
+        from apps.organizations.activity import log_activity
+        log_activity(
+            organization=org,
+            actor=author,
+            action_type="conversation_captured",
+            content_object=conversation,
+            title=conversation.title,
+            source=f"{repo.full_name}#{pr_number}",
+        )
+    except Exception:
+        logger.exception("Capture activity log failed for conversation %s", conversation.id)
+
     return conversation

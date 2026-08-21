@@ -227,3 +227,118 @@ class RationaleUpdateTests(TestCase):
         response = anon.patch(self.url(), {"rationale": "x"}, format="json")
 
         self.assertEqual(response.status_code, 401)
+
+
+class DecisionTextEditTests(TestCase):
+    """Correcting the text on a decision after the fact.
+
+    Description had no edit path at all, so a description pasted as one flat
+    block could never be broken up - and the page that displays it is the page
+    someone reads to understand the decision.
+    """
+
+    def setUp(self):
+        self.org = Organization.objects.create(name="Text Org", slug="text-org")
+        self.user = User.objects.create_user(
+            username="text_user", email="text@example.com", password="pass1234",
+            organization=self.org, role="member",
+        )
+        self.decision = Decision.objects.create(
+            organization=self.org, title="A decision", description="flat block",
+            decision_maker=self.user, status="proposed", rationale="",
+        )
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.user)
+
+    def url(self, decision=None):
+        return f"/api/decisions/{(decision or self.decision).id}/"
+
+    def test_edits_the_description(self):
+        response = self.client.patch(
+            self.url(), {"description": "First line.\nSecond line."}, format="json"
+        )
+
+        self.assertEqual(response.status_code, 200, response.data)
+        self.decision.refresh_from_db()
+        self.assertEqual(self.decision.description, "First line.\nSecond line.")
+
+    def test_edits_the_title(self):
+        response = self.client.patch(
+            self.url(), {"title": "A better title"}, format="json"
+        )
+
+        self.assertEqual(response.status_code, 200, response.data)
+        self.decision.refresh_from_db()
+        self.assertEqual(self.decision.title, "A better title")
+
+    def test_rejects_a_title_too_short_to_find(self):
+        response = self.client.patch(self.url(), {"title": "hi"}, format="json")
+
+        self.assertEqual(response.status_code, 400)
+        self.decision.refresh_from_db()
+        self.assertEqual(self.decision.title, "A decision")
+
+    def test_ignores_fields_that_are_not_text(self):
+        """Status and impact carry their own rules and are not edited here."""
+        response = self.client.patch(
+            self.url(), {"status": "approved", "impact_level": "critical"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.decision.refresh_from_db()
+        self.assertEqual(self.decision.status, "proposed")
+
+    def test_edits_several_fields_at_once(self):
+        response = self.client.patch(
+            self.url(),
+            {"title": "Corrected title", "rationale": "The real reason."},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200, response.data)
+        self.decision.refresh_from_db()
+        self.assertEqual(self.decision.title, "Corrected title")
+        self.assertTrue(response.data["has_rationale"])
+
+    def test_cannot_edit_another_workspaces_decision(self):
+        other_org = Organization.objects.create(name="Theirs", slug="theirs-text")
+        other_user = User.objects.create_user(
+            username="other_text", email="othertext@example.com", password="pass1234",
+            organization=other_org, role="admin",
+        )
+        theirs = Decision.objects.create(
+            organization=other_org, title="Their decision", description="theirs",
+            decision_maker=other_user, status="proposed", rationale="",
+        )
+
+        response = self.client.patch(
+            self.url(theirs), {"description": "overwritten"}, format="json"
+        )
+
+        self.assertEqual(response.status_code, 404)
+        theirs.refresh_from_db()
+        self.assertEqual(theirs.description, "theirs")
+
+    def test_the_rationale_route_still_works(self):
+        response = self.client.patch(
+            f"/api/decisions/{self.decision.id}/rationale/",
+            {"rationale": "Because the retry loop had no jitter."},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200, response.data)
+        self.decision.refresh_from_db()
+        self.assertEqual(self.decision.rationale, "Because the retry loop had no jitter.")
+
+    def test_the_rationale_route_will_not_edit_anything_else(self):
+        """Narrow on purpose: the interface links straight to it."""
+        response = self.client.patch(
+            f"/api/decisions/{self.decision.id}/rationale/",
+            {"title": "Sneaky retitle"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.decision.refresh_from_db()
+        self.assertEqual(self.decision.title, "A decision")

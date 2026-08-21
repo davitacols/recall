@@ -432,18 +432,18 @@ def decisions_timeline(request):
     
     return Response(timeline_data)
 
-@api_view(['PATCH'])
-def decision_rationale(request, decision_id):
-    """Record or correct the why on a decision.
+#: The text a person can correct after the fact. Deliberately not status,
+#: impact or ownership: each carries its own rules about who may change what
+#: and when, and folding them into one PATCH would settle those by accident.
+_EDITABLE_TEXT_FIELDS = ("title", "description", "rationale")
 
-    Deliberately narrow. Decisions had no update endpoint at all, so a missing
-    rationale could be pointed at and never fixed - the list could say this
-    decision cannot answer anything and offer no way to change that.
 
-    This edits one field rather than opening a general decision editor. The
-    why is the field the product exists to hold; the rest (status, impact,
-    ownership) carries its own rules about who may change what and when, and
-    bundling them here would decide those questions by accident.
+def _update_decision_text(request, decision_id, allowed):
+    """Apply text edits to a decision, one implementation for every caller.
+
+    Decisions had no update endpoint of any kind, so the interface could say a
+    decision cannot answer anything and offer no way to change that, and a
+    description pasted as one flat block could never be broken up.
     """
     decision = Decision.objects.filter(
         id=decision_id, organization=request.user.organization
@@ -451,21 +451,51 @@ def decision_rationale(request, decision_id):
     if not decision:
         return Response({'error': 'Decision not found'}, status=status.HTTP_404_NOT_FOUND)
 
-    if 'rationale' not in (request.data or {}):
-        return Response({'error': 'rationale is required'}, status=status.HTTP_400_BAD_REQUEST)
+    data = request.data or {}
+    updates = {f: data[f] for f in allowed if f in data}
+    if not updates:
+        return Response(
+            {'error': f'Nothing to update. Send one of: {", ".join(allowed)}'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 
-    rationale = str(request.data.get('rationale') or '').strip()
-    if len(rationale) > 20000:
-        return Response({'error': 'That reasoning is too long'}, status=status.HTTP_400_BAD_REQUEST)
+    for field, raw in updates.items():
+        value = str(raw or '').strip()
+        if len(value) > 20000:
+            return Response(
+                {'error': f'That {field} is too long'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        # A decision with no title is unfindable; the model asks for 5.
+        # The other two may be emptied - an empty why is a visible gap someone
+        # can fill, which is the point of showing it.
+        if field == 'title' and len(value) < 5:
+            return Response(
+                {'error': 'A title needs at least 5 characters'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        setattr(decision, field, value)
 
-    decision.rationale = rationale
-    decision.save(update_fields=['rationale'])
+    decision.save(update_fields=list(updates.keys()))
 
     return Response({
         'id': decision.id,
+        'title': decision.title,
+        'description': decision.description,
         'rationale': decision.rationale,
-        'has_rationale': bool(rationale),
+        'has_rationale': bool(str(decision.rationale or '').strip()),
     })
+
+
+@api_view(['PATCH'])
+def decision_rationale(request, decision_id):
+    """Record or correct the why alone.
+
+    Kept as its own route because it is the field the product exists to hold
+    and the interface links straight to it. It shares the implementation below
+    rather than repeating the checks.
+    """
+    return _update_decision_text(request, decision_id, ('rationale',))
 
 
 def _delete_decision(request, decision_id):
@@ -534,10 +564,12 @@ def _delete_decision(request, decision_id):
     return Response({'deleted': True, 'title': title, 'also_removed': removed})
 
 
-@api_view(['GET', 'DELETE'])
+@api_view(['GET', 'PATCH', 'DELETE'])
 def decision_detail(request, decision_id):
     if request.method == 'DELETE':
         return _delete_decision(request, decision_id)
+    if request.method == 'PATCH':
+        return _update_decision_text(request, decision_id, _EDITABLE_TEXT_FIELDS)
     try:
         decision = Decision.objects.get(
             id=decision_id,

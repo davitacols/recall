@@ -869,3 +869,18 @@
   font-size: 13px;
   color: var(--app-danger, #bf2600);
 }
+
+/* Guidance where someone is about to need it, rather than in a help page
+   nobody opens. Markdown collapses single newlines, so the editor says what
+   it does with them before the text is written, not after. */
+.di-editor-note {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: var(--app-muted);
+}
+
+.di-empty-note {
+  margin: 0;
+  font-size: 13px;
+  color: var(--app-muted);
+}

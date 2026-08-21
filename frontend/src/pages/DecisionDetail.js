@@ -195,6 +195,48 @@ This cannot be undone.`)) {
     }
   };
 
+  // Description had no edit path either, so text pasted as one flat block
+  // could never be broken up — on the page someone reads to understand the
+  // decision.
+  const [editingDesc, setEditingDesc] = useState(false);
+  const [descDraft, setDescDraft] = useState("");
+  const [savingDesc, setSavingDesc] = useState(false);
+  const [descError, setDescError] = useState("");
+
+  const startEditDesc = () => {
+    setDescDraft(decision?.description || "");
+    setDescError("");
+    setEditingDesc(true);
+  };
+
+  const cancelEditDesc = () => {
+    setEditingDesc(false);
+    setDescError("");
+  };
+
+  const saveDesc = async () => {
+    setSavingDesc(true);
+    setDescError("");
+    try {
+      const { data } = await api.patch(`/api/decisions/${id}/`, {
+        description: descDraft,
+      });
+      setDecision((prev) => (prev ? { ...prev, description: data.description } : prev));
+      setEditingDesc(false);
+    } catch (err) {
+      setDescError(
+        err?.response?.data?.error || err?.message || "Could not save the description"
+      );
+    } finally {
+      setSavingDesc(false);
+    }
+  };
+
+  const description = {
+    editingDesc, descDraft, setDescDraft, savingDesc, descError,
+    startEditDesc, cancelEditDesc, saveDesc,
+  };
+
   const why = {
     hasWhy, editingWhy, whyDraft, setWhyDraft, savingWhy, whyError,
     startEditWhy, cancelEditWhy, saveWhy,
@@ -475,7 +517,7 @@ This cannot be undone.`)) {
       <div className="di-grid" style={{ padding: "16px 32px 32px" }}>
         <section style={{ minWidth: 0 }}>
           {tab === "overview" ? (
-            <OverviewTab decision={decision} predictions={predictions} retros={retros} why={why} />
+            <OverviewTab decision={decision} predictions={predictions} retros={retros} why={why} description={description} />
           ) : null}
           {tab === "predictions" ? (
             <PredictionsTab
@@ -627,11 +669,15 @@ function DriftHeadline({ band, drift }) {
 
 // ─── overview tab ───────────────────────────────────────────────────────────
 
-function OverviewTab({ decision, predictions, retros, why }) {
+function OverviewTab({ decision, predictions, retros, why, description }) {
   const {
     hasWhy, editingWhy, whyDraft, setWhyDraft, savingWhy, whyError,
     startEditWhy, cancelEditWhy, saveWhy,
   } = why;
+  const {
+    editingDesc, descDraft, setDescDraft, savingDesc, descError,
+    startEditDesc, cancelEditDesc, saveDesc,
+  } = description;
   const latestLesson = retros[0];
   const informedBy = Array.isArray(decision.informed_by_decisions) ? decision.informed_by_decisions : [];
   return (
@@ -708,13 +754,55 @@ function OverviewTab({ decision, predictions, retros, why }) {
           </div>
         )}
       </PanelCard>
-      {decision.description ? (
-        <PanelCard title="Description">
+      <PanelCard
+        title="Description"
+        actions={
+          !editingDesc ? (
+            <button type="button" className="di-why-edit" onClick={startEditDesc}>
+              Edit
+            </button>
+          ) : null
+        }
+      >
+        {editingDesc ? (
+          <div className="di-why-editor">
+            <textarea
+              className="di-why-input"
+              value={descDraft}
+              autoFocus
+              rows={12}
+              placeholder="What was decided, and anything a reader needs to follow it."
+              onChange={(e) => setDescDraft(e.target.value)}
+            />
+            {/* Said where someone is about to hit the problem, not in a help
+                page they will never open. */}
+            <p className="di-editor-note">
+              Line breaks are kept. Leave a blank line between paragraphs, and
+              start a line with - for a bullet.
+            </p>
+            <div className="di-why-actions">
+              <button
+                type="button"
+                className="di-why-save"
+                disabled={savingDesc}
+                onClick={saveDesc}
+              >
+                {savingDesc ? "Saving…" : "Save"}
+              </button>
+              <button type="button" className="di-why-cancel" onClick={cancelEditDesc}>
+                Cancel
+              </button>
+            </div>
+            {descError ? <p className="di-why-error">{descError}</p> : null}
+          </div>
+        ) : decision.description ? (
           <div className="di-md">
             <RichText content={decision.description} />
           </div>
-        </PanelCard>
-      ) : null}
+        ) : (
+          <p className="di-empty-note">Nothing recorded.</p>
+        )}
+      </PanelCard>
       {decision.if_this_fails ? (
         <PanelCard title="If this fails…">
           <div className="di-md">

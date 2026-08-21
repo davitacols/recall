@@ -101,12 +101,28 @@ def generate_decision_rationale(title: str, content: str, *, strict: bool = Fals
         parts = getattr(message, "content", None) or []
         answer = "".join(getattr(p, "text", "") for p in parts).strip()
     except Exception as exc:
+        # Remember that this failed, so the interface can stop offering a
+        # question box that cannot answer. Only failures that will keep
+        # failing are recorded; see ai_health.
+        try:
+            from apps.knowledge.ai_health import record_failure
+            record_failure(str(exc))
+        except Exception:
+            pass
         # Under strict the caller surfaces this, so a traceback per decision is
         # just noise burying the one line that matters.
         if strict:
             raise RationaleUnavailable(str(exc)) from exc
         logger.exception("Rationale extraction failed for %r", str(title)[:80])
         return ""
+
+    # An answer of any kind means the API is working, including a refusal to
+    # invent one. Clear any standing unavailable mark.
+    try:
+        from apps.knowledge.ai_health import record_success
+        record_success()
+    except Exception:
+        pass
 
     if not answer or _SENTINEL in answer.upper():
         return ""

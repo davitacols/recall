@@ -36,10 +36,15 @@ function bandLabel(band) {
 
 // ─── page ───────────────────────────────────────────────────────────────────
 
+// One concrete example beats a placeholder. Phrased the way someone actually
+// asks — a question about a choice, not a search term.
+const EXAMPLE_QUESTION = "Why are we using a two-stage pipeline?";
+
 export default function UnifiedDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
+  const [aiState, setAiState] = useState(null);
   const [overview, setOverview] = useState(null);
   const [personal, setPersonal] = useState(null);
   const [workspace, setWorkspace] = useState(null);
@@ -59,8 +64,14 @@ export default function UnifiedDashboard() {
       // Pipeline buckets come from conversations — same source the
       // Conversations page buckets so the dashboard counts agree.
       api.get("/api/conversations/?page=1&per_page=80"),
+      // Whether the model API is actually answering, so the question box does
+      // not promise something that will fail the moment it is used.
+      api.get("/api/decisions/memory-health/"),
     ])
-      .then(([ovRes, pRes, wRes, tRes, dRes, cRes]) => {
+      .then(([ovRes, pRes, wRes, tRes, dRes, cRes, mRes]) => {
+        if (mRes?.status === "fulfilled") {
+          setAiState(unwrap(mRes.value?.data, {})?.ai || null);
+        }
         if (!mounted) return;
         if (ovRes.status === "fulfilled") setOverview(unwrap(ovRes.value?.data, {}));
         if (pRes.status === "fulfilled") setPersonal(unwrap(pRes.value?.data, {}));
@@ -327,7 +338,7 @@ export default function UnifiedDashboard() {
             })}
           </p>
           <h1 className="dash-hero-title">
-            {isNewWorkspace ? `Welcome, ${firstName || "there"}` : "Ask why"}
+            {isNewWorkspace ? `Welcome, ${firstName || "there"}` : "What did we decide, and why?"}
           </h1>
           {isNewWorkspace ? (
             <p className="dash-hero-summary">
@@ -340,22 +351,48 @@ export default function UnifiedDashboard() {
               {/* The product's output, on landing. The largest thing on this
                   page used to be the reader's own first name, which tells
                   them they have an account rather than what this holds. */}
-              <form className="dash-ask" onSubmit={askSubmit}>
-                <input
-                  className="dash-ask-input"
-                  value={askQuery}
-                  onChange={(e) => setAskQuery(e.target.value)}
-                  placeholder="Why did we…"
-                  aria-label="Ask why"
-                />
-                <button
-                  type="submit"
-                  className="dash-btn dash-btn-primary"
-                  disabled={!askQuery.trim()}
-                >
-                  Ask
-                </button>
-              </form>
+              {aiState && aiState.available === false ? (
+                /* Do not offer a box that cannot answer. Letting someone type
+                   a question, wait, and receive an error reads as the product
+                   being broken rather than the balance being empty. */
+                <p className="dash-ask-down">
+                  {aiState.reason || "The AI service is not responding."}{" "}
+                  Answering questions is unavailable until it is restored. The
+                  record below is unaffected.
+                </p>
+              ) : (
+                <>
+                  <form className="dash-ask" onSubmit={askSubmit}>
+                    <input
+                      className="dash-ask-input"
+                      value={askQuery}
+                      onChange={(e) => setAskQuery(e.target.value)}
+                      placeholder="Why did we…"
+                      aria-label="Ask why"
+                    />
+                    <button
+                      type="submit"
+                      className="dash-btn dash-btn-primary"
+                      disabled={!askQuery.trim()}
+                    >
+                      Ask
+                    </button>
+                  </form>
+                  {/* An empty box under an imperative gives no clue what a
+                      good question looks like, and this is the one feature
+                      nobody has used before. */}
+                  <p className="dash-ask-hint">
+                    try:{" "}
+                    <button
+                      type="button"
+                      className="dash-ask-example"
+                      onClick={() => setAskQuery(EXAMPLE_QUESTION)}
+                    >
+                      {EXAMPLE_QUESTION}
+                    </button>
+                  </p>
+                </>
+              )}
               {missingWhy > 0 ? (
                 <p className="dash-hero-gap">
                   {missingWhy} of {memory.decisions} decision

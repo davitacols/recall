@@ -882,8 +882,14 @@ def memory_health(request):
     if err:
         return err
 
+    from apps.knowledge.ai_health import get_state
+
     decisions = Decision.objects.filter(organization=org)
     return Response({
         "decisions": decisions.count(),
         "decisions_with_rationale": count_with_rationale(decisions),
+        # So the interface can stop offering a question box that cannot
+        # answer. Read here rather than from a new endpoint because the
+        # sidebar already polls this on every page.
+        "ai": get_state(),
     })

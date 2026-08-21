@@ -490,3 +490,40 @@
   .dash-ask { flex-wrap: wrap; }
   .dash-ask-input { width: 100%; }
 }
+
+/* One concrete example under the box. An empty field beneath an imperative
+   gives no clue what a good question looks like, and this is the feature
+   nobody has used before. Clicking it fills the box rather than asking
+   outright — the reader should see it as their question before it runs. */
+.dash-ask-hint {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: var(--app-muted);
+}
+
+.dash-ask-example {
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-size: 13px;
+  color: var(--app-muted);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.dash-ask-example:hover { color: var(--app-text); }
+
+/* Stood down. Better to say why than to accept a question and fail. */
+.dash-ask-down {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  max-width: 560px;
+  border: 1px solid var(--app-border);
+  border-radius: 10px;
+  background: var(--app-surface);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--app-muted);
+}

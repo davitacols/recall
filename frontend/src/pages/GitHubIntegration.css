@@ -338,3 +338,56 @@
   .gh-project-new { flex: 1; }
   .gh-project-input { width: auto; max-width: none; flex: 1; }
 }
+
+/* The one-off import of a repository's already-merged pull requests.
+   Full width on its own line under the repo row, because it carries a
+   sentence rather than a control. */
+.gh-import {
+  flex-basis: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--app-border);
+  border-radius: 10px;
+  background: var(--app-surface-subtle, var(--app-surface));
+}
+
+.gh-import-text {
+  flex: 1;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--app-text-subtle, var(--app-text));
+}
+
+.gh-import .gh-mini { flex-shrink: 0; }
+
+.gh-import.is-done { border-color: var(--app-good-border, var(--app-border)); }
+.gh-import.is-failed { border-color: var(--app-danger-border, var(--app-border)); }
+.gh-import.is-failed .gh-import-text { color: var(--app-danger, #bf2600); }
+.gh-import.is-quiet { border-style: dashed; }
+
+/* Progress. Indeterminate until GitHub tells us how many there are, because a
+   bar that sits at 0% reads as stuck. */
+.gh-import-bar {
+  flex-shrink: 0;
+  width: 140px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--app-border);
+  overflow: hidden;
+}
+
+.gh-import-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--app-accent, #4f46e5);
+  transition: width 240ms ease;
+}
+
+@media (max-width: 640px) {
+  .gh-import { flex-wrap: wrap; }
+  .gh-import-bar { width: 100%; }
+}

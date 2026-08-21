@@ -63,6 +63,7 @@ export default function GitHubIntegration() {
   const [projects, setProjects] = useState([]);
   const [creatingFor, setCreatingFor] = useState(null);
   const [newProjectName, setNewProjectName] = useState("");
+  const [imports, setImports] = useState({});
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
@@ -202,6 +203,62 @@ export default function GitHubIntegration() {
     setNewProjectName("");
   };
 
+  // Capture rides live merge events, so a repo connected today shows nothing
+  // until the next substantive merge. The team's own history is the best
+  // demonstration the product has, and until now it was only reachable from a
+  // shell on the server — which no customer has.
+  const readImport = async (repo) => {
+    try {
+      const { data } = await api.get(`${REPOS_ENDPOINT}${repo.id}/import/`);
+      setImports((prev) => ({ ...prev, [repo.id]: data }));
+      return data;
+    } catch (_) {
+      return null;
+    }
+  };
+
+  const startImport = async (repo) => {
+    setImports((prev) => ({
+      ...prev,
+      [repo.id]: { ...(prev[repo.id] || {}), status: "queued", examined: 0, total: 0, captured: 0 },
+    }));
+    try {
+      const { data } = await api.post(`${REPOS_ENDPOINT}${repo.id}/import/`);
+      setImports((prev) => ({ ...prev, [repo.id]: data }));
+    } catch (err) {
+      setImports((prev) => ({
+        ...prev,
+        [repo.id]: {
+          ...(prev[repo.id] || {}),
+          status: "failed",
+          error: err?.response?.data?.error || "Could not start the import",
+        },
+      }));
+    }
+  };
+
+
+  // One read per repo when the list arrives. The durable answer to "has this
+  // ever captured anything" is a count of conversations, not a cached job.
+  useEffect(() => {
+    if (!repos.length) return;
+    repos.forEach((repo) => {
+      if (imports[repo.id] === undefined) readImport(repo);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [repos]);
+
+  // Poll only while a job is actually running, and stop the moment none is.
+  useEffect(() => {
+    const running = repos.filter(
+      (r) => ["queued", "running"].includes(imports[r.id]?.status)
+    );
+    if (!running.length) return undefined;
+    const timer = setInterval(() => running.forEach((r) => readImport(r)), 2000);
+    return () => clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [repos, imports]);
+
   const moveRepo = async (repo, orgId) => {
     if (!orgId) return;
     try {
@@ -229,6 +286,103 @@ export default function GitHubIntegration() {
       );
       toast.addToast?.(err?.response?.data?.error || "Could not update repo", "error");
     }
+  };
+
+  // Five outcomes, and the wording of each matters more than the layout.
+  // "Nothing met the bar" is the filter working; a repo with no merged pull
+  // requests can never produce anything at all. Reporting both as a zero
+  // would make a working product look broken.
+  const renderImport = (repo) => {
+    const state = imports[repo.id];
+    if (!state) return null;
+
+    const status = state.status;
+    const everCaptured = state.conversations_captured_total || 0;
+
+    if (status === "queued" || status === "running") {
+      const total = state.total || 0;
+      const done = state.examined || 0;
+      const pct = total ? Math.round((done / total) * 100) : 0;
+      return (
+        <div className="gh-import is-running">
+          <span className="gh-import-text">
+            {total
+              ? `Reading merged pull requests… ${done} of ${total}`
+              : "Looking for merged pull requests…"}
+          </span>
+          <span className="gh-import-bar" aria-hidden="true">
+            <span className="gh-import-fill" style={{ width: `${pct}%` }} />
+          </span>
+        </div>
+      );
+    }
+
+    if (status === "failed") {
+      return (
+        <div className="gh-import is-failed">
+          <span className="gh-import-text">{state.error || "The import failed."}</span>
+          <button type="button" className="gh-mini" onClick={() => startImport(repo)}>
+            Try again
+          </button>
+        </div>
+      );
+    }
+
+    if (status === "done" && state.no_pull_requests) {
+      return (
+        <div className="gh-import">
+          <span className="gh-import-text">
+            This repository has no merged pull requests. Knoledgr reads the
+            discussion on pull requests, so there is nothing here to read yet.
+          </span>
+        </div>
+      );
+    }
+
+    if (status === "done") {
+      const captured = state.captured || 0;
+      const total = state.total || 0;
+      return (
+        <div className="gh-import is-done">
+          <span className="gh-import-text">
+            {captured
+              ? `${captured} conversation${captured === 1 ? "" : "s"} captured from ${total} merged pull request${total === 1 ? "" : "s"}.`
+              : `Nothing to capture from ${total} merged pull request${total === 1 ? "" : "s"}. A discussion is recorded when at least two people wrote something substantive, which most merges do not.`}
+          </span>
+          {captured ? <Link className="gh-mini" to="/conversations">View conversations</Link> : null}
+        </div>
+      );
+    }
+
+    if (everCaptured) {
+      return (
+        <div className="gh-import is-quiet">
+          <span className="gh-import-text">
+            {everCaptured} conversation{everCaptured === 1 ? "" : "s"} captured from this repository.
+          </span>
+          <button type="button" className="gh-mini gh-mini-quiet" onClick={() => startImport(repo)}>
+            Check for older ones
+          </button>
+        </div>
+      );
+    }
+
+    return (
+      <div className="gh-import">
+        <span className="gh-import-text">
+          Nothing captured yet. Knoledgr reads discussion from pull requests as
+          they merge, and can look back over ones that already merged.
+        </span>
+        <button
+          type="button"
+          className="gh-mini"
+          disabled={!repo.is_enabled_for_decisions}
+          onClick={() => startImport(repo)}
+        >
+          Import past discussions
+        </button>
+      </div>
+    );
   };
 
   const filteredRepos = useMemo(() => {
@@ -421,6 +575,7 @@ export default function GitHubIntegration() {
                     />
                     <span className="gh-toggle-track" />
                   </label>
+                  {renderImport(repo)}
                 </li>
               ))}
             </ul>

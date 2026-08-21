@@ -143,6 +143,37 @@ mv "$PARTIAL" "$ARCHIVE"
 
 find "$BACKUP_DIR" -name 'knoledgr-*.sql.gz' -mtime +14 -delete
 
+# ---------------------------------------------------------------------------
+# Off-site copy.
+#
+# Until this is configured, every backup lives on the same disk as the database
+# it protects. A disk failure loses the product and its record together, and no
+# other risk on this box is unrecoverable in that way.
+#
+# Deliberately unconfigured rather than guessed at: set BACKUP_OFFSITE_DEST in
+# deploy/.env.prod to any rclone remote path (for example "b2:knoledgr-backups"
+# or "s3:bucket/path") and this starts running. rclone is used because it
+# covers every provider with one syntax and needs no vendor SDK on the box.
+#
+# A failure here does NOT reject the backup. The local copy has already passed
+# every check and is good; losing the off-site copy is a smaller problem than
+# discarding a verified dump. It is loud instead, because a silent off-site
+# failure is how you discover months later that only the local copy existed.
+# ---------------------------------------------------------------------------
+if [ -n "${BACKUP_OFFSITE_DEST:-}" ]; then
+  if ! command -v rclone >/dev/null 2>&1; then
+    echo "WARNING: BACKUP_OFFSITE_DEST is set but rclone is not installed" >&2
+    notify_failure "off-site copy skipped: rclone is not installed. The local backup is verified and kept."
+  elif rclone copy "$ARCHIVE" "$BACKUP_OFFSITE_DEST" --no-traverse 2>&1; then
+    echo "off-site copy done: $BACKUP_OFFSITE_DEST"
+  else
+    echo "WARNING: off-site copy failed" >&2
+    notify_failure "off-site copy failed. The local backup is verified and kept, but it is the only copy."
+  fi
+else
+  echo "note: no BACKUP_OFFSITE_DEST set — this backup exists only on this disk"
+fi
+
 date -u +%FT%TZ > "$STATUS_FILE"
 COMPLETED=1
 echo "backup done: $STAMP ($(du -h "$ARCHIVE" | cut -f1))"

@@ -356,13 +356,28 @@ export default function ConversationDetail() {
       // the conversation, refuses to create a duplicate, and extracts the
       // reasoning from the discussion.
       const res = await api.post(`/api/decisions/convert/${id}/`);
-      addToast(
-        res.data?.rationale
-          ? "Decision recorded, with the reasoning captured"
-          : "Decision recorded — add the reasoning to make it useful later",
-        "success"
-      );
-      navigate(`/decisions/${res.data.id}`);
+      const hasWhy = Boolean(res.data?.rationale);
+      // Three outcomes, not two. "The discussion stated no reason" is a
+      // finding about the source; "nothing could examine it" is a finding
+      // about us, and saying the first when the second is true blames the
+      // team for an unpaid bill.
+      if (hasWhy) {
+        addToast("Decision recorded, with the reasoning captured", "success");
+      } else if (res.data?.rationale_unavailable) {
+        addToast(
+          "Decision recorded. The reasoning could not be read — write it yourself below.",
+          "info"
+        );
+      } else {
+        addToast(
+          "Decision recorded. The discussion gave no reason, so add one below.",
+          "info"
+        );
+      }
+      // Land with the editor open when there is no why. Otherwise the gap is
+      // announced and then left several clicks away, which is how it stays
+      // a gap.
+      navigate(`/decisions/${res.data.id}${hasWhy ? "" : "?focus=rationale"}`);
     } catch (e) {
       const detail = e?.response?.data?.error;
       addToast(detail || "Failed to convert to decision", "error");

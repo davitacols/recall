@@ -168,6 +168,33 @@ export default function DecisionDetail() {
     }
   };
 
+  // Conversations converted by mistake stayed in the count forever - there was
+  // no way to remove a decision at all. The confirmation names what else goes,
+  // because predictions and retrospectives cascade and a bare "are you sure"
+  // does not convey that.
+  const handleDelete = async () => {
+    const extras = [];
+    if (predictions.length) extras.push(`${predictions.length} prediction(s)`);
+    if (retros.length) extras.push(`${retros.length} retrospective(s)`);
+    const tail = extras.length ? `
+
+This also removes ${extras.join(" and ")}.` : "";
+    if (!window.confirm(`Delete "${decision?.title}"?${tail}
+
+This cannot be undone.`)) {
+      return;
+    }
+    try {
+      await api.delete(`/api/decisions/${id}/`);
+      navigate("/decisions");
+    } catch (err) {
+      // A 409 means pull requests are linked, and the message explains that.
+      setError(
+        err?.response?.data?.error || err?.message || "Could not delete this decision"
+      );
+    }
+  };
+
   const why = {
     hasWhy, editingWhy, whyDraft, setWhyDraft, savingWhy, whyError,
     startEditWhy, cancelEditWhy, saveWhy,
@@ -414,6 +441,13 @@ export default function DecisionDetail() {
                 Ask Agent
               </Button>
               <StatusSelect status={decision.status} onChange={handleStatusChange} />
+              <Button
+                appearance="subtle"
+                onClick={handleDelete}
+                title="Remove this decision"
+              >
+                Delete
+              </Button>
             </>
           }
           tabs={<Tabs tabs={tabs} value={tab} onChange={setTab} />}

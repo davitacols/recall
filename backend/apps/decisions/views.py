@@ -468,8 +468,76 @@ def decision_rationale(request, decision_id):
     })
 
 
-@api_view(['GET'])
+def _delete_decision(request, decision_id):
+    """Remove a decision, with the things it would take down named first.
+
+    Decisions could be created and never removed - no endpoint, no admin
+    registration, nothing in the interface - so a conversation converted by
+    mistake stayed in the count forever, holding down the one number the
+    product turns on. Four of the nine decisions in the first workspace were
+    of that kind.
+
+    A hard delete rather than a soft one, deliberately: soft deletion needs a
+    column, and there is an uncommitted migration in flight that a second one
+    would collide with. The guards below matter more than recoverability here,
+    because the rows worth deleting are the ones carrying nothing.
+
+    Refuses when pull requests are linked. Those links are evidence someone
+    said this decision is about that code, the cascade would take them with it,
+    and no confirmation dialog conveys what is actually being lost.
+    """
+    decision = Decision.objects.filter(
+        id=decision_id, organization=request.user.organization
+    ).first()
+    if not decision:
+        return Response({'error': 'Decision not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    # Admins and managers, or whoever recorded it. A member who converted a
+    # conversation by mistake should be able to undo it without an admin.
+    is_owner = decision.decision_maker_id == request.user.id
+    if request.user.role not in ('admin', 'manager') and not is_owner:
+        return Response(
+            {'error': 'Only an admin, a manager, or whoever recorded this can delete it.'},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    linked_prs = decision.github_pull_requests.count()
+    if linked_prs:
+        return Response({
+            'error': (
+                f'This decision is linked to {linked_prs} pull request'
+                f'{"" if linked_prs == 1 else "s"}. Unlink them first — deleting '
+                'now would remove the record of which code this decision shaped.'
+            ),
+            'pull_request_count': linked_prs,
+        }, status=status.HTTP_409_CONFLICT)
+
+    removed = {
+        'predictions': decision.predictions.count(),
+        'retrospectives': decision.retrospectives.count(),
+        'twin_runs': decision.twin_runs.count(),
+    }
+    title = decision.title
+
+    log_activity(
+        organization=request.user.organization,
+        actor=request.user,
+        action_type='decision_deleted',
+        content_object=None,
+        title=title,
+    )
+    decision.delete()
+    logger.info(
+        "Decision %s (%r) deleted by user %s", decision_id, title[:80], request.user.id
+    )
+
+    return Response({'deleted': True, 'title': title, 'also_removed': removed})
+
+
+@api_view(['GET', 'DELETE'])
 def decision_detail(request, decision_id):
+    if request.method == 'DELETE':
+        return _delete_decision(request, decision_id)
     try:
         decision = Decision.objects.get(
             id=decision_id,

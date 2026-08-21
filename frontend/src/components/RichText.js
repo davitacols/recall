@@ -97,12 +97,35 @@ const SANITIZE_CONFIG = {
   FORBID_ATTR: ["style", "onerror", "onload", "onclick"],
 };
 
+
+/* Markdown collapses a single newline into a space, so text typed the way
+   people actually type — one line per thought, one Enter between them —
+   renders as an unbroken wall. That is right for prose written as markdown
+   and wrong for everything else that lands in these fields: pasted notes,
+   captured transcripts, anything a person wrote in a textarea.
+   
+   Fenced code blocks are split out first and left exactly as they are, since
+   a hard break inside one would change the code. */
+function preserveLineBreaks(markdown) {
+  return markdown
+    .split(/(```[\s\S]*?```)/g)
+    .map((chunk, index) =>
+      index % 2 === 1 ? chunk : chunk.replace(/([^\n])\n(?!\n)/g, "$1  \n")
+    )
+    .join("");
+}
+
 export default function RichText({ content, className = "" }) {
   const value = String(content || "");
   const isHtml = looksLikeHtml(value);
 
   const clean = useMemo(
     () => (isHtml ? DOMPurify.sanitize(value, SANITIZE_CONFIG) : ""),
+    [value, isHtml]
+  );
+
+  const markdown = useMemo(
+    () => (isHtml ? "" : preserveLineBreaks(value)),
     [value, isHtml]
   );
 
@@ -131,7 +154,7 @@ export default function RichText({ content, className = "" }) {
           ),
         }}
       >
-        {value}
+        {markdown}
       </ReactMarkdown>
     </div>
   );

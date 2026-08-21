@@ -253,6 +253,61 @@ def list_installation_repos(installation_id: int) -> list[dict]:
     return repos
 
 
+#: Ceiling on how far back a backfill will walk. Capture normally rides live
+#: merge events, so this exists only for the one-off catch-up when a repo is
+#: first connected. Beyond a few hundred the useful discussions are long since
+#: stale, and each one costs three API calls to examine.
+MAX_BACKFILL_PRS = 300
+
+
+def list_recent_merged_prs(
+    installation_id: int, repo_full_name: str, limit: int = 100
+) -> list[dict]:
+    """Merged pull requests, newest merged first.
+
+    Capture is otherwise driven entirely by live merge events, which means a
+    team connecting a repo sees an empty workspace until the next substantive
+    PR lands - possibly a fortnight, since most merges are deliberately
+    skipped. Their own history is the best demonstration the product has, and
+    it was sitting there unread.
+
+    GitHub cannot filter by merged, only by closed, and a closed-unmerged PR
+    has review discussion that never became anything. Those are filtered here
+    rather than left for the caller, so "merged" means merged.
+    """
+    limit = max(1, min(int(limit or 100), MAX_BACKFILL_PRS))
+    merged: list[dict] = []
+    url = (
+        f"{GITHUB_API}/repos/{repo_full_name}/pulls"
+        "?state=closed&sort=updated&direction=desc&per_page=100"
+    )
+    token = get_installation_token(installation_id)
+
+    while url and len(merged) < limit:
+        resp = requests.get(
+            url,
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Accept": "application/vnd.github+json",
+                "X-GitHub-Api-Version": "2022-11-28",
+            },
+            timeout=20,
+        )
+        if resp.status_code != 200:
+            raise RuntimeError(
+                f"GitHub rejected pulls for {repo_full_name} "
+                f"({resp.status_code}): {resp.text[:200]}"
+            )
+        page = resp.json()
+        if not isinstance(page, list) or not page:
+            break
+        merged.extend(pr for pr in page if pr.get("merged_at"))
+        url = _next_page_url(resp.headers.get("Link", ""))
+
+    merged.sort(key=lambda pr: str(pr.get("merged_at") or ""), reverse=True)
+    return merged[:limit]
+
+
 #: A pull request touching more files than this is a bulk move, a generated
 #: lockfile sweep, or a vendored dependency drop. Attributing a decision to all
 #: of them would bury the handful of files the decision is actually about, so

@@ -97,13 +97,76 @@ def send_notification_digest(user_id, frequency='daily'):
     except Exception:
         batched_items = filtered
 
+    # Captures are pulled out and lead the digest.
+    #
+    # They already reached it - the filter above allows any type it does not
+    # recognise - but as one bullet among reminders, indistinguishable from a
+    # nudge the reader has seen ten times. A capture is the only thing in this
+    # product that happens without anyone doing anything, so it is the one item
+    # in the mail that is evidence rather than a chore, and it was buried.
+    #
+    # The batching below groups by recency and would happily fold a capture in
+    # with three overdue reminders, so this happens before it.
+    captures = [n for n in filtered if getattr(n, 'notification_type', '') == 'capture']
+    remainder = [n for n in filtered if getattr(n, 'notification_type', '') != 'capture']
+
+    if captures:
+        try:
+            from apps.organizations.automation_engine import SmartNotificationEngine
+            batched_items = SmartNotificationEngine.batch_notifications(
+                user, remainder, batch_size=5
+            )
+        except Exception:
+            batched_items = remainder
+
     preview = batched_items[:12]
-    subject = f"Knoledgr {frequency.capitalize()} digest ({len(filtered)} updates)"
+
+    if captures and not remainder:
+        count = len(captures)
+        subject = (
+            f"Knoledgr captured {count} discussion{'' if count == 1 else 's'} for you"
+        )
+    else:
+        subject = f"Knoledgr {frequency.capitalize()} digest ({len(filtered)} updates)"
+
+    capture_html = ""
+    capture_text = []
+    if captures:
+        rows = []
+        for note in captures[:6]:
+            link = build_frontend_url(note.link or '/conversations')
+            rows.append(
+                "<li style=\"margin:0 0 10px 0;\">"
+                f"<div style=\"font-weight:700;\">{escape(note.message or note.title)}</div>"
+                f"<div style=\"font-size:13px;color:#6c5a49;\">{escape(note.title)}</div>"
+                f"<a href=\"{escape(link)}\" style=\"font-size:13px;\">Read the discussion</a>"
+                "</li>"
+            )
+            capture_text.append(f"- {note.message or note.title} ({note.title})")
+            capture_text.append(f"  Read it: {link}")
+
+        count = len(captures)
+        heading = (
+            f"{count} discussion{'' if count == 1 else 's'} captured for you"
+        )
+        capture_html = (
+            f"<p style=\"font-weight:700;margin:0 0 6px 0;\">{escape(heading)}</p>"
+            "<p style=\"margin:0 0 10px 0;font-size:13px;color:#6c5a49;\">"
+            "Read from merged pull requests. Nobody typed these. If one settled "
+            "something, convert it to a decision so it can answer a question later."
+            "</p>"
+            "<ul style=\"padding-left:18px;\">" + "".join(rows) + "</ul>"
+        )
+        capture_text = [heading, ""] + capture_text + [""]
+
     body_items = []
-    text_lines = [
-        f"You have {len(filtered)} new updates in the last {frequency} window.",
-        "",
-    ]
+    text_lines = list(capture_text)
+    if remainder or not captures:
+        text_lines.append(
+            f"You have {len(remainder if captures else filtered)} new updates "
+            f"in the last {frequency} window."
+        )
+        text_lines.append("")
     for item in preview:
         if isinstance(item, dict) and item.get('type') == 'batch':
             batch_count = int(item.get('count') or 0)
@@ -134,16 +197,28 @@ def send_notification_digest(user_id, frequency='daily'):
         text_lines.append(f"  Open: {item_link}")
 
     digest_url = build_frontend_url('/notifications')
-    html_body = (
-        f"<p>You have {len(filtered)} new updates in the last {frequency} window.</p>"
-        "<ul style=\"padding-left:18px;\">"
-        + "".join(body_items)
-        + "</ul>"
-    )
+    rest_count = len(remainder) if captures else len(filtered)
+    rest_html = ""
+    if body_items:
+        rest_html = (
+            f"<p>You have {rest_count} new updates in the last {frequency} window.</p>"
+            "<ul style=\"padding-left:18px;\">"
+            + "".join(body_items)
+            + "</ul>"
+        )
+    html_body = capture_html + rest_html
 
     html = render_email_template(
-        preheader=f"{len(filtered)} updates in your {frequency} digest",
-        title=f"Your {frequency.capitalize()} digest",
+        preheader=(
+            f"{len(captures)} captured for you"
+            if captures and not remainder
+            else f"{len(filtered)} updates in your {frequency} digest"
+        ),
+        title=(
+            "Captured for you"
+            if captures and not remainder
+            else f"Your {frequency.capitalize()} digest"
+        ),
         body_html=html_body,
         cta_label='Open notifications',
         cta_url=digest_url,

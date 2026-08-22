@@ -73,7 +73,7 @@ class BackfillPrCaptureTests(_Fixture, TestCase):
 
         self.assertEqual(capture.call_count, 2)
         self.assertIn("#1 captured", output)
-        self.assertIn("captured 1, passed over 1", output)
+        self.assertIn("captured 1, 1 passed over", output)
 
     @patch(LIST_PRS)
     def test_does_not_lower_the_bar_for_history(self, prs, _cfg):
@@ -177,3 +177,53 @@ class ConfigGateTests(_Fixture, TestCase):
             self._run()
 
         self.assertIn("not configured", str(ctx.exception))
+
+
+class AlreadyRecordedTests(_Fixture, TestCase):
+    """Already recorded and did not clear the bar are opposite findings.
+
+    Capture returns None for both, which is right inside a webhook and wrong
+    for anything reporting to a person. A live run told an operator that two
+    pull requests carrying 731 and 316 characters of real argument had no
+    substantive discussion in them. Both were simply already recorded.
+    """
+
+    @patch(CONFIG, return_value=object())
+    @patch(LIST_PRS)
+    def test_already_recorded_is_counted_separately(self, prs, _cfg):
+        prs.return_value = [self._pr(1), self._pr(2)]
+        with patch(
+            "apps.integrations.management.commands.backfill_pr_capture.already_captured",
+            return_value=True,
+        ):
+            with patch(CAPTURE) as capture:
+                output = self._run()
+
+        capture.assert_not_called()
+        self.assertIn("2 already recorded", output)
+
+    @patch(CONFIG, return_value=object())
+    @patch(LIST_PRS)
+    def test_does_not_blame_the_discussion_when_it_already_had_them(self, prs, _cfg):
+        prs.return_value = [self._pr(1)]
+        with patch(
+            "apps.integrations.management.commands.backfill_pr_capture.already_captured",
+            return_value=True,
+        ):
+            output = self._run()
+
+        self.assertNotIn("Nothing met the bar", output)
+        self.assertIn("already recorded", output)
+
+    @patch(CONFIG, return_value=object())
+    @patch(LIST_PRS)
+    def test_still_blames_the_bar_when_that_is_the_reason(self, prs, _cfg):
+        prs.return_value = [self._pr(1)]
+        with patch(
+            "apps.integrations.management.commands.backfill_pr_capture.already_captured",
+            return_value=False,
+        ):
+            with patch(CAPTURE, return_value=None):
+                output = self._run()
+
+        self.assertIn("Nothing met the bar", output)

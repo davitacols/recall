@@ -70,7 +70,10 @@ def import_repo_pr_history(repo_id: int, limit: int = DEFAULT_LIMIT) -> dict:
     """
     from apps.integrations.github_app import list_recent_merged_prs
     from apps.integrations.github_app_models import GitHubRepo
-    from apps.integrations.github_pr_capture import maybe_capture_pr_discussion
+    from apps.integrations.github_pr_capture import (
+        already_captured,
+        maybe_capture_pr_discussion,
+    )
 
     repo = GitHubRepo.objects.select_related("installation", "organization").filter(
         pk=repo_id
@@ -86,7 +89,10 @@ def import_repo_pr_history(repo_id: int, limit: int = DEFAULT_LIMIT) -> dict:
             error="The GitHub connection for this repository is no longer active.",
         )
 
-    set_status(repo_id, status=STATUS_RUNNING, examined=0, total=0, captured=0, error="")
+    set_status(
+        repo_id, status=STATUS_RUNNING, examined=0, total=0, captured=0,
+        already=0, error="",
+    )
 
     try:
         prs = list_recent_merged_prs(
@@ -112,7 +118,16 @@ def import_repo_pr_history(repo_id: int, limit: int = DEFAULT_LIMIT) -> dict:
         )
 
     captured = 0
+    already = 0
     for index, pr in enumerate(prs, start=1):
+        # Asked separately, because capture returns None both for a pull
+        # request we already hold and for one that did not clear the bar.
+        # Telling somebody their discussion was not substantive when we
+        # simply had it already is a different statement entirely.
+        if already_captured(repo, pr.get("number")):
+            already += 1
+            set_status(repo_id, examined=index, captured=captured, already=already)
+            continue
         try:
             conversation = maybe_capture_pr_discussion(installation, repo, pr)
         except Exception:
@@ -123,10 +138,13 @@ def import_repo_pr_history(repo_id: int, limit: int = DEFAULT_LIMIT) -> dict:
             conversation = None
         if conversation is not None:
             captured += 1
-        set_status(repo_id, examined=index, captured=captured)
+        set_status(repo_id, examined=index, captured=captured, already=already)
 
     logger.info(
         "PR import: %s captured %d of %d merged PR(s)",
         repo.full_name, captured, total,
     )
-    return set_status(repo_id, status=STATUS_DONE, examined=total, captured=captured)
+    return set_status(
+        repo_id, status=STATUS_DONE, examined=total, captured=captured,
+        already=already,
+    )

@@ -119,6 +119,7 @@ def _serialize(repo: GitHubRepo, state: dict | None) -> dict:
             "examined": state.get("examined", 0),
             "total": state.get("total", 0),
             "captured": state.get("captured", 0),
+            "already": state.get("already", 0),
             "error": state.get("error", ""),
             "no_pull_requests": bool(state.get("no_pull_requests")),
         })

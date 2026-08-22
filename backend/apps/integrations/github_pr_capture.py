@@ -186,6 +186,30 @@ def _build_transcript(pr: dict, comments: list[dict]) -> str:
     return "".join(parts)[:_MAX_CONTENT_CHARS]
 
 
+def external_id_for(repo, pr_number) -> str:
+    """The stable identity of a captured pull request discussion."""
+    return f"{repo.repo_id}:{pr_number}"
+
+
+def already_captured(repo, pr_number) -> bool:
+    """Whether this pull request has been recorded before.
+
+    Exists so a caller can tell "we already have this" apart from "this did
+    not clear the bar". Capture returns None for both, which is right for a
+    webhook and wrong for anything reporting to a person: the import command
+    told an operator that two pull requests carrying 731 and 316 characters of
+    real argument had no substantive discussion, when in fact both were
+    already recorded.
+    """
+    from apps.conversations.models import Conversation
+
+    return Conversation.objects.filter(
+        organization=repo.organization,
+        source=Conversation.SOURCE_GITHUB_PR,
+        external_id=external_id_for(repo, pr_number),
+    ).exists()
+
+
 def maybe_capture_pr_discussion(installation, repo, pr: dict):
     """Record a merged PR's review discussion as a Conversation.
 
@@ -200,15 +224,12 @@ def maybe_capture_pr_discussion(installation, repo, pr: dict):
     if not pr_number:
         return None
 
-    external_id = f"{repo.repo_id}:{pr_number}"
     org = repo.organization
 
-    if Conversation.objects.filter(
-        organization=org,
-        source=Conversation.SOURCE_GITHUB_PR,
-        external_id=external_id,
-    ).exists():
+    if already_captured(repo, pr_number):
         return None
+
+    external_id = external_id_for(repo, pr_number)
 
     comments = _collect_comments(installation, repo, pr_number)
     human = [

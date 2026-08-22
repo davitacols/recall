@@ -33,7 +33,10 @@ from apps.integrations.github_app import (
     list_recent_merged_prs,
 )
 from apps.integrations.github_app_models import GitHubRepo
-from apps.integrations.github_pr_capture import maybe_capture_pr_discussion
+from apps.integrations.github_pr_capture import (
+    already_captured,
+    maybe_capture_pr_discussion,
+)
 
 
 class Command(BaseCommand):
@@ -127,6 +130,13 @@ class Command(BaseCommand):
                     skipped += 1
                     continue
 
+                # Asked before capturing, because capture returns None for
+                # both "already have it" and "did not clear the bar", and
+                # those mean opposite things to whoever ran this.
+                if already_captured(repo, number):
+                    already += 1
+                    continue
+
                 try:
                     conversation = maybe_capture_pr_discussion(installation, repo, pr)
                 except Exception as exc:
@@ -157,15 +167,24 @@ class Command(BaseCommand):
             )
             return
 
-        self.stdout.write(self.style.SUCCESS(
-            f"captured {captured}, passed over {skipped}"
-            + (f", {failed} failed" if failed else "")
-        ))
-        if not captured:
+        parts = [f"captured {captured}"]
+        if already:
+            parts.append(f"{already} already recorded")
+        parts.append(f"{skipped} passed over")
+        if failed:
+            parts.append(f"{failed} failed")
+        self.stdout.write(self.style.SUCCESS(", ".join(parts)))
+
+        if not captured and skipped and not already:
             self.stdout.write(
                 "Nothing met the bar. That is the normal outcome for a "
                 "repository whose pull requests merge without discussion — "
                 "capture needs two substantive human comments to work from."
+            )
+        elif not captured and already and not skipped:
+            self.stdout.write(
+                "Everything here was already recorded. Nothing above says "
+                "anything about whether those discussions were substantive."
             )
         if failed:
             raise CommandError(f"{failed} pull request(s) or repo(s) failed")

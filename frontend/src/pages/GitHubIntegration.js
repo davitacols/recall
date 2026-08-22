@@ -342,14 +342,26 @@ export default function GitHubIntegration() {
 
     if (status === "done") {
       const captured = state.captured || 0;
+      const already = state.already || 0;
       const total = state.total || 0;
+      const passed = Math.max(0, total - captured - already);
+      // Already recorded and did not clear the bar are opposite findings.
+      // Saying a discussion was not substantive when we simply had it
+      // already blames the team for our own bookkeeping.
+      let message;
+      if (captured) {
+        message = `${captured} conversation${captured === 1 ? "" : "s"} captured from ${total} merged pull request${total === 1 ? "" : "s"}.`;
+        if (already) message += ` ${already} were already recorded.`;
+      } else if (already && !passed) {
+        message = `All ${already} merged pull request${already === 1 ? " was" : "s were"} already recorded. Nothing new to read.`;
+      } else if (already) {
+        message = `${already} already recorded, and the other ${passed} had no substantive discussion to read.`;
+      } else {
+        message = `Nothing to capture from ${total} merged pull request${total === 1 ? "" : "s"}. A discussion is recorded when at least two people wrote something substantive, which most merges do not.`;
+      }
       return (
         <div className="gh-import is-done">
-          <span className="gh-import-text">
-            {captured
-              ? `${captured} conversation${captured === 1 ? "" : "s"} captured from ${total} merged pull request${total === 1 ? "" : "s"}.`
-              : `Nothing to capture from ${total} merged pull request${total === 1 ? "" : "s"}. A discussion is recorded when at least two people wrote something substantive, which most merges do not.`}
-          </span>
+          <span className="gh-import-text">{message}</span>
           {captured ? <Link className="gh-mini" to="/conversations">View conversations</Link> : null}
         </div>
       );

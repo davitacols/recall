@@ -24,21 +24,21 @@
   display: grid;
   place-items: center;
   font-weight: 800;
-  font-size: 22px;
+  font-size: 25px;
   color: #fff;
   background: linear-gradient(135deg, #7c4dff, #2196f3);
 }
 
 .route-error-title {
   margin: 0 0 8px;
-  font-size: 20px;
+  font-size: 24px;
   font-weight: 700;
   color: var(--aurora-text, #fafbff);
 }
 
 .route-error-message {
   margin: 0 0 24px;
-  font-size: 14px;
+  font-size: 17px;
   line-height: 1.55;
   color: var(--aurora-text-dim, #b6bccc);
   word-break: break-word;
@@ -54,7 +54,7 @@
 .route-error-btn {
   padding: 10px 18px;
   border-radius: 10px;
-  font-size: 14px;
+  font-size: 17px;
   font-weight: 600;
   cursor: pointer;
   border: 1px solid var(--aurora-border, rgba(255, 255, 255, 0.12));

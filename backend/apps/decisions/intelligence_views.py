@@ -39,6 +39,55 @@ logger = logging.getLogger(__name__)
 # Helpers
 # ----------------------------------------------------------------------------
 
+def _annotate_rationale_length(decisions_qs):
+    """Annotate _len: the length of the rationale once whitespace is folded.
+
+    Trim() alone is not enough: both SQLite and Postgres trim *spaces* by
+    default, so a rationale of "   \\n  " survives it with length 1 and counts
+    as reasoning. That flatters the one number the product turns on, which is
+    the opposite of what it is for — a blank invites someone to fill it in, and
+    a falsely-full count means nobody ever does.
+
+    Newlines and tabs are folded to spaces first, so whitespace of any kind
+    reduces to empty.
+    """
+    from django.db.models import TextField, Value
+    from django.db.models.functions import Length, Replace, Trim
+
+    # output_field is required, not decorative: Replace mixes the TextField
+    # column with CharField literals, and Django refuses to guess. count()
+    # happened not to need the annotation resolved, so this only surfaced once
+    # something selected the rows rather than counting them.
+    return decisions_qs.annotate(
+        _clean=Trim(
+            Replace(
+                Replace(
+                    Replace("rationale", Value("\r"), Value(" ")),
+                    Value("\n"), Value(" "),
+                ),
+                Value("\t"), Value(" "),
+            ),
+            output_field=TextField(),
+        )
+    ).annotate(_len=Length("_clean"))
+
+
+def count_with_rationale(decisions_qs) -> int:
+    """How many of these decisions actually record why they were made."""
+    return _annotate_rationale_length(decisions_qs).filter(_len__gt=0).count()
+
+
+def decisions_missing_rationale(decisions_qs):
+    """The complement of count_with_rationale, as a queryset.
+
+    Shares one definition of "blank" with the counter deliberately. Two
+    implementations would drift, and then the dashboard percentage and the
+    backfill worklist would disagree about the same rows — with no way to tell
+    from either which one was wrong.
+    """
+    return _annotate_rationale_length(decisions_qs).filter(_len=0)
+
+
 def _user_org_or_400(request):
     org = getattr(request.user, "organization", None)
     if not org:
@@ -728,12 +777,41 @@ def intelligence_overview(request):
     )
 
     # Workspace counts.
+    #
+    # The prediction/outcome/retro numbers describe the intelligence layer,
+    # which only means anything after months of history. They were the whole
+    # scorecard, which left the dashboard unable to answer the question the
+    # product exists to answer: is the memory any good?
+    #
+    # A decision without its reasoning is a row in a list — six months later it
+    # is exactly as useless as the ticket that prompted it. So the share of
+    # decisions carrying a rationale is the real health metric, and the share
+    # linked to the code that implemented them is the second.
+    from django.db.models.functions import Length, Trim
+
+    from apps.conversations.models import Conversation
+    from apps.integrations.github_app_models import DecisionPullRequest
+
+    decisions_qs = Decision.objects.filter(organization=org)
+    conversations_qs = Conversation.objects.filter(organization=org)
+
     totals = {
-        "decisions": Decision.objects.filter(organization=org).count(),
+        "decisions": decisions_qs.count(),
         "predictions": DecisionPrediction.objects.filter(organization=org).count(),
         "outcome_checks": DecisionOutcomeCheck.objects.filter(organization=org).count(),
         "retrospectives": DecisionRetrospective.objects.filter(organization=org).count(),
         "twin_runs": DecisionTwinRun.objects.filter(organization=org).count(),
+        # Trim before measuring: a rationale of spaces is an empty one, and
+        # counting it would flatter the number the whole product turns on.
+        "decisions_with_rationale": count_with_rationale(decisions_qs),
+        "decisions_linked_to_code": (
+            DecisionPullRequest.objects.filter(organization=org)
+            .values("decision_id")
+            .distinct()
+            .count()
+        ),
+        "conversations": conversations_qs.count(),
+        "conversations_captured": conversations_qs.exclude(source="").count(),
     }
 
     drift_signals_payload = [
@@ -783,4 +861,35 @@ def intelligence_overview(request):
             }
             for r in retros
         ],
+    })
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def memory_health(request):
+    """Two numbers: decisions recorded, and how many record why.
+
+    Separate from intelligence_overview because the sidebar shows this on every
+    page and that view runs about ten queries — drift signals, pending checks,
+    retrospectives, twin runs — to produce a scorecard. Paying for all of it to
+    render two numbers in a nav panel would be a real cost on every page load,
+    for data the panel does not use.
+
+    Trim before measuring: a rationale of spaces is an empty one, and counting
+    it would flatter the number the whole product turns on.
+    """
+    org, err = _user_org_or_400(request)
+    if err:
+        return err
+
+    from apps.knowledge.ai_health import get_state
+
+    decisions = Decision.objects.filter(organization=org)
+    return Response({
+        "decisions": decisions.count(),
+        "decisions_with_rationale": count_with_rationale(decisions),
+        # So the interface can stop offering a question box that cannot
+        # answer. Read here rather than from a new endpoint because the
+        # sidebar already polls this on every page.
+        "ai": get_state(),
     })

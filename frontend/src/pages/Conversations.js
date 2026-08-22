@@ -11,6 +11,7 @@ import {
   ExclamationTriangleIcon,
   FireIcon,
   HandRaisedIcon,
+  InboxArrowDownIcon,
   InboxIcon,
   LightBulbIcon,
   MagnifyingGlassIcon,
@@ -86,6 +87,13 @@ function daysSince(value) {
 
 const BUCKETS = [
   {
+    id: "captured",
+    title: "Captured",
+    hint: "Collected automatically from merged pull requests. Unreviewed — the reasoning is here, nobody has turned it into a decision yet.",
+    Icon: InboxArrowDownIcon,
+    tone: "indigo",
+  },
+  {
     id: "pinned",
     title: "Pinned",
     hint: "Workspace anchors — context the team keeps coming back to.",
@@ -147,6 +155,28 @@ function isOpenConversation(c) {
   return !c.is_closed && c.status_label !== "resolved";
 }
 
+// --- Provenance ------------------------------------------------------------
+// A conversation someone wrote and one collected from a merged pull request
+// are different kinds of record, and a reader who cannot tell them apart has
+// to trust both equally or neither.
+
+const SOURCE_META = {
+  github_pr: { label: "GitHub", detail: "Captured from a merged pull request" },
+};
+
+function isCaptured(c) {
+  return Boolean(c?.source) && c.source !== "manual";
+}
+
+function sourceMeta(c) {
+  return SOURCE_META[String(c?.source || "")] || null;
+}
+
+function prNumberFrom(c) {
+  const m = String(c?.source_url || "").match(/\/pull\/(\d+)/);
+  return m ? m[1] : null;
+}
+
 function ownedOrMentionedBy(c, userId) {
   if (!userId) return false;
   if (c.owner_id === userId) return true;
@@ -163,6 +193,13 @@ function categorize(conversations, userId) {
   buckets.other = [];
 
   for (const c of conversations) {
+    // Captured threads are raw material, not open loops: nobody wrote them and
+    // nobody is waiting on a reply. Bucketing them by reply count or staleness
+    // would file every one of them under "Stalled" the moment they arrive.
+    if (isCaptured(c) && isOpenConversation(c)) {
+      buckets.captured.push(c);
+      continue;
+    }
     if (c.is_pinned) {
       buckets.pinned.push(c);
       continue;
@@ -237,6 +274,8 @@ function Row({ c, onDelete }) {
   const author = c.author || "Anonymous";
   const summary = stripHtml(c.key_takeaway || c.ai_summary || c.content || "");
   const isUrgent = c.is_crisis || c.priority === "urgent";
+  const captured = sourceMeta(c);
+  const prNumber = prNumberFrom(c);
   const isClosed = c.is_closed || c.status_label === "resolved";
   return (
     <Link to={`/conversations/${c.id}`} className="conv-row" data-closed={isClosed ? "1" : "0"}>
@@ -258,10 +297,33 @@ function Row({ c, onDelete }) {
         </div>
         {summary ? <p className="conv-row-takeaway">{summary.slice(0, 180)}</p> : null}
         <div className="conv-row-meta">
-          <span className="conv-row-author">
-            <Avatar size="xs" name={author} />
-            {author}
-          </span>
+          {captured ? (
+            /* Deliberately shown *instead of* an author. Conversation.author
+               on a captured record is the person who installed the App, not
+               the person who made the argument — printing their name next to
+               someone else's words is worse than printing no name. The real
+               speakers are attributed inside the transcript.
+
+               Nested inside a Link, so the anchor must stop the row from also
+               navigating, or clicking the PR opens the conversation instead. */
+            <a
+              className="conv-source"
+              href={c.source_url || undefined}
+              target="_blank"
+              rel="noreferrer"
+              title={captured.detail}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <InboxArrowDownIcon />
+              {captured.label}
+              {prNumber ? <span className="conv-source-ref">#{prNumber}</span> : null}
+            </a>
+          ) : (
+            <span className="conv-row-author">
+              <Avatar size="xs" name={author} />
+              {author}
+            </span>
+          )}
           <span className="conv-row-dot" />
           <span>{relativeTime(c.updated_at || c.created_at)}</span>
           <span className="conv-row-dot" />
@@ -413,7 +475,7 @@ export default function Conversations() {
   const hasAnything = filtered.length > 0;
 
   return (
-    <div className="conv-page" style={{ padding: "0 32px 32px" }}>
+    <div className="conv-page" style={{ padding: "0 var(--page-x) 32px" }}>
       <PageHeader
         breadcrumb={[{ label: "Knoledgr", to: "/" }, { label: "Conversations" }]}
         title="Conversations"
@@ -460,7 +522,7 @@ export default function Conversations() {
           description={
             search.trim()
               ? "Try a different term, or clear the search to see the whole pipeline."
-              : "Capture an open question, a proposal, or a decision rationale. Conversations are where the team thinks out loud."
+              : "Conversations are the raw material decisions are made from. They arrive two ways — you write one, or Knoledgr collects one for you."
           }
           primaryAction={
             search.trim() ? (
@@ -471,7 +533,30 @@ export default function Conversations() {
               </Button>
             )
           }
-        />
+        >
+          {/* The empty state is the page most workspaces actually see, so it
+              has to teach the automatic path too. Offering only "write one"
+              hides the capture entirely and makes the product look like a
+              second inbox to keep up by hand. */}
+          {!search.trim() ? (
+            <div className="conv-empty-paths">
+              <div className="conv-empty-path">
+                <span className="conv-empty-path-icon"><ChatBubbleLeftRightIcon /></span>
+                <h4>You write one</h4>
+                <p>An open question, a proposal, or the reasoning behind a choice the team just made.</p>
+              </div>
+              <div className="conv-empty-path">
+                <span className="conv-empty-path-icon"><InboxArrowDownIcon /></span>
+                <h4>A merged PR brings one</h4>
+                <p>
+                  Merge a pull request with real review discussion and it lands here by itself.
+                  {" "}
+                  <Link to="/integrations">Connect GitHub</Link> to turn this on.
+                </p>
+              </div>
+            </div>
+          ) : null}
+        </EmptyState>
       ) : (
         <>
           <div className="conv-kpis">

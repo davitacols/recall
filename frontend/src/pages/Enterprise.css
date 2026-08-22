@@ -27,7 +27,7 @@
 
 .enterprise-eyebrow {
   margin: 0;
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -47,7 +47,7 @@
 
 .enterprise-callout-title {
   margin: 0;
-  font-size: 15px;
+  font-size: 18px;
   line-height: 1.25;
   font-weight: 650;
   letter-spacing: -0.01em;
@@ -56,7 +56,7 @@
 
 .enterprise-callout-text {
   margin: 0;
-  font-size: 12.5px;
+  font-size: 15.5px;
   line-height: 1.55;
   color: var(--app-muted);
 }
@@ -105,7 +105,7 @@
 
 .enterprise-signal-title {
   margin: 0;
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -113,7 +113,7 @@
 
 .enterprise-signal-body {
   margin: 0;
-  font-size: 13px;
+  font-size: 16px;
   line-height: 1.5;
   color: var(--app-text-subtle, var(--app-text));
 }
@@ -126,7 +126,7 @@
 .enterprise-warning {
   border-radius: 14px;
   padding: 12px 14px;
-  font-size: 13px;
+  font-size: 16px;
   line-height: 1.55;
   color: #fbbf24;
   background: rgba(245, 158, 11, 0.14);
@@ -165,7 +165,7 @@
 .enterprise-card-header h3,
 .enterprise-block-head h3 {
   margin: 0;
-  font-size: 15px;
+  font-size: 18px;
   font-weight: 650;
   letter-spacing: -0.01em;
   line-height: 1.25;
@@ -178,14 +178,14 @@
 .enterprise-meta-text,
 .enterprise-support-meta {
   margin: 0;
-  font-size: 12px;
+  font-size: 15px;
   line-height: 1.55;
   color: var(--app-muted);
 }
 
 .enterprise-body-copy {
   margin: 0;
-  font-size: 13px;
+  font-size: 16px;
   line-height: 1.55;
   color: var(--app-muted);
 }
@@ -213,7 +213,7 @@
 
 .enterprise-field > span,
 .enterprise-info-cell > span {
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -229,7 +229,7 @@
   border: 1px solid var(--app-border);
   background: var(--app-surface-alt);
   color: var(--app-text);
-  font-size: 14px;
+  font-size: 17px;
   outline: none;
   font: inherit;
 }
@@ -244,7 +244,7 @@
   display: flex;
   gap: 10px;
   align-items: flex-start;
-  font-size: 13px;
+  font-size: 16px;
   line-height: 1.5;
   color: var(--app-text);
 }
@@ -264,7 +264,7 @@
 }
 
 .enterprise-info-cell strong {
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 600;
   line-height: 1.4;
   color: var(--app-text);
@@ -286,7 +286,7 @@
   gap: 6px;
   border-radius: 999px;
   padding: 4px 10px;
-  font-size: 10.5px;
+  font-size: 14px;
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -305,7 +305,7 @@
 }
 
 .enterprise-risk-score span {
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -313,7 +313,7 @@
 }
 
 .enterprise-risk-score strong {
-  font-size: 22px;
+  font-size: 25px;
   font-weight: 700;
   letter-spacing: -0.02em;
   line-height: 1;
@@ -332,7 +332,7 @@
 
 .enterprise-metric-label {
   margin: 0;
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -341,7 +341,7 @@
 
 .enterprise-metric-value {
   margin: 0;
-  font-size: 22px;
+  font-size: 25px;
   font-weight: 700;
   letter-spacing: -0.02em;
   line-height: 1.1;
@@ -350,7 +350,7 @@
 
 .enterprise-metric-helper {
   margin: 0;
-  font-size: 12px;
+  font-size: 15px;
   line-height: 1.5;
   color: var(--app-muted);
 }

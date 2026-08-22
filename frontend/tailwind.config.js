@@ -98,15 +98,19 @@ module.exports = {
         display: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
         mono:    ['JetBrains Mono', 'SFMono-Regular', 'Consolas', 'monospace'],
       },
+      // Raised one step across the board. This is the highest-leverage change
+      // for the app itself, since most in-product components size themselves
+      // with text-sm / text-base rather than raw CSS. Line heights move with
+      // the sizes so vertical rhythm holds; nothing drops below 12px.
       fontSize: {
-        'xs':   ['11px', { lineHeight: '16px', letterSpacing: '0' }],
-        'sm':   ['12px', { lineHeight: '16px', letterSpacing: '0' }],
-        'base': ['14px', { lineHeight: '20px', letterSpacing: '0' }],
-        'lg':   ['16px', { lineHeight: '20px', letterSpacing: '-0.005em' }],
-        'xl':   ['20px', { lineHeight: '24px', letterSpacing: '-0.008em' }],
-        '2xl':  ['24px', { lineHeight: '28px', letterSpacing: '-0.01em' }],
-        '3xl':  ['29px', { lineHeight: '32px', letterSpacing: '-0.01em' }],
-        '4xl':  ['35px', { lineHeight: '40px', letterSpacing: '-0.012em' }],
+        'xs':   ['12px', { lineHeight: '16px', letterSpacing: '0' }],
+        'sm':   ['13px', { lineHeight: '18px', letterSpacing: '0' }],
+        'base': ['15px', { lineHeight: '22px', letterSpacing: '0' }],
+        'lg':   ['17px', { lineHeight: '24px', letterSpacing: '-0.005em' }],
+        'xl':   ['22px', { lineHeight: '28px', letterSpacing: '-0.008em' }],
+        '2xl':  ['26px', { lineHeight: '32px', letterSpacing: '-0.01em' }],
+        '3xl':  ['32px', { lineHeight: '38px', letterSpacing: '-0.01em' }],
+        '4xl':  ['38px', { lineHeight: '44px', letterSpacing: '-0.012em' }],
       },
       boxShadow: {
         'xs':    '0 0 1px rgba(9,30,66,0.31)',

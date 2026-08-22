@@ -384,7 +384,11 @@ function AppContent() {
       ) : null}
       {!isPublicPage ? <CommandPalette /> : null}
       {!isPublicPage ? <GlobalSearch isOpen={showSearch} onClose={() => setShowSearch(false)} /> : null}
-      {user && !isPublicPage ? <MobileNav onSearchOpen={() => setShowSearch(true)} /> : null}
+      {/* The bottom bar no longer carries a Search tab — five tabs forced the
+          labels down to 9px, and search is in the top bar at every width. The
+          prop this used to pass is gone with it; GlobalSearch is still opened
+          by the command palette. */}
+      {user && !isPublicPage ? <MobileNav /> : null}
       {user && !isPublicPage ? (
         <CommandBar
           onCommand={(cmd) => {

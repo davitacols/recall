@@ -49,4 +49,8 @@ app.conf.beat_schedule = {
         'task': 'apps.organizations.tasks.disable_failing_webhooks',
         'schedule': crontab(hour=3, minute=30),  # Nightly cleanup
     },
+    'check-github-app-installation-drift': {
+        'task': 'apps.integrations.tasks.check_github_app_installation_drift',
+        'schedule': crontab(hour=8, minute=45),  # Daily, before business-hour digests
+    },
 }

@@ -29,12 +29,13 @@ def update_profile(request):
         avatar_url = None
         if user.avatar:
             try:
-                from django.conf import settings
+                # AWS_STORAGE_BUCKET_NAME was never defined as a Django
+                # setting, so the hasattr guard was always False and the S3
+                # branch was unreachable. Media is served by Cloudinary, whose
+                # .url is already absolute — build_absolute_uri leaves absolute
+                # URLs untouched, so this covers both cases.
                 if hasattr(user.avatar, 'url'):
-                    if settings.DEBUG or not hasattr(settings, 'AWS_STORAGE_BUCKET_NAME') or not settings.AWS_STORAGE_BUCKET_NAME:
-                        avatar_url = request.build_absolute_uri(user.avatar.url)
-                    else:
-                        avatar_url = user.avatar.url
+                    avatar_url = request.build_absolute_uri(user.avatar.url)
             except Exception as e:
                 print(f"Avatar URL error: {str(e)}")
         

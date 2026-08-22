@@ -68,7 +68,7 @@
   filter: brightness(0) invert(1);
 }
 .tn-brand-name {
-  font-size: 14px;
+  font-size: 17px;
   font-weight: 600;
   letter-spacing: -0.014em;
   color: var(--app-text);
@@ -92,7 +92,7 @@
   color: var(--app-text);
   cursor: pointer;
   font: inherit;
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 500;
   transition: background 100ms ease, border-color 100ms ease;
   max-width: 280px;
@@ -110,14 +110,14 @@
   color: var(--app-text);
   display: grid;
   place-items: center;
-  font-size: 11.5px;
+  font-size: 14.5px;
   font-weight: 600;
   letter-spacing: -0.01em;
   flex-shrink: 0;
   border: 1px solid var(--app-border);
 }
 .tn-workspace-name {
-  font-size: 12.5px;
+  font-size: 15.5px;
   font-weight: 500;
   white-space: nowrap;
   overflow: hidden;
@@ -169,13 +169,13 @@
   background: transparent;
   color: var(--app-text);
   font: inherit;
-  font-size: 13px;
+  font-size: 16px;
   padding: 0 4px;
 }
 .tn-search input::placeholder { color: var(--app-muted); }
 .tn-search kbd {
   font-family: var(--font-mono, ui-monospace, SFMono-Regular, monospace);
-  font-size: 10.5px;
+  font-size: 14px;
   color: var(--app-text-disabled, var(--app-muted));
   padding: 1px 5px;
   border-radius: 3px;
@@ -188,6 +188,8 @@
   .tn-search { padding-right: 6px; }
   .tn-search kbd { display: none; }
 }
+
+
 
 /* ─── right: actions + profile ─────────────────────────── */
 
@@ -207,7 +209,7 @@
   background: var(--app-text);
   color: var(--app-surface);
   font: inherit;
-  font-size: 12.5px;
+  font-size: 15.5px;
   font-weight: 600;
   cursor: pointer;
   transition: background 100ms ease;
@@ -265,7 +267,7 @@
   color: var(--app-text);
   cursor: pointer;
   font: inherit;
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 500;
   transition: background 100ms ease, border-color 100ms ease;
 }
@@ -319,7 +321,7 @@
 }
 .tn-profile-fullname {
   margin: 0;
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 600;
   color: var(--app-text);
   overflow: hidden;
@@ -328,7 +330,7 @@
 }
 .tn-profile-email {
   margin: 0;
-  font-size: 11.5px;
+  font-size: 14.5px;
   color: var(--app-muted);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -336,7 +338,7 @@
 }
 .tn-profile-role {
   margin: 2px 0 0;
-  font-size: 11px;
+  font-size: 14px;
   color: var(--app-text-disabled, var(--app-muted));
   text-transform: lowercase;
 }
@@ -359,7 +361,7 @@
   color: var(--app-text);
   text-decoration: none;
   font: inherit;
-  font-size: 13px;
+  font-size: 16px;
   cursor: pointer;
   text-align: left;
   transition: background 100ms ease;
@@ -378,4 +380,43 @@
 .tn-menu-item.is-danger svg { color: #ef4444; }
 .tn-menu-item.is-danger:hover {
   background: rgba(239, 68, 68, 0.08);
+}
+
+/* ── Phones ────────────────────────────────────────────────────────────────
+   The bar carried nine controls. At its narrowest the left cluster needed
+   ~110px, the search column had a 220px floor and the right cluster ~190px —
+   about 584px of minimum before padding and gaps, against a 375px screen.
+   body sets overflow-x: hidden, so the excess was clipped rather than
+   scrolled and the right end simply vanished.
+
+   What stays is what nothing else provides: identity, search, notifications,
+   account. Everything removed is reachable elsewhere on a phone:
+
+     toggle     — dead here. UnifiedNav is not rendered below 768px and
+                  MobileNav carries its own menu button.
+     workspace  — "Switch workspace" is in the account menu.
+     create     — pages carry their own create actions.
+     Ask Recall — a tab in the bottom bar.
+     help/docs  — the mobile menu lists Docs under Resources. */
+@media (max-width: 640px) {
+  .tn {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 8px;
+    padding: 0 12px;
+  }
+  .tn-toggle,
+  .tn-divider,
+  .tn-workspace,
+  .tn-create,
+  .tn-icon--optional { display: none; }
+
+  .tn-left { gap: 6px; }
+  .tn-right { gap: 4px; }
+  .tn-brand { padding: 4px; }
+
+  /* Avatar only — the name and chevron are the first things to go when the
+     row cannot fit, and tapping the avatar still opens the same menu. */
+  .tn-profile-name,
+  .tn-profile .tn-chev { display: none; }
+  .tn-profile { padding: 2px; gap: 0; }
 }

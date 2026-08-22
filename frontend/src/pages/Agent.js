@@ -432,19 +432,22 @@ export default function Agent() {
           )}
 
           <div ref={traceEndRef} />
+
+          {/* Inside the scrolling column, not a sibling of the grid. As a
+              sibling it could only be positioned against the viewport, which
+              is what put it on top of the run rail. */}
+          <Composer
+            ref={composerRef}
+            value={goal}
+            onChange={setGoal}
+            onSubmit={() => handleStart()}
+            busy={busy}
+            profile={activeProfile}
+            onOpenProfilePicker={() => setProfilePickerOpen(true)}
+            hasRun={!!run}
+          />
         </section>
       </div>
-
-      <Composer
-        ref={composerRef}
-        value={goal}
-        onChange={setGoal}
-        onSubmit={() => handleStart()}
-        busy={busy}
-        profile={activeProfile}
-        onOpenProfilePicker={() => setProfilePickerOpen(true)}
-        hasRun={!!run}
-      />
 
       {profilePickerOpen ? (
         <ProfilePicker

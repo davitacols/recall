@@ -10,6 +10,15 @@ import Breadcrumb from "./Breadcrumb";
  *   actions={<Button>Create</Button>}
  *   tabs={<Tabs ... />}
  * />
+ *
+ * Layout lives in index.css rather than inline. It was a flex row where the
+ * title could shrink to nothing (minWidth: 0) while the actions could not
+ * (flexShrink: 0) and nothing wrapped — so on a phone the buttons held their
+ * width and squeezed the title away. Inline styles cannot carry a media
+ * query, so the fix has to be in a stylesheet.
+ *
+ * The `style` prop still lands on the root, because callers use it to override
+ * padding and background.
  */
 export default function PageHeader({
   breadcrumb,
@@ -20,56 +29,16 @@ export default function PageHeader({
   style,
 }) {
   return (
-    <div
-      style={{
-        padding: "24px 32px 0",
-        background: "var(--app-surface)",
-        ...style,
-      }}
-    >
+    <div className="aph" style={style}>
       {breadcrumb?.length ? <Breadcrumb items={breadcrumb} /> : null}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "flex-end",
-          justifyContent: "space-between",
-          gap: 16,
-          marginTop: breadcrumb?.length ? 4 : 0,
-        }}
-      >
-        <div style={{ minWidth: 0 }}>
-          <h1
-            style={{
-              fontSize: 24,
-              lineHeight: "28px",
-              fontWeight: 500,
-              letterSpacing: "-0.01em",
-              color: "var(--app-text)",
-              margin: 0,
-            }}
-          >
-            {title}
-          </h1>
-          {subtitle ? (
-            <p
-              style={{
-                marginTop: 4,
-                fontSize: 14,
-                color: "var(--app-muted)",
-                lineHeight: 1.4286,
-              }}
-            >
-              {subtitle}
-            </p>
-          ) : null}
+      <div className="aph-row" style={{ marginTop: breadcrumb?.length ? 4 : 0 }}>
+        <div className="aph-main">
+          <h1 className="aph-title">{title}</h1>
+          {subtitle ? <p className="aph-subtitle">{subtitle}</p> : null}
         </div>
-        {actions ? (
-          <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-            {actions}
-          </div>
-        ) : null}
+        {actions ? <div className="aph-actions">{actions}</div> : null}
       </div>
-      {tabs ? <div style={{ marginTop: 16 }}>{tabs}</div> : null}
+      {tabs ? <div className="aph-tabs">{tabs}</div> : null}
     </div>
   );
 }

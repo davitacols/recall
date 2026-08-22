@@ -104,9 +104,15 @@ export default function Login() {
 
     const result = await register({ ...credentials });
     if (result.success) {
-      addToast?.(inviteToken ? "Account created! Please sign in." : "Workspace created! Please sign in.", "success");
-      setMode("login");
-      setCredentials({ ...credentials, password: "", confirmPassword: "", token: "" });
+      if (result.signedIn) {
+        addToast?.(inviteToken ? "You're in." : "Workspace created.", "success");
+        navigate("/dashboard", { replace: true });
+      } else {
+        // Fallback for a backend that does not return tokens on registration.
+        addToast?.(inviteToken ? "Account created! Please sign in." : "Workspace created! Please sign in.", "success");
+        setMode("login");
+        setCredentials({ ...credentials, password: "", confirmPassword: "", token: "" });
+      }
     } else {
       setError(result.error || "Sign-up failed");
     }

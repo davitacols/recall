@@ -7,11 +7,13 @@ import {
   SparklesIcon,
 } from "@heroicons/react/24/outline";
 import api from "../services/api";
-import { useAuth } from "../hooks/useAuth";
 import { buildUnifiedNavModel, isHrefActive } from "./unifiedNavConfig";
 import "./UnifiedNav.css";
 
-const OPEN_GROUPS_KEY = "knoledgr.sidebar.openGroupsV1";
+// V2: the groups were renamed and reordered, and the stored map is keyed by
+// group name. Reusing V1 would have left every returning user with all groups
+// collapsed and no idea why.
+const OPEN_GROUPS_KEY = "knoledgr.sidebar.openGroupsV2";
 
 export default function UnifiedNav({
   collapsed = false,
@@ -19,7 +21,6 @@ export default function UnifiedNav({
   width = 248,
   collapsedWidth = 60,
 }) {
-  const { user } = useAuth();
   const location = useLocation();
   const [installedApps, setInstalledApps] = useState([]);
   const [openGroups, setOpenGroups] = useState(() => {
@@ -27,7 +28,10 @@ export default function UnifiedNav({
       const raw = localStorage.getItem(OPEN_GROUPS_KEY);
       if (raw) return JSON.parse(raw);
     } catch (_) {}
-    return { Knowledge: true, Collaborate: true, Execute: true, Resources: false };
+    // Memory open by default because it is the product; Resources closed
+    // because it is reference material. "Execute" was in this list long after
+    // the group itself was deleted.
+    return { Memory: true, Explore: true, Resources: false };
   });
 
   const experienceMode =
@@ -35,11 +39,54 @@ export default function UnifiedNav({
 
   useEffect(() => {
     let mounted = true;
+    // Was /api/enterprise/apps/installed/ — a route that does not exist (there
+    // is no /api/enterprise/ prefix at all), so this 404'd on every page load
+    // and the empty catch swallowed it. The nav simply never showed installed
+    // apps and nothing surfaced the failure.
+    //
+    // The marketplace endpoint carries an `installed` flag per app, so filter
+    // on that rather than treating every listed app as installed.
     api
-      .get("/api/enterprise/apps/installed/")
+      .get("/api/organizations/enterprise/marketplace/apps/")
       .then((res) => {
         if (!mounted) return;
-        setInstalledApps(Array.isArray(res.data?.results) ? res.data.results : res.data || []);
+        const list = Array.isArray(res.data?.results)
+          ? res.data.results
+          : Array.isArray(res.data)
+          ? res.data
+          : [];
+        setInstalledApps(list.filter((app) => app?.installed));
+      })
+      .catch(() => {});
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  // The foot of the sidebar carries the state of the memory itself.
+  //
+  // Every SaaS sidebar is a list of links; this one ends with the number the
+  // product lives or dies by — what share of recorded decisions actually carry
+  // their reasoning. A decision without its why is a row in a list, and if that
+  // share falls the tool is failing at its one job. Putting it in the nav means
+  // it is visible on every page rather than only when someone visits a
+  // dashboard, which is the difference between a metric and a conscience.
+  //
+  // One request per mount, and a failure leaves the panel out entirely rather
+  // than showing a zero that would read as "nothing recorded".
+  const [memory, setMemory] = useState(null);
+  useEffect(() => {
+    let mounted = true;
+    api
+      .get("/api/decisions/memory-health/")
+      .then((res) => {
+        if (!mounted) return;
+        const data = res.data?.data || res.data;
+        if (!data || typeof data.decisions !== "number") return;
+        setMemory({
+          decisions: data.decisions,
+          withWhy: data.decisions_with_rationale ?? 0,
+        });
       })
       .catch(() => {});
     return () => {
@@ -48,8 +95,8 @@ export default function UnifiedNav({
   }, []);
 
   const navModel = useMemo(
-    () => buildUnifiedNavModel({ user, experienceMode, installedApps }),
-    [user, experienceMode, installedApps]
+    () => buildUnifiedNavModel({ experienceMode, installedApps }),
+    [experienceMode, installedApps]
   );
 
   const toggleGroup = (name) => {
@@ -134,8 +181,40 @@ export default function UnifiedNav({
             />
           ))}
         </div>
+
+        {memory && !collapsed ? <MemoryMeter {...memory} /> : null}
       </div>
     </aside>
+  );
+}
+
+function MemoryMeter({ decisions, withWhy }) {
+  const pct = decisions > 0 ? Math.round((withWhy / decisions) * 100) : null;
+  // Below half, the record is filling up with decisions nobody will be able to
+  // explain. That is worth a colour; everything above it is not.
+  const thin = pct !== null && pct < 50;
+
+  return (
+    <Link
+      // Straight to the gap when there is one. The meter was a number you
+      // could only look at, on every page, with no route to acting on it.
+      to={thin ? "/decisions?missing=why" : "/decisions"}
+      className={`nav-memory${thin ? " is-thin" : ""}`}
+      title={`${withWhy} of ${decisions} decisions record why they were made`}
+    >
+      <span className="nav-memory-head">
+        <span className="nav-memory-count">{decisions}</span>
+        <span className="nav-memory-label">
+          decision{decisions === 1 ? "" : "s"} recorded
+        </span>
+      </span>
+      <span className="nav-memory-bar" aria-hidden="true">
+        <span style={{ width: `${Math.max(2, Math.min(100, pct ?? 0))}%` }} />
+      </span>
+      <span className="nav-memory-foot">
+        {pct === null ? "nothing recorded yet" : `${pct}% carry their why`}
+      </span>
+    </Link>
   );
 }
 

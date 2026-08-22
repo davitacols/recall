@@ -7,6 +7,7 @@ import {
   ChatBubbleLeftIcon,
   ChatBubbleLeftRightIcon,
   CheckCircleIcon,
+  InboxArrowDownIcon,
   ExclamationTriangleIcon,
   HandThumbUpIcon,
   LightBulbIcon,
@@ -245,7 +246,7 @@ export default function ConversationDetail() {
 
   const handleEditReply = async (replyId, content) => {
     try {
-      await api.put(`/api/recall/conversations/replies/${replyId}/`, { content });
+      await api.put(`/api/conversations/replies/${replyId}/`, { content });
       fetchReplies();
     } catch (e) {
       console.error("Failed to update reply:", e);
@@ -254,7 +255,7 @@ export default function ConversationDetail() {
 
   const handleDeleteReply = async (replyId) => {
     try {
-      await api.delete(`/api/recall/conversations/replies/${replyId}/`);
+      await api.delete(`/api/conversations/replies/${replyId}/`);
       addToast("Reply deleted", "success");
       fetchReplies();
     } catch (e) {
@@ -273,7 +274,7 @@ export default function ConversationDetail() {
     setReactions({ reactions: next, user_reaction: wasSelected ? null : type });
     setReactionLoading(true);
     try {
-      if (wasSelected) await api.delete(`/api/recall/conversations/${id}/reactions/remove/`);
+      if (wasSelected) await api.delete(`/api/conversations/${id}/reactions/remove/`);
       else await api.post(`/api/recall/conversations/${id}/reactions/add/`, { reaction_type: type });
       fetchReactions();
     } catch (e) {
@@ -350,17 +351,37 @@ export default function ConversationDetail() {
   const handleConvertToDecision = async () => {
     setConverting(true);
     try {
-      const res = await api.post("/api/decisions/", {
-        title: conversation.title,
-        description: conversation.content,
-        status: "proposed",
-        context: `Converted from conversation #${id}`,
-        conversation_id: id,
-      });
-      addToast("Converted to decision", "success");
-      navigate(`/decisions/${res.data.id}`);
+      // Was POST /api/decisions/, which copied the title and body across and
+      // left rationale empty — 54% of recorded decisions had no "why", which is
+      // the one field this product exists to keep. The convert endpoint links
+      // the conversation, refuses to create a duplicate, and extracts the
+      // reasoning from the discussion.
+      const res = await api.post(`/api/decisions/convert/${id}/`);
+      const hasWhy = Boolean(res.data?.rationale);
+      // Three outcomes, not two. "The discussion stated no reason" is a
+      // finding about the source; "nothing could examine it" is a finding
+      // about us, and saying the first when the second is true blames the
+      // team for an unpaid bill.
+      if (hasWhy) {
+        addToast("Decision recorded, with the reasoning captured", "success");
+      } else if (res.data?.rationale_unavailable) {
+        addToast(
+          "Decision recorded. The reasoning could not be read — write it yourself below.",
+          "info"
+        );
+      } else {
+        addToast(
+          "Decision recorded. The discussion gave no reason, so add one below.",
+          "info"
+        );
+      }
+      // Land with the editor open when there is no why. Otherwise the gap is
+      // announced and then left several clicks away, which is how it stays
+      // a gap.
+      navigate(`/decisions/${res.data.id}${hasWhy ? "" : "?focus=rationale"}`);
     } catch (e) {
-      addToast("Failed to convert to decision", "error");
+      const detail = e?.response?.data?.error;
+      addToast(detail || "Failed to convert to decision", "error");
     } finally {
       setConverting(false);
     }
@@ -408,6 +429,13 @@ export default function ConversationDetail() {
   const createdLabel = new Date(conversation.created_at).toLocaleDateString();
   const updatedLabel = conversation.updated_at ? new Date(conversation.updated_at).toLocaleDateString() : createdLabel;
   const isOwner = Number(conversation.author?.id || conversation.author_id) === Number(currentUserId);
+  // A captured conversation was written by people who are usually not
+  // Knoledgr users. The byline names whoever the workspace attributed it to,
+  // so without saying where it came from the page implies they wrote it.
+  const captured = conversation.source === "github_pr";
+  const prNumber = String(conversation.source_url || "").match(/\/pull\/(\d+)/)?.[1];
+  const decisionId = conversation.decision_id || null;
+
   const askQuestion = `For the conversation titled "${conversation.title || "Untitled conversation"}", what needs a response, decision, or follow-up next?`;
 
   return (
@@ -415,6 +443,21 @@ export default function ConversationDetail() {
       <Link to="/conversations" className="cd-back"><ArrowLeftIcon /> All conversations</Link>
 
       <header className="cd-head">
+        {captured ? (
+          <div className="cd-origin">
+            <InboxArrowDownIcon />
+            <span>
+              Captured from a merged pull request. Nobody typed this — the
+              transcript below names who said what.
+            </span>
+            {conversation.source_url ? (
+              <a href={conversation.source_url} target="_blank" rel="noreferrer noopener">
+                {prNumber ? `View PR #${prNumber}` : "View on GitHub"}
+              </a>
+            ) : null}
+          </div>
+        ) : null}
+
         <div className="cd-head-meta">
           <span className="cd-type-badge">
             <TypeIcon /> {type}
@@ -436,17 +479,31 @@ export default function ConversationDetail() {
           </span>
           <div>
             <div className="cd-byline-name">{authorName}</div>
-            <div className="cd-byline-meta">Created {createdLabel} · Updated {updatedLabel}</div>
+            <div className="cd-byline-meta">
+              {captured ? "Recorded for the workspace · " : "Created "}
+              {createdLabel} · Updated {updatedLabel}
+            </div>
           </div>
         </div>
 
         <div className="cd-actions">
-          <button type="button" className="cd-btn cd-btn-primary" onClick={() => navigate(buildAskRecallPath(askQuestion))}>
+          {/* Convert is the one deliberate act in the whole loop, and it was
+              styled as a secondary next to Ask Recall. When the conversation
+              has already been converted there is nothing to press: the button
+              would return "a decision already exists", so it becomes a link to
+              the decision instead. */}
+          {decisionId ? (
+            <Link to={`/decisions/${decisionId}`} className="cd-btn cd-btn-primary">
+              <CheckCircleIcon /> Recorded as DEC-{decisionId}
+            </Link>
+          ) : (
+            <button type="button" className="cd-btn cd-btn-primary" onClick={handleConvertToDecision} disabled={converting}>
+              {converting ? <ArrowPathIcon style={{ animation: "cd-spin 1s linear infinite" }} /> : <CheckCircleIcon />}
+              {converting ? "Converting…" : "Convert to decision"}
+            </button>
+          )}
+          <button type="button" className="cd-btn" onClick={() => navigate(buildAskRecallPath(askQuestion))}>
             <SparklesIcon /> Ask Recall
-          </button>
-          <button type="button" className="cd-btn" onClick={handleConvertToDecision} disabled={converting}>
-            {converting ? <ArrowPathIcon style={{ animation: "cd-spin 1s linear infinite" }} /> : <CheckCircleIcon />}
-            Convert to decision
           </button>
           <button type="button" className={`cd-btn ${bookmark.on ? "is-on" : ""}`} onClick={handleToggleBookmark} disabled={bookmark.loading}>
             {bookmark.on ? <StarSolidIcon /> : <StarIcon />}

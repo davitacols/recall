@@ -16,8 +16,12 @@ function normalizeItems(data) {
   return [];
 }
 
+// Returns null, not 0, when there is no velocity data. /api/agile/projects/
+// <id>/velocity/ has no backend — only a SprintVelocity model — so it 404s and
+// this used to render a confident "0%" completion rate. A wrong number is worse
+// than a blank: the other tiles already show "—" when they have nothing.
 function safeCompletionRate(velocity) {
-  if (!velocity) return 0;
+  if (!velocity) return null;
   const completed = velocity.completed_story_points ?? velocity.completed ?? 0;
   const committed = velocity.committed_story_points ?? velocity.committed ?? 0;
   if (!committed) return 0;
@@ -91,14 +95,18 @@ export default function Reports() {
   const remaining = burndownPoints[burndownPoints.length - 1]?.actual ?? 0;
 
   const stats = useMemo(() => ([
-    { label: "Completion rate", value: `${completionRate}%`, tone: completionRate >= 80 ? "g" : completionRate >= 50 ? "b" : "y" },
+    {
+      label: "Completion rate",
+      value: completionRate === null ? "—" : `${completionRate}%`,
+      tone: completionRate === null ? undefined : completionRate >= 80 ? "g" : completionRate >= 50 ? "b" : "y",
+    },
     { label: "Committed", value: velocity?.committed_story_points ?? velocity?.committed ?? "—" },
     { label: "Completed", value: velocity?.completed_story_points ?? velocity?.completed ?? "—" },
     { label: "Remaining", value: remaining },
   ]), [completionRate, velocity, remaining]);
 
   return (
-    <div style={{ padding: "0 32px 32px" }}>
+    <div style={{ padding: "0 var(--page-x) 32px" }}>
       <PageHeader
         breadcrumb={[{ label: "Knoledgr", to: "/" }, { label: "Reports" }]}
         title="Reports"

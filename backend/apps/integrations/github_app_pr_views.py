@@ -272,6 +272,22 @@ def decision_github_links(request, decision_id: int):
             "linked_by": request.user,
         },
     )
+
+    # A person chose this PR for this decision, which also says the decision
+    # is about this repository's project.
+    from apps.integrations.decision_project import adopt_project_from_repo
+
+    adopt_project_from_repo(decision, repo)
+
+    # A manual link is the strongest signal there is — a person chose this PR
+    # for this decision — so its files are the most worth attributing.
+    try:
+        from apps.integrations.github_decision_files import sync_link_files
+
+        sync_link_files(link)
+    except Exception:
+        logger.exception("File attribution failed for link %s", link.id)
+
     return Response(_serialize_link(link), status=201)
 
 

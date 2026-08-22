@@ -1,0 +1,202 @@
+# Knoledgr production stack for the shared VPS.
+#   docker compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.prod up -d --build
+#
+# This box already runs the unrelated solakuti stack. Everything here is
+# deliberately separate — own project name, network, Postgres, Redis, volumes —
+# so `down`/`up` on either stack has no blast radius on the other. The single
+# shared resource is the edge: solakuti's nginx owns :80/:443 and reverse
+# proxies knoledgr.com to the `web` service below over the `recall_edge`
+# network. See deploy/edge-knoledgr.conf.
+#
+# Services: Postgres · Redis · migrate (one-shot) · Gunicorn (HTTP) ·
+#           Daphne (websockets) · Celery worker · Celery beat · Nginx.
+#
+# Every service carries a hard mem_limit. On a shared box an unbounded worker
+# doesn't just kill itself, it gets a neighbour's Postgres OOM-killed. Ceilings
+# total ~3.7G against 7.6G installed, leaving headroom for solakuti and the OS.
+name: recall
+
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-knoledgr}
+      POSTGRES_USER: ${POSTGRES_USER:-knoledgr}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-knoledgr}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    mem_limit: 1g
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    # noeviction is deliberate: this Redis is the Celery broker as well as the
+    # channels layer. Evicting keys under pressure would silently drop queued
+    # tasks. Better to fail loudly on OOM than to lose work.
+    command: >
+      redis-server --appendonly yes
+      --maxmemory 192mb
+      --maxmemory-policy noeviction
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    mem_limit: 256m
+
+  # One-shot: owns schema migration and static collection so the long-running
+  # services never race each other running migrate on startup.
+  migrate:
+    build:
+      context: ..
+      dockerfile: deploy/backend.Dockerfile
+    image: knoledgr-backend:latest
+    command: ["sh", "/entrypoint.sh"]
+    env_file:
+      - .env.prod
+    volumes:
+      - static_data:/app/staticfiles
+      - media_data:/app/media
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: "no"
+    mem_limit: 768m
+
+  # HTTP: gunicorn/WSGI. Split from websockets on purpose — a single Daphne
+  # runs sync DRF views in a threadpool on one event loop, so a slow ORM query
+  # degrades websocket latency and no more than one core is ever used.
+  backend:
+    image: knoledgr-backend:latest
+    restart: unless-stopped
+    command: >
+      gunicorn config.wsgi:application
+      --bind 0.0.0.0:8000
+      --worker-class gthread
+      --workers 3
+      --threads 4
+      --timeout 120
+      --graceful-timeout 30
+      --access-logfile -
+      --error-logfile -
+    env_file:
+      - .env.prod
+    volumes:
+      - static_data:/app/staticfiles
+      - media_data:/app/media
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    expose:
+      - "8000"
+    mem_limit: 768m
+
+  # Websockets only: /ws/ is routed here by deploy/nginx.conf.
+  ws:
+    image: knoledgr-backend:latest
+    restart: unless-stopped
+    command: ["daphne", "-b", "0.0.0.0", "-p", "8001", "config.asgi:application"]
+    env_file:
+      - .env.prod
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    expose:
+      - "8001"
+    mem_limit: 512m
+
+  worker:
+    image: knoledgr-backend:latest
+    restart: unless-stopped
+    # prefork with concurrency 2 (Render ran --pool=solo only because of its
+    # sandbox). --max-tasks-per-child recycles workers so a leak in a long
+    # running task can't creep up on the mem_limit.
+    command: >
+      celery -A config worker
+      --loglevel=info
+      --concurrency=2
+      --max-tasks-per-child=200
+    env_file:
+      - .env.prod
+    volumes:
+      - media_data:/app/media
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    mem_limit: 768m
+
+  beat:
+    image: knoledgr-backend:latest
+    restart: unless-stopped
+    # Schedule is declared in code (config/celery.py), so the on-disk schedule
+    # file is just beat's last-run bookkeeping — kept on a volume so a restart
+    # doesn't re-fire everything it thinks it missed.
+    command: >
+      celery -A config beat
+      --loglevel=info
+      --schedule=/var/lib/celery/celerybeat-schedule
+    env_file:
+      - .env.prod
+    volumes:
+      - beat_data:/var/lib/celery
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    mem_limit: 256m
+
+  # This stack's own nginx: serves the built SPA and Django static, and routes
+  # /api + /ws to the two upstreams above. Having it here rather than adding
+  # mounts to solakuti's nginx is what keeps that container from ever needing
+  # to be recreated.
+  web:
+    build:
+      context: ..
+      dockerfile: deploy/frontend.Dockerfile
+      args:
+        REACT_APP_API_URL: ${REACT_APP_API_URL}
+        REACT_APP_SENTRY_DSN: ${REACT_APP_SENTRY_DSN:-}
+        REACT_APP_SENTRY_ENVIRONMENT: ${REACT_APP_SENTRY_ENVIRONMENT:-production}
+        REACT_APP_SENTRY_TRACES_SAMPLE_RATE: ${REACT_APP_SENTRY_TRACES_SAMPLE_RATE:-0.1}
+        REACT_APP_TURNSTILE_SITE_KEY: ${REACT_APP_TURNSTILE_SITE_KEY:-}
+    restart: unless-stopped
+    volumes:
+      - static_data:/srv/static:ro
+      - media_data:/srv/media:ro
+    depends_on:
+      - backend
+      - ws
+    expose:
+      - "80"
+    networks:
+      default:
+      edge:
+        # Stable name for solakuti's nginx to proxy to, independent of the
+        # compose-generated container name.
+        aliases:
+          - knoledgr-web
+    mem_limit: 128m
+
+volumes:
+  postgres_data:
+  redis_data:
+  static_data:
+  media_data:
+  beat_data:
+
+networks:
+  default:
+  # Created out of band (docker network create recall_edge) and declared
+  # external by both stacks, so neither owns or can delete the other's link.
+  edge:
+    external: true
+    name: recall_edge

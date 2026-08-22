@@ -18,6 +18,9 @@ import "./GitHubIntegration.css";
 const INSTALL_URL_ENDPOINT = "/api/integrations/github/app/install-url/";
 const INSTALLATION_ENDPOINT = "/api/integrations/github/app/";
 const REPOS_ENDPOINT = "/api/integrations/github/app/repos/";
+
+// Sentinel value for the dropdown row that starts a new project.
+const NEW_PROJECT = "__new__";
 const RESYNC_ENDPOINT = "/api/integrations/github/app/resync/";
 
 function GitHubGlyph({ size = 22 }) {
@@ -53,6 +56,14 @@ export default function GitHubIntegration() {
   const [installing, setInstalling] = useState(false);
   const [resyncing, setResyncing] = useState(false);
   const [filter, setFilter] = useState("");
+  // Other workspaces this person belongs to. Empty for most users, which
+  // is why the control below only appears when there is somewhere to move to.
+  const [workspaces, setWorkspaces] = useState([]);
+  // Projects in this workspace a repo can be the code for.
+  const [projects, setProjects] = useState([]);
+  const [creatingFor, setCreatingFor] = useState(null);
+  const [newProjectName, setNewProjectName] = useState("");
+  const [imports, setImports] = useState({});
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
@@ -62,6 +73,8 @@ export default function GitHubIntegration() {
       const inst = data?.github_app;
       setInstallation(inst && inst.connected ? inst : null);
       setRepos(Array.isArray(data?.results) ? data.results : []);
+      setWorkspaces(Array.isArray(data?.available_workspaces) ? data.available_workspaces : []);
+      setProjects(Array.isArray(data?.available_projects) ? data.available_projects : []);
     } catch (err) {
       setError(err?.response?.data?.error || err?.message || "Could not load GitHub integration");
     } finally {
@@ -123,6 +136,143 @@ export default function GitHubIntegration() {
     }
   };
 
+  // One repo, one project. Setting it here is what makes attribution
+  // automatic afterwards: a decision reached through this repo inherits the
+  // project without anyone remembering to say so.
+  const setProject = async (repo, projectId) => {
+    // The dropdown doubles as the way in to creating one. A project here is
+    // just the namespace the record hangs off, so the only thing worth asking
+    // for is its name.
+    if (projectId === NEW_PROJECT) {
+      setCreatingFor(repo.id);
+      setNewProjectName("");
+      return;
+    }
+    const previous = repo.project_id ?? null;
+    const next = projectId === "" ? null : Number(projectId);
+    setRepos((prev) =>
+      prev.map((r) => (r.id === repo.id ? { ...r, project_id: next } : r))
+    );
+    try {
+      const { data } = await api.patch(`${REPOS_ENDPOINT}${repo.id}/project/`, {
+        project_id: next,
+      });
+      setRepos((prev) => prev.map((r) => (r.id === repo.id ? { ...r, ...data } : r)));
+    } catch (err) {
+      // Put the old value back rather than leaving the row showing a change
+      // that did not happen — a 409 here means another repo already holds it.
+      setRepos((prev) =>
+        prev.map((r) => (r.id === repo.id ? { ...r, project_id: previous } : r))
+      );
+      setError(
+        err?.response?.data?.error || err?.message || "Could not set the project"
+      );
+    }
+  };
+
+  // Create and assign in one call. Two round trips would leave a project
+  // stranded in the workspace if the second failed, and a stranded project is
+  // indistinguishable from one somebody meant to keep.
+  const createProject = async (repo) => {
+    const name = newProjectName.trim();
+    if (!name) return;
+    try {
+      const { data } = await api.patch(`${REPOS_ENDPOINT}${repo.id}/project/`, {
+        project_name: name,
+      });
+      setRepos((prev) => prev.map((r) => (r.id === repo.id ? { ...r, ...data } : r)));
+      if (data?.project_id) {
+        setProjects((prev) =>
+          prev.some((p) => p.id === data.project_id)
+            ? prev
+            : [...prev, { id: data.project_id, name: data.project_name || name }]
+        );
+      }
+      setCreatingFor(null);
+      setNewProjectName("");
+      setError("");
+    } catch (err) {
+      setError(
+        err?.response?.data?.error || err?.message || "Could not create the project"
+      );
+    }
+  };
+
+  const cancelCreate = () => {
+    setCreatingFor(null);
+    setNewProjectName("");
+  };
+
+  // Capture rides live merge events, so a repo connected today shows nothing
+  // until the next substantive merge. The team's own history is the best
+  // demonstration the product has, and until now it was only reachable from a
+  // shell on the server — which no customer has.
+  const readImport = async (repo) => {
+    try {
+      const { data } = await api.get(`${REPOS_ENDPOINT}${repo.id}/import/`);
+      setImports((prev) => ({ ...prev, [repo.id]: data }));
+      return data;
+    } catch (_) {
+      return null;
+    }
+  };
+
+  const startImport = async (repo) => {
+    setImports((prev) => ({
+      ...prev,
+      [repo.id]: { ...(prev[repo.id] || {}), status: "queued", examined: 0, total: 0, captured: 0 },
+    }));
+    try {
+      const { data } = await api.post(`${REPOS_ENDPOINT}${repo.id}/import/`);
+      setImports((prev) => ({ ...prev, [repo.id]: data }));
+    } catch (err) {
+      setImports((prev) => ({
+        ...prev,
+        [repo.id]: {
+          ...(prev[repo.id] || {}),
+          status: "failed",
+          error: err?.response?.data?.error || "Could not start the import",
+        },
+      }));
+    }
+  };
+
+
+  // One read per repo when the list arrives. The durable answer to "has this
+  // ever captured anything" is a count of conversations, not a cached job.
+  useEffect(() => {
+    if (!repos.length) return;
+    repos.forEach((repo) => {
+      if (imports[repo.id] === undefined) readImport(repo);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [repos]);
+
+  // Poll only while a job is actually running, and stop the moment none is.
+  useEffect(() => {
+    const running = repos.filter(
+      (r) => ["queued", "running"].includes(imports[r.id]?.status)
+    );
+    if (!running.length) return undefined;
+    const timer = setInterval(() => running.forEach((r) => readImport(r)), 2000);
+    return () => clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [repos, imports]);
+
+  const moveRepo = async (repo, orgId) => {
+    if (!orgId) return;
+    try {
+      await api.patch(`${REPOS_ENDPOINT}${repo.id}/workspace/`, { org_id: Number(orgId) });
+      // It leaves this workspace, so drop it from the list rather than
+      // showing a row that now belongs somewhere else.
+      setRepos((prev) => prev.filter((r) => r.id !== repo.id));
+    } catch (err) {
+      setError(
+        err?.response?.data?.error || err?.message || "Could not move that repository"
+      );
+    }
+  };
+
   const toggleRepo = async (repo, next) => {
     // Optimistic update — flip back if the server rejects.
     setRepos((prev) =>
@@ -138,6 +288,116 @@ export default function GitHubIntegration() {
     }
   };
 
+
+  // Five outcomes, and the wording of each matters more than the layout.
+  // "Nothing met the bar" is the filter working; a repo with no merged pull
+  // requests can never produce anything at all. Reporting both as a zero
+  // would make a working product look broken.
+  const renderImport = (repo) => {
+    const state = imports[repo.id];
+    if (!state) return null;
+
+    const status = state.status;
+    const everCaptured = state.conversations_captured_total || 0;
+
+    if (status === "queued" || status === "running") {
+      const total = state.total || 0;
+      const done = state.examined || 0;
+      const pct = total ? Math.round((done / total) * 100) : 0;
+      return (
+        <div className="gh-import is-running">
+          <span className="gh-import-text">
+            {total
+              ? `Reading merged pull requests… ${done} of ${total}`
+              : "Looking for merged pull requests…"}
+          </span>
+          <span className="gh-import-bar" aria-hidden="true">
+            <span className="gh-import-fill" style={{ width: `${pct}%` }} />
+          </span>
+        </div>
+      );
+    }
+
+    if (status === "failed") {
+      return (
+        <div className="gh-import is-failed">
+          <span className="gh-import-text">{state.error || "The import failed."}</span>
+          <button type="button" className="gh-mini" onClick={() => startImport(repo)}>
+            Try again
+          </button>
+        </div>
+      );
+    }
+
+    if (status === "done" && state.no_pull_requests) {
+      return (
+        <div className="gh-import">
+          <span className="gh-import-text">
+            This repository has no merged pull requests. Knoledgr reads the
+            discussion on pull requests, so there is nothing here to read yet.
+          </span>
+        </div>
+      );
+    }
+
+    if (status === "done") {
+      const captured = state.captured || 0;
+      const already = state.already || 0;
+      const total = state.total || 0;
+      const passed = Math.max(0, total - captured - already);
+      // Already recorded and did not clear the bar are opposite findings.
+      // Saying a discussion was not substantive when we simply had it
+      // already blames the team for our own bookkeeping.
+      let message;
+      if (captured) {
+        message = `${captured} conversation${captured === 1 ? "" : "s"} captured from ${total} merged pull request${total === 1 ? "" : "s"}.`;
+        if (already) message += ` ${already} were already recorded.`;
+      } else if (already && !passed) {
+        message = `All ${already} merged pull request${already === 1 ? " was" : "s were"} already recorded. Nothing new to read.`;
+      } else if (already) {
+        message = `${already} already recorded, and the other ${passed} had no substantive discussion to read.`;
+      } else {
+        message = `Nothing to capture from ${total} merged pull request${total === 1 ? "" : "s"}. A discussion is recorded when at least two people wrote something substantive, which most merges do not.`;
+      }
+      return (
+        <div className="gh-import is-done">
+          <span className="gh-import-text">{message}</span>
+          {captured ? <Link className="gh-mini" to="/conversations">View conversations</Link> : null}
+        </div>
+      );
+    }
+
+    if (everCaptured) {
+      return (
+        <div className="gh-import is-quiet">
+          <span className="gh-import-text">
+            {everCaptured} conversation{everCaptured === 1 ? "" : "s"} captured from this repository.
+          </span>
+          <button type="button" className="gh-mini gh-mini-quiet" onClick={() => startImport(repo)}>
+            Check for older ones
+          </button>
+        </div>
+      );
+    }
+
+    return (
+      <div className="gh-import">
+        <span className="gh-import-text">
+          Nothing captured yet. Knoledgr reads discussion from pull requests as
+          they merge, and can look back over ones that already merged.
+        </span>
+        <button
+          type="button"
+          className="gh-mini"
+          disabled={!repo.is_enabled_for_decisions}
+          onClick={() => startImport(repo)}
+        >
+          Import past discussions
+        </button>
+      </div>
+    );
+  };
+
   const filteredRepos = useMemo(() => {
     const q = filter.trim().toLowerCase();
     if (!q) return repos;
@@ -145,6 +405,9 @@ export default function GitHubIntegration() {
   }, [repos, filter]);
 
   const enabledCount = useMemo(() => repos.filter((r) => r.is_enabled_for_decisions).length, [repos]);
+  const installationMissingOnGitHub = installation?.verification_status === "missing_on_github";
+  const installationCheckFailed = installation?.verification_status === "check_failed";
+  const installationCheckStale = installation?.verification_status === "check_stale";
 
   return (
     <div className="gh-page">
@@ -162,7 +425,7 @@ export default function GitHubIntegration() {
           <span className="gh-connection-mark"><GitHubGlyph size={26} /></span>
           {installation ? (
             <div>
-              <p className="gh-eyebrow">Connected</p>
+              <p className="gh-eyebrow">{installationMissingOnGitHub ? "Needs attention" : "Connected"}</p>
               <h2 className="gh-account">{installation.account_login}</h2>
               <p className="gh-sub">
                 {installation.repository_selection === "all" ? "All repositories" : `${enabledCount} of ${repos.length} repos enabled for decisions`}
@@ -172,6 +435,24 @@ export default function GitHubIntegration() {
                 <p className="gh-warning">
                   <ExclamationCircleIcon />
                   {installation.revoked_at ? "Install was revoked on the GitHub side." : "Install is suspended."} Webhook events have stopped.
+                </p>
+              ) : null}
+              {installation.is_active && installationMissingOnGitHub ? (
+                <p className="gh-warning">
+                  <ExclamationCircleIcon />
+                  GitHub no longer reports this installation. New webhook events may have stopped; reconnect the App to restore the integration.
+                </p>
+              ) : null}
+              {installation.is_active && installationCheckFailed ? (
+                <p className="gh-warning">
+                  <ExclamationCircleIcon />
+                  Knoledgr could not complete the latest automatic GitHub installation check. The connection has not been verified.
+                </p>
+              ) : null}
+              {installation.is_active && installationCheckStale ? (
+                <p className="gh-warning">
+                  <ExclamationCircleIcon />
+                  The automatic GitHub installation check is overdue. Confirm the Celery beat process is running.
                 </p>
               ) : null}
             </div>
@@ -265,6 +546,61 @@ export default function GitHubIntegration() {
                       {repo.last_synced_at ? <span className="gh-relative">synced {relTime(repo.last_synced_at)}</span> : null}
                     </span>
                   </div>
+                  {creatingFor === repo.id ? (
+                    <span className="gh-project-new">
+                      <input
+                        className="gh-project-input"
+                        value={newProjectName}
+                        autoFocus
+                        placeholder="What is this code for?"
+                        aria-label={`New project for ${repo.full_name}`}
+                        onChange={(e) => setNewProjectName(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") createProject(repo);
+                          if (e.key === "Escape") cancelCreate();
+                        }}
+                      />
+                      <button
+                        type="button"
+                        className="gh-mini"
+                        disabled={!newProjectName.trim()}
+                        onClick={() => createProject(repo)}
+                      >
+                        Save
+                      </button>
+                      <button type="button" className="gh-mini gh-mini-quiet" onClick={cancelCreate}>
+                        Cancel
+                      </button>
+                    </span>
+                  ) : (
+                    <select
+                      className="gh-project"
+                      value={repo.project_id ?? ""}
+                      aria-label={`Project for ${repo.full_name}`}
+                      title="Which project is this repository the code for?"
+                      onChange={(e) => setProject(repo, e.target.value)}
+                    >
+                      <option value="">No project</option>
+                      {projects.map((p) => (
+                        <option key={p.id} value={p.id}>{p.name}</option>
+                      ))}
+                      <option value={NEW_PROJECT}>+ New project...</option>
+                    </select>
+                  )}
+                  {workspaces.length ? (
+                    <select
+                      className="gh-move"
+                      value=""
+                      aria-label={`Move ${repo.full_name} to another workspace`}
+                      title="Move this repository to another workspace"
+                      onChange={(e) => moveRepo(repo, e.target.value)}
+                    >
+                      <option value="">Move to…</option>
+                      {workspaces.map((w) => (
+                        <option key={w.org_id} value={w.org_id}>{w.org_name}</option>
+                      ))}
+                    </select>
+                  ) : null}
                   <label className="gh-toggle" title={repo.is_enabled_for_decisions ? "Enabled for decisions" : "Disabled"}>
                     <input
                       type="checkbox"
@@ -273,6 +609,7 @@ export default function GitHubIntegration() {
                     />
                     <span className="gh-toggle-track" />
                   </label>
+                  {renderImport(repo)}
                 </li>
               ))}
             </ul>

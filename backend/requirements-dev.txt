@@ -1,0 +1,16 @@
+# Test-only dependencies. Deliberately NOT in requirements.txt — the runtime
+# image should not carry a test runner.
+#
+#   pip install -r requirements-dev.txt
+#   python manage.py test --settings=config.settings_test
+#
+# apps/organizations/tests_integration.py is written against pytest fixtures;
+# without these installed it skips itself rather than erroring the suite.
+-r requirements.txt
+
+pytest==7.4.4
+pytest-django==4.7.0
+# apps/organizations/factories.py imports this. It was in neither requirements
+# file, so the documented dev install still could not run the module it exists
+# for.
+factory-boy==3.3.0

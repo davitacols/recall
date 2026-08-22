@@ -8,7 +8,13 @@ from . import bm25_endpoints, faq_endpoints
 app_name = 'bm25_search'
 
 urlpatterns = [
-    # Main search endpoint
+    # Main search endpoint.
+    #
+    # This module is mounted at /api/recall/search/, so 'search/' below resolves
+    # to /api/recall/search/search/ — a doubled segment the frontend ended up
+    # coding against. The empty path is the intended URL; both are kept live so
+    # existing clients (frontend, mobile) keep working while callers move over.
+    path('', bm25_endpoints.search, name='search-root'),
     path('search/', bm25_endpoints.search, name='search'),
     path('search/filtered/', bm25_endpoints.search_filtered, name='search-filtered'),
     

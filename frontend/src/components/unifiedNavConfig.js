@@ -1,24 +1,14 @@
 import {
-  BoltIcon,
-  CalendarIcon,
   ChartBarIcon,
   ChatBubbleLeftIcon,
-  ClipboardDocumentListIcon,
-  Cog6ToothIcon,
   CpuChipIcon,
   CubeIcon,
   DocumentCheckIcon,
   DocumentTextIcon,
-  FlagIcon,
-  HeartIcon,
   HomeIcon,
   MagnifyingGlassIcon,
-  RocketLaunchIcon,
   SparklesIcon,
   Squares2X2Icon,
-  TicketIcon,
-  UserCircleIcon,
-  RectangleGroupIcon,
 } from "@heroicons/react/24/outline";
 
 export function getAppLaunchTarget(app) {
@@ -69,7 +59,7 @@ export function getFirstNavTarget(item) {
   return item?.items?.[0]?.href || "/dashboard";
 }
 
-export function buildUnifiedNavModel({ user, experienceMode = "standard", installedApps = [] }) {
+export function buildUnifiedNavModel({ experienceMode = "standard", installedApps = [] }) {
   const homeItem = {
     name: "Home",
     href: "/dashboard",
@@ -93,54 +83,28 @@ export function buildUnifiedNavModel({ user, experienceMode = "standard", instal
     summary: "Autonomous workspace agent with tool use.",
   };
 
+  // Memory leads. The navigation opened with "Knowledge" — the search tooling —
+  // while the decision record sat under "Collaborate", a name that describes an
+  // activity rather than the thing being built. The record *is* the product;
+  // search is how you get back into it. Ordering them the other way round asked
+  // every new user to find the point of the tool on their own.
   const workstreamGroupsBase = [
     {
-      name: "Knowledge",
-      icon: Squares2X2Icon,
-      summary: "The context engine behind grounded AI",
+      name: "Memory",
+      icon: DocumentCheckIcon,
+      summary: "What the team decided, and why",
       items: [
-        {
-          name: "Search",
-          href: "/knowledge",
-          icon: MagnifyingGlassIcon,
-          description: "Find the source context behind AI answers",
-        },
-        {
-          name: "Browse",
-          href: "/knowledge/base",
-          icon: CubeIcon,
-          description: "Browse the workspace knowledge base",
-        },
-        {
-          name: "Graph",
-          href: "/knowledge/graph",
-          icon: CubeIcon,
-          description: "Trace the context graph AI uses to reason",
-        },
-        {
-          name: "Insights",
-          href: "/knowledge/insights",
-          icon: ChartBarIcon,
-          description: "Measure AI context coverage, freshness, and flow",
-        },
-      ],
-    },
-    {
-      name: "Collaborate",
-      icon: ChatBubbleLeftIcon,
-      summary: "Conversations, decisions, and meetings in motion",
-      items: [
-        {
-          name: "Conversations",
-          href: "/conversations",
-          icon: ChatBubbleLeftIcon,
-          description: "Review discussion threads and linked follow-through",
-        },
         {
           name: "Decisions",
           href: "/decisions",
           icon: DocumentCheckIcon,
-          description: "Track committed choices, rationale, and owners",
+          description: "Committed choices, the reasoning behind them, and the code that implemented them",
+        },
+        {
+          name: "Conversations",
+          href: "/conversations",
+          icon: ChatBubbleLeftIcon,
+          description: "The discussions decisions come from — written here or captured from merged PRs",
         },
         {
           name: "Decision Intelligence",
@@ -148,118 +112,50 @@ export function buildUnifiedNavModel({ user, experienceMode = "standard", instal
           icon: ChartBarIcon,
           description: "Predicted outcomes vs. reality across every decision",
         },
-        {
-          name: "Meetings",
-          href: "/business/meetings",
-          icon: CalendarIcon,
-          description: "Capture meetings and keep follow-up visible",
-        },
-      ],
-    },
-    {
-      name: "Execute",
-      icon: RocketLaunchIcon,
-      summary: "Projects, goals, tasks, and sprint delivery",
-      items: [
-        {
-          name: "Projects",
-          href: "/projects",
-          icon: CubeIcon,
-          description: "Monitor project health, scope, and execution lanes",
-        },
-        {
-          name: "Goals",
-          href: "/business/goals",
-          icon: FlagIcon,
-          description: "Track outcomes, owners, and performance targets",
-        },
-        {
-          name: "Tasks",
-          href: "/business/tasks",
-          icon: ClipboardDocumentListIcon,
-          description: "Move day-to-day execution and ownership forward",
-        },
-        {
-          name: "Journeys",
-          href: "/business/journeys",
-          icon: Squares2X2Icon,
-          description: "Map work from signal to decision to delivered outcome",
-        },
-        {
-          name: "Calendar",
-          href: "/business/calendar",
-          icon: CalendarIcon,
-          description: "Find time, connect calendars, and slot work into the week",
-        },
-        {
-          name: "Team Health",
-          href: "/business/team-health",
-          icon: HeartIcon,
-          description: "Review load, sentiment, and burnout risk signals",
-        },
-        {
-          name: "Service Desk",
-          href: "/service-desk",
-          icon: TicketIcon,
-          description: "Capture support, access, bug, incident, and change requests",
-        },
-        {
-          name: "Sprints",
-          href: "/sprint-history",
-          icon: RocketLaunchIcon,
-          description: "Inspect sprint progress, rhythm, and delivery health",
-        },
-      ],
-    },
-    {
-      name: "Resources",
-      icon: DocumentTextIcon,
-      summary: "Docs, templates, and operational assets",
-      items: [
-        {
-          name: "Docs",
-          href: "/docs",
-          icon: DocumentTextIcon,
-          description: "Reference product docs, guides, and system notes",
-        },
+        // Documents sits here rather than in a group of its own. It is not a
+        // place to go and write — Notion and Confluence do that better, and ten
+        // documents in five months says nobody was using it that way. It is the
+        // material the record cites: indexed for search, and already the target
+        // of 41 content links. So it belongs beside the record, quietly.
         {
           name: "Documents",
           href: "/business/documents",
           icon: DocumentTextIcon,
-          description: "Open working documents, briefs, and deliverables",
+          description: "Briefs and specs the record cites — indexed, so Ask Recall can quote them",
+        },
+      ],
+    },
+    {
+      name: "Explore",
+      icon: Squares2X2Icon,
+      summary: "Ways back into the record",
+      items: [
+        // Browse used to sit here. Its page is six lines that redirect to
+        // Search, so the item promised somewhere to browse and quietly landed
+        // you somewhere else. The route stays for old links; the nav entry
+        // does not, because an item that goes to another item's destination is
+        // worse than no item.
+        {
+          name: "Search",
+          href: "/knowledge",
+          icon: MagnifyingGlassIcon,
+          description: "Search everything: decisions, discussions, documents",
         },
         {
-          name: "Templates",
-          href: "/business/templates",
-          icon: DocumentTextIcon,
-          description: "Reuse structured working documents and starter assets",
+          name: "Graph",
+          href: "/knowledge/graph",
+          icon: CubeIcon,
+          description: "See how records connect to each other",
         },
-        ...(user?.is_staff || user?.is_superuser
-          ? [
-              {
-                name: "Feedback Inbox",
-                href: "/feedback/inbox",
-                icon: ChatBubbleLeftIcon,
-                description: "Review incoming customer product feedback",
-              },
-              {
-                name: "Partner Inbox",
-                href: "/partners/inbox",
-                icon: ClipboardDocumentListIcon,
-                description: "Track partner-facing operational conversations",
-              },
-            ]
-          : []),
-        ...(user?.role === "admin"
-          ? [
-              {
-                name: "Import/Export",
-                href: "/import-export",
-                icon: DocumentTextIcon,
-                description: "Move structured data into and out of the workspace",
-              },
-            ]
-          : []),
+        {
+          name: "Insights",
+          href: "/knowledge/insights",
+          icon: ChartBarIcon,
+          // Was "Measure AI context coverage, freshness, and flow", which
+          // described a page that does not exist. This one counts records,
+          // ranks contributors and lists recent activity.
+          description: "Totals, contributors and recent activity",
+        },
       ],
     },
   ];
@@ -269,26 +165,16 @@ export function buildUnifiedNavModel({ user, experienceMode = "standard", instal
       ? workstreamGroupsBase
       : workstreamGroupsBase
           .map((group) => {
-            if (group.name === "Knowledge") {
+            if (group.name === "Explore") {
               return {
                 ...group,
                 items: group.items.filter((item) => ["/knowledge"].includes(item.href)),
               };
             }
-            if (group.name === "Execute") {
-              return {
-                ...group,
-                items: group.items.filter((item) =>
-                  ["/projects", "/business/goals", "/business/tasks", "/business/calendar", "/service-desk"].includes(item.href)
-                ),
-              };
-            }
-            if (group.name === "Resources") {
-              return {
-                ...group,
-                items: group.items.filter((item) => ["/docs"].includes(item.href)),
-              };
-            }
+            // Two arms used to live here, for Execute and Resources. Both
+            // filtered groups that have since been dissolved, so both went on
+            // matching nothing — the same dead branch twice over. Simple mode
+            // now only has to narrow Explore.
             return group;
           })
           .filter((group) => group.items.length > 0);
@@ -316,58 +202,41 @@ export function buildUnifiedNavModel({ user, experienceMode = "standard", instal
     items: appItems,
   };
 
+  // One item.
+  //
+  // This was eight: Profile, Settings, Integrations, two staff inboxes,
+  // Import/Export, Analytics and Dashboards. Profile and Settings are both in
+  // the account menu in the top bar, so they were a second route to a page
+  // already one click away. Of the rest, saved dashboards number zero, partner
+  // inquiries one, and search analytics four rows — surfaces that exist rather
+  // than surfaces anyone uses.
+  //
+  // Integrations stays because it is the only way to connect GitHub and
+  // nothing else offers it.
+  //
+  // I moved three of these here an hour ago arguing that hiding them would
+  // orphan them. That was the wrong trade: it swapped an unreachable page for
+  // a permanently cluttered footer on every screen. They remain reachable by
+  // URL, and if any of them turns out to matter it belongs in Settings, which
+  // already has sections, rather than back in the nav.
   const utilityItems = [
-    {
-      name: "Profile",
-      href: "/profile",
-      icon: UserCircleIcon,
-      description: "Identity, personal preferences, and how you work across Knoledgr.",
-    },
-    {
-      name: "Settings",
-      href: "/settings",
-      icon: Cog6ToothIcon,
-      description: "Workspace configuration, access, and experience controls.",
-    },
     {
       name: "Integrations",
       href: "/integrations",
       icon: CubeIcon,
       description: "Connected tools, credentials, and service setup.",
     },
-    ...(user?.role === "admin"
-      ? [
-          {
-            name: "Analytics",
-            href: "/analytics",
-            icon: ChartBarIcon,
-            description: "Workspace metrics, briefing signals, and activity trends.",
-          },
-          {
-            name: "Dashboards",
-            href: "/dashboards",
-            icon: RectangleGroupIcon,
-            description: "Reusable dashboard views for operating reviews.",
-          },
-        ]
-      : []),
   ];
 
   const bottomNavItems = [
     { path: homeItem.href, icon: homeItem.icon, label: "Home", match: [homeItem.href] },
-    { path: "/knowledge", icon: Squares2X2Icon, label: "Knowledge", match: ["/knowledge"] },
     {
-      path: "/conversations",
-      icon: ChatBubbleLeftIcon,
-      label: "Collab",
-      match: ["/conversations", "/decisions", "/business/meetings"],
+      path: "/decisions",
+      icon: DocumentCheckIcon,
+      label: "Decisions",
+      match: ["/decisions", "/conversations"],
     },
-    {
-      path: "/projects",
-      icon: RocketLaunchIcon,
-      label: "Execute",
-      match: ["/projects", "/business/goals", "/business/tasks", "/business/journeys", "/business/calendar", "/business/team-health", "/service-desk", "/sprint-history", "/sprints", "/sprint"],
-    },
+    { path: askRecallItem.href, icon: SparklesIcon, label: "Ask", match: [askRecallItem.href] },
   ];
 
   const mobileMenuSections = [

@@ -7,11 +7,16 @@ Three surfaces in the linking pipeline:
    ``<!-- knoledgr-decision:42 -->`` auto-creates the link with
    ``link_source=badge``. Teams add the marker to their PR template once
    and never have to use the picker.
-3. **Branch pattern** (this module, optional) — a head branch named
-   ``dec/42-…``, ``decision/42-…``, or ``knoledgr/42-…`` matches
-   decision 42 in the workspace. Off by default to avoid surprising teams
-   whose branch names happen to start with ``dec``; a workspace setting
-   could turn it on later if there is demand.
+3. **Branch pattern** (this module) — a head branch named ``dec/42-…``,
+   ``decision/42-…``, or ``knoledgr/42-…`` matches decision 42 in the
+   workspace, with ``link_source=branch``.
+
+   This previously claimed to be off by default and env-gated. It is
+   neither: the fallback below runs on every PR that carries no marker,
+   and there is no setting anywhere that disables it. The behaviour is
+   reasonable — the prefixes are specific and a wrong id simply finds no
+   decision in the workspace and is ignored — but the comment described a
+   safeguard that does not exist, which is worse than having no comment.
 
 Every PR webhook also refreshes the cached metadata on any existing
 ``DecisionPullRequest`` rows for that PR so the decision detail page
@@ -88,7 +93,61 @@ def handle_pull_request_event(
     snapshot = _pr_snapshot(pr)
 
     # 1 + 2: refresh existing rows for this PR (cheap, always run).
+    # Deliberately runs even for disabled repos: links created while the repo
+    # was enabled should not silently go stale, and the UI promises that
+    # "past links stay intact".
     _refresh_existing_links(repo, pr_number, snapshot)
+
+    # A disabled repo must not produce NEW links. Without this the toggle only
+    # hid repos from the PR picker while the webhook kept auto-linking them
+    # behind the user's back — the opposite of what "disabled" implies, and a
+    # real problem for an installation granted access to every repo in an
+    # account, where most of them are nothing to do with this workspace.
+    if not repo.is_enabled_for_decisions:
+        logger.info(
+            "Skipping auto-link for disabled repo %s (PR #%s)",
+            repo.full_name, pr_number,
+        )
+        return
+
+    # 2.5: a merged PR's review discussion is raw material for a decision.
+    # Runs before the marker logic and independently of it — whether or not
+    # this PR links to an existing decision, the argument inside it is worth
+    # keeping, and it is the only capture source that costs the team nothing.
+    if action == "closed" and pr.get("merged"):
+        try:
+            from apps.integrations.github_pr_capture import maybe_capture_pr_discussion
+
+            maybe_capture_pr_discussion(installation=installation, repo=repo, pr=pr)
+        except Exception:
+            logger.exception(
+                "PR discussion capture failed for %s#%s", repo.full_name, pr_number
+            )
+
+    # 2.6: what was already decided about the files this PR touches?
+    #
+    # Runs independently of every linking rule below, because it answers the
+    # opposite question. Those ask which decision this PR implements; this asks
+    # what the code already carries. A PR can be linked to nothing and still be
+    # about to unpick a choice made deliberately last spring.
+    #
+    # On open only: a reviewer forms their opinion once, and the reasoning is
+    # worth most before that happens.
+    if action in {"opened", "reopened", "ready_for_review"}:
+        try:
+            from django.conf import settings
+            from apps.integrations.github_pr_context import maybe_comment_context
+
+            maybe_comment_context(
+                installation=installation,
+                repo=repo,
+                pr=pr,
+                base_url=getattr(settings, "FRONTEND_URL", "") or "",
+            )
+        except Exception:
+            logger.exception(
+                "PR context comment failed for %s#%s", repo.full_name, pr_number
+            )
 
     # 3: parse inline markers from the body.
     body = pr.get("body") or ""
@@ -108,6 +167,28 @@ def handle_pull_request_event(
         link_source = DecisionPullRequest.LINK_SOURCE_BADGE
 
     if not decision_ids:
+        # Nothing explicit to go on. Rather than give up silently — which is
+        # how zero of the recorded decisions ended up linked to a PR — offer a
+        # suggestion on the PR itself, where the author already is. It only
+        # proposes; the link is still created by a human adding the marker.
+        if action in {"opened", "reopened", "ready_for_review"}:
+            try:
+                from django.conf import settings
+                from apps.integrations.github_pr_suggest import maybe_comment_suggestion
+
+                maybe_comment_suggestion(
+                    installation=installation,
+                    repo=repo,
+                    pr=pr,
+                    base_url=getattr(settings, "FRONTEND_URL", "") or "",
+                    snapshot=snapshot,
+                )
+            except Exception:
+                # A failed suggestion must never fail the webhook: GitHub
+                # retries non-2xx, and a bad comment is not worth a retry storm.
+                logger.exception(
+                    "PR suggestion failed for %s#%s", repo.full_name, pr_number
+                )
         return
 
     for decision_id in decision_ids[:_MAX_AUTOLINKS_PER_PR]:
@@ -216,7 +297,9 @@ def _auto_link(
     decision id doesn't belong to the workspace (the most common rejection
     case — a marker for a decision that lives elsewhere).
     """
-    org = installation.organization
+    # The repo decides the workspace, not the installation: one
+    # installation can now serve several, with repos split between them.
+    org = repo.organization
     decision = Decision.objects.filter(id=decision_id, organization=org).first()
     if not decision:
         logger.info(
@@ -249,6 +332,23 @@ def _auto_link(
         "Auto-linked decision=%s to %s#%s via %s",
         decision_id, repo.full_name, pr_number, link_source,
     )
+
+    # One repo, one project — so a decision about this repo is a decision about
+    # that project, and nobody has to remember to say so.
+    from apps.integrations.decision_project import adopt_project_from_repo
+
+    adopt_project_from_repo(decision, repo)
+
+    # Record which files this decision was implemented in, so the reasoning is
+    # reachable from the code later. Best effort, and deliberately not fatal:
+    # the link is the valuable part and must survive a failure here.
+    try:
+        from apps.integrations.github_decision_files import sync_link_files
+
+        sync_link_files(link)
+    except Exception:
+        logger.exception("File attribution failed for link %s", link.id)
+
     return link
 
 

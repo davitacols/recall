@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   ArrowRightIcon,
   BoltIcon,
@@ -196,6 +196,19 @@ export default function AskRecall() {
 
   // Pull the org's members so the copilot can scope by person and so we can
   // detect who's involved in any given answer.
+  // Whether the model API is actually answering. Accepting a question,
+  // spinning, and returning an error reads as the product being broken rather
+  // than the balance being empty.
+  const [aiState, setAiState] = useState(null);
+  useEffect(() => {
+    let live = true;
+    api
+      .get("/api/decisions/memory-health/")
+      .then((r) => { if (live) setAiState(r?.data?.ai || null); })
+      .catch(() => {});
+    return () => { live = false; };
+  }, []);
+
   useEffect(() => {
     let mounted = true;
     api
@@ -385,6 +398,23 @@ export default function AskRecall() {
     runQuery(query);
   };
 
+  // Arriving with a question already typed, from the dashboard or a link.
+  // Runs it rather than only filling the box: someone who pressed enter on a
+  // question has already asked, and making them press enter twice reads as
+  // the first one having failed.
+  const [searchParams, setSearchParams] = useSearchParams();
+  useEffect(() => {
+    const seeded = (searchParams.get("q") || "").trim();
+    if (!seeded) return;
+    setQuery(seeded);
+    runQuery(seeded);
+    // Drop it from the URL so a refresh does not silently re-ask, and a
+    // copied link does not carry someone else's question.
+    searchParams.delete("q");
+    setSearchParams(searchParams, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleExecute = async (turn) => {
     if (!canExecute || !turn?.nextActions?.length) return;
     const count = turn.nextActions.length;
@@ -557,6 +587,13 @@ export default function AskRecall() {
           )}
 
           <div className="ar-composer-wrap">
+            {aiState && aiState.available === false ? (
+              <p className="ar-unavailable" role="status">
+                {aiState.reason || "The AI service is not responding."}{" "}
+                Questions cannot be answered until it is restored. Everything
+                already recorded is unaffected, and search still works.
+              </p>
+            ) : null}
             <form className="ar-composer" onSubmit={handleSubmit}>
               <div className="ar-modes">
                 {MODES.map((m) => (

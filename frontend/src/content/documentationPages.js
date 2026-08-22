@@ -155,6 +155,57 @@ const BASE_DOCUMENTATION_GROUPS = [
     title: "Core Workflows",
     pages: [
       {
+        id: "capture-from-pull-requests",
+        slug: "workflows/capture-from-pull-requests",
+        title: "Capture from pull requests",
+        summary: "The part that costs you nothing: Knoledgr reads the discussion on merged pull requests and records the ones that argued something out.",
+        readTime: "4 min",
+        audience: "Engineers",
+        sections: [
+          {
+            heading: "What happens, and when",
+            paragraphs: [
+              "Once a repository is connected, Knoledgr watches for merges. When a pull request merges carrying a real discussion, it records that discussion as a conversation — the transcript, who said what, and a link back to the pull request. Nobody types anything.",
+              "It reads three places, because an argument can happen in any of them: review summaries, comments anchored to a line of the diff, and the top-level thread on the pull request.",
+            ],
+          },
+          {
+            heading: "Why most merges produce nothing",
+            paragraphs: [
+              "This is the part worth understanding, because otherwise a working integration looks broken. Silence is the normal outcome and it is deliberate.",
+              "A merged pull request earns a conversation only when people actually argued in it:",
+            ],
+            bullets: [
+              "At least two substantive comments from humans. One person explaining themselves is a note, not a discussion.",
+              "240 characters of discussion in total. Below that it is acknowledgement, not reasoning.",
+              "40 characters per comment, which filters \"LGTM\" and \"ship it\" without discarding terse reasoning.",
+              "Bot accounts are ignored. A dependency bump and a preview-deployment notice are not institutional memory.",
+            ],
+          },
+          {
+            heading: "What it cannot do",
+            paragraphs: [
+              "Capture reads pull requests. If your team merges straight to the main branch, there is no discussion to read and nothing will ever appear — no configuration changes that.",
+              "It also only looks forward, from the moment you connect. To read discussions that merged before that, use Import past discussions on the repository row in Integrations. It applies exactly the same bar, so most of the history will be passed over too.",
+            ],
+          },
+          {
+            heading: "What to do with a captured conversation",
+            paragraphs: [
+              "You will get a notification when one is recorded. Open it and read the argument. If it settled something, convert it to a decision — that is the one deliberate act in the whole loop.",
+              "Do not convert everything. A conversation is a record of a discussion; a decision is a choice someone will need explained in six months. The test is whether a future reader would need this to understand something in the code.",
+            ],
+          },
+          {
+            heading: "Making capture work better",
+            paragraphs: [
+              "The single habit that improves everything downstream is small: when you settle something in a review, say why in the comment, not just what. One sentence is enough.",
+              "Everything after this — the extracted reasoning, the link to the code, the answer someone gets six months from now — is built on that sentence existing.",
+            ],
+          },
+        ],
+      },
+      {
         id: "conversations",
         slug: "workflows/conversations",
         title: "Conversations",
@@ -1230,7 +1281,7 @@ const BASE_DOCUMENTATION_GROUPS = [
         summary: "Sprint boards plus an opinionated assistant that tells you what to drop, add, or worry about — with the evidence for each call.",
         readTime: "5 min",
         audience: "Delivery leads, managers",
-        routes: ["/business/sprints", "/business/sprints/:id", "/business/sprints/:id/history"],
+        routes: ["/sprint", "/sprints/:id", "/sprints/:id/retrospective"],
         sections: [
           {
             heading: "Sprints, in one paragraph",
@@ -1280,7 +1331,7 @@ const BASE_DOCUMENTATION_GROUPS = [
         summary: "Three roles, sensible defaults, and the few places it's worth being strict about access.",
         readTime: "4 min",
         audience: "Admins and managers",
-        routes: ["/settings/team", "/settings/security"],
+        routes: ["/settings", "/audit-logs"],
         sections: [
           {
             heading: "The three roles",
@@ -1321,42 +1372,50 @@ const BASE_DOCUMENTATION_GROUPS = [
         id: "security-compliance",
         slug: "admin/security-and-compliance",
         title: "Security and compliance",
-        summary: "SSO, MFA, audit logs, data export — the controls your security team will ask about, in plain terms.",
+        summary: "What Knoledgr actually enforces today, and — just as importantly — what it does not.",
         readTime: "4 min",
         audience: "Admins, security leads",
-        routes: ["/settings/security", "/settings/audit", "/security-annex"],
+        routes: ["/audit-logs", "/api-keys", "/import-export"],
         sections: [
           {
-            heading: "The controls that exist",
+            heading: "What exists today",
+            paragraphs: [
+              "This page lists only controls that are implemented and can be demonstrated. Anything a security review would ask about and Knoledgr does not yet have is named below rather than omitted, because a gap you know about is manageable and one you discover during procurement is not.",
+            ],
             bullets: [
-              "SSO — SAML 2.0 with any compatible IdP (Okta, Azure AD, Google Workspace). Available on team and enterprise plans.",
-              "MFA — required workspace-wide or optional per-user. Set the policy under Security → Authentication.",
-              "Audit log — every admin action and high-impact write. Exportable as JSON or CSV.",
-              "API keys — scoped per integration, revocable individually, never re-displayed after creation.",
-              "Data export — full workspace export as JSON; available to admins on demand.",
+              "Transport encryption — TLS 1.2+ on every domain, HSTS with a one-year max-age, includeSubDomains and preload. HTTP redirects to HTTPS.",
+              "Password authentication — bcrypt-hashed, with rate limiting on login and invite endpoints.",
+              "Role model — admin, manager, member. Enforced server-side on every write.",
+              "Workspace isolation — every query is scoped by organization; cross-workspace access is rejected at the queryset level, not the view.",
+              "API keys — scoped per integration and revocable individually.",
+              "Data export — full workspace export as JSON, available to admins on demand.",
+              "Audit log — a record of selected administrative actions, readable at /audit-logs.",
             ],
           },
           {
-            heading: "What's in the audit log",
+            heading: "Not implemented yet",
             paragraphs: [
-              "Anything that materially changes the workspace or its access: invites sent and accepted, role changes, integration installs and removals, security policy edits, exports, and API key lifecycle events.",
-              "Not in the audit log: routine reads, regular content edits, conversation replies. The audit log is meant to answer \"who did this admin thing?\" not \"who read this document?\"",
+              "These are commonly asked for and Knoledgr does not have them. Do not answer a security questionnaire as though it does.",
+            ],
+            bullets: [
+              "SSO / SAML — a workspace can store IdP settings, but no SAML assertion is ever consumed and no login path reads that configuration. Storing the settings does not authenticate anyone.",
+              "MFA — not implemented in any authentication path.",
+              "Encryption at rest — the database volume is not encrypted at the disk level. Individual integration secrets are encrypted in the database; the volume around them is not.",
+              "Data residency options — a single region. There is no per-workspace residency setting.",
+              "IP allowlisting, session-length policy, and enforced-SSO-without-password-fallback.",
+            ],
+          },
+          {
+            heading: "About the audit log",
+            paragraphs: [
+              "It captures a limited set of administrative events, not every write. Treat it as a starting point rather than a complete record, and check what is actually being written before relying on it for an attestation.",
             ],
           },
           {
             heading: "Compliance posture",
             paragraphs: [
-              "Knoledgr is SOC 2 Type II compliant; the report is available under NDA. Data residency for enterprise workspaces is US (default) or EU, set at workspace creation and not movable after. Encryption: TLS 1.2+ in transit, AES-256 at rest.",
-              "For the full security details — subprocessors, retention windows, breach notification — see the Security Annex linked from the footer.",
-            ],
-          },
-          {
-            heading: "When to escalate to enterprise controls",
-            bullets: [
-              "You need integration installs to require admin approval.",
-              "You need workspace-wide retention policies (auto-archive after N years).",
-              "You need to enforce SSO with no password fallback.",
-              "You need IP allowlisting or session length policies.",
+              "Knoledgr holds no third-party security certification at present. Any SOC 2, ISO 27001 or similar claim should come from a report you can produce on request — state it here only once that report exists, and name the audit period.",
+              "Infrastructure: a single dedicated server, with nightly database backups that are verified by restoring them, not merely by existing.",
             ],
           },
         ],
@@ -1550,25 +1609,32 @@ const BASE_DOCUMENTATION_GROUPS = [
       {
         id: "jira",
         slug: "integrations/jira",
-        title: "Jira Portfolio Bridge",
-        summary: "Connect Jira portfolio and dependency views to Knoledgr reporting and execution context.",
-        readTime: "4 min",
-        audience: "PMO, delivery, transformation teams",
+        title: "Jira issue sync",
+        summary: "Turn a blocker into a Jira issue. One direction, one object type.",
+        readTime: "2 min",
+        audience: "Engineers, delivery leads",
         sections: [
           {
-            heading: "What it is for",
-            bullets: [
-              "Portfolio rollups across multiple projects and workstreams.",
-              "Dependency visibility alongside decision and blocker context.",
-              "A stronger bridge between traditional portfolio tracking and organizational memory.",
+            heading: "What it does",
+            paragraphs: [
+              "When a blocker is raised in Knoledgr and auto-sync is switched on, a matching issue is created in your Jira site. That is the whole feature.",
             ],
           },
           {
-            heading: "Where it helps most",
+            heading: "What it does not do",
+            paragraphs: [
+              "This page previously described portfolio rollups, dependency views and execution drift alerts. None of those were ever built, and the description has been corrected.",
+            ],
             bullets: [
-              "Multi-project initiatives with changing priorities and handoffs.",
-              "Reporting environments where raw status is not enough without rationale.",
-              "Organizations trying to reduce duplicate context across Jira and internal collaboration.",
+              "Nothing is read back from Jira. Issues you change there are invisible here.",
+              "No rollups across projects, and no dependency graph.",
+              "Only blockers sync. Decisions, conversations and predictions do not.",
+            ],
+          },
+          {
+            heading: "Setting it up",
+            paragraphs: [
+              "Integrations, then Jira. You need your site URL, the email on the account, and an API token. Switch on auto-sync if you want blockers pushed without being asked each time.",
             ],
           },
         ],

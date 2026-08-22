@@ -43,7 +43,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 24px;
-  height: 60px;
+  height: 68px;
 }
 .hp-brand-link {
   display: inline-flex;
@@ -59,7 +59,7 @@
   justify-content: center;
 }
 .hp-nav a {
-  font-size: 13.5px;
+  font-size: 16.5px;
   color: var(--hp-muted);
   text-decoration: none;
   transition: color 140ms ease;
@@ -74,7 +74,7 @@
   gap: 12px;
 }
 .hp-text-link {
-  font-size: 13.5px;
+  font-size: 16.5px;
   color: var(--hp-text);
   text-decoration: none;
   font-weight: 500;
@@ -87,10 +87,10 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 16px;
+  padding: 11px 20px;
   border-radius: 8px;
   font-family: inherit;
-  font-size: 13.5px;
+  font-size: 16.5px;
   font-weight: 500;
   text-decoration: none;
   cursor: pointer;
@@ -118,12 +118,12 @@
   border-color: var(--hp-text);
 }
 .hp-button-large {
-  padding: 11px 22px;
-  font-size: 14px;
+  padding: 14px 26px;
+  font-size: 17px;
 }
 .hp-button-xl {
-  padding: 13px 28px;
-  font-size: 14.5px;
+  padding: 16px 32px;
+  font-size: 17.5px;
 }
 .hp-actions {
   display: flex;
@@ -155,11 +155,11 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 5px 12px 5px 5px;
+  padding: 6px 14px 6px 6px;
   border: 1px solid var(--hp-border);
   background: var(--hp-surface);
   border-radius: 999px;
-  font-size: 12.5px;
+  font-size: 15.5px;
   font-weight: 500;
   color: var(--hp-text);
   text-decoration: none;
@@ -169,7 +169,7 @@
 .hp-hero-badge:hover { border-color: var(--hp-border-strong); }
 .hp-hero-badge svg { width: 12px; height: 12px; color: var(--hp-muted); }
 .hp-hero-badge-pill {
-  font-size: 10.5px;
+  font-size: 14px;
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -181,7 +181,7 @@
 
 .hp-hero h1 {
   margin: 0;
-  font-size: clamp(36px, 6vw, 56px);
+  font-size: clamp(41px, 6vw, 62px);
   line-height: 1.04;
   letter-spacing: -0.03em;
   font-weight: 600;
@@ -193,7 +193,7 @@
 }
 .hp-hero-sub {
   margin: 20px 0 0;
-  font-size: 16px;
+  font-size: 19px;
   line-height: 1.55;
   color: var(--hp-text-subtle);
   max-width: 520px;
@@ -206,7 +206,7 @@
   gap: 18px;
   flex-wrap: wrap;
   color: var(--hp-muted);
-  font-size: 12.5px;
+  font-size: 15.5px;
 }
 .hp-proof li {
   display: inline-flex;
@@ -231,7 +231,7 @@
 }
 .hp-works-label {
   margin: 0 0 12px;
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -247,11 +247,11 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 5px 11px;
+  padding: 7px 13px;
   border-radius: 6px;
   border: 1px solid var(--hp-border);
   background: var(--hp-surface);
-  font-size: 12px;
+  font-size: 15px;
   color: var(--hp-text);
 }
 .hp-works-chip svg { width: 12px; height: 12px; color: var(--hp-muted); }
@@ -260,7 +260,7 @@
 
 .hp-eyebrow {
   display: inline-block;
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -280,7 +280,7 @@
 }
 .hp-product-intro h2 {
   margin: 0;
-  font-size: clamp(28px, 4vw, 38px);
+  font-size: clamp(31px, 4vw, 42px);
   letter-spacing: -0.024em;
   font-weight: 600;
   line-height: 1.1;
@@ -288,7 +288,7 @@
 }
 .hp-product-intro p {
   margin: 12px 0 0;
-  font-size: 15px;
+  font-size: 18px;
   line-height: 1.55;
   color: var(--hp-text-subtle);
 }
@@ -334,14 +334,14 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 11.5px;
+  font-size: 14.5px;
   font-weight: 500;
   color: var(--hp-muted);
 }
 .hp-feature-eyebrow svg { width: 13px; height: 13px; }
 .hp-bento-card h3 {
   margin: 10px 0 0;
-  font-size: 20px;
+  font-size: 24px;
   font-weight: 600;
   letter-spacing: -0.014em;
   line-height: 1.25;
@@ -349,7 +349,7 @@
 }
 .hp-bento-body {
   margin: 10px 0 14px;
-  font-size: 13.5px;
+  font-size: 16.5px;
   line-height: 1.55;
   color: var(--hp-text-subtle);
 }
@@ -357,7 +357,7 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 500;
   color: var(--hp-text);
 }
@@ -388,7 +388,7 @@
 }
 .hp-how-copy h2 {
   margin: 0;
-  font-size: clamp(26px, 3.6vw, 34px);
+  font-size: clamp(29px, 3.6vw, 37px);
   letter-spacing: -0.022em;
   font-weight: 600;
   line-height: 1.15;
@@ -397,7 +397,7 @@
 }
 .hp-how-copy p {
   margin: 14px 0 0;
-  font-size: 14.5px;
+  font-size: 17.5px;
   line-height: 1.55;
   color: var(--hp-text-subtle);
   max-width: 420px;
@@ -419,7 +419,7 @@
 }
 .hp-step-num {
   font-family: var(--font-mono, ui-monospace, SFMono-Regular, monospace);
-  font-size: 12px;
+  font-size: 15px;
   font-weight: 600;
   color: var(--hp-muted);
   padding-top: 4px;
@@ -427,13 +427,13 @@
 }
 .hp-steps h4 {
   margin: 0;
-  font-size: 15px;
+  font-size: 18px;
   font-weight: 600;
   color: var(--hp-text);
 }
 .hp-steps p {
   margin: 4px 0 0;
-  font-size: 13.5px;
+  font-size: 16.5px;
   line-height: 1.55;
   color: var(--hp-text-subtle);
   max-width: 480px;
@@ -451,7 +451,7 @@
 }
 .hp-quote blockquote > p {
   margin: 0;
-  font-size: clamp(22px, 3.4vw, 30px);
+  font-size: clamp(25px, 3.4vw, 33px);
   line-height: 1.25;
   letter-spacing: -0.02em;
   font-weight: 500;
@@ -466,7 +466,7 @@
 }
 .hp-quote-tag {
   display: inline-block;
-  font-size: 10.5px;
+  font-size: 14px;
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -475,7 +475,7 @@
 }
 .hp-quote-answer p {
   margin: 0;
-  font-size: 14.5px;
+  font-size: 17.5px;
   line-height: 1.6;
   color: var(--hp-text-subtle);
 }
@@ -489,7 +489,7 @@
 .hp-trust-inner { text-align: center; }
 .hp-trust-lede {
   margin: 0 0 16px;
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 500;
   color: var(--hp-text);
 }
@@ -507,7 +507,7 @@
   border-radius: 6px;
   border: 1px solid var(--hp-border);
   background: var(--hp-surface);
-  font-size: 11.5px;
+  font-size: 14.5px;
   color: var(--hp-text-subtle);
 }
 
@@ -521,7 +521,7 @@
 }
 .hp-cta h2 {
   margin: 0 auto;
-  font-size: clamp(28px, 4vw, 40px);
+  font-size: clamp(31px, 4vw, 44px);
   letter-spacing: -0.024em;
   font-weight: 600;
   line-height: 1.1;
@@ -531,7 +531,7 @@
 .hp-cta p {
   margin: 14px auto 0;
   max-width: 480px;
-  font-size: 14.5px;
+  font-size: 17.5px;
   color: var(--hp-text-subtle);
 }
 
@@ -552,7 +552,7 @@
   display: inline-flex;
   align-items: center;
   gap: 12px;
-  font-size: 12.5px;
+  font-size: 15.5px;
   color: var(--hp-muted);
 }
 .hp-footer-links {
@@ -561,7 +561,7 @@
   flex-wrap: wrap;
 }
 .hp-footer-links a {
-  font-size: 12.5px;
+  font-size: 15.5px;
   color: var(--hp-muted);
   text-decoration: none;
 }
@@ -569,18 +569,42 @@
 
 /* ─── reveal ──────────────────────────────────────────────── */
 
+/* Only the resting state lives here now — GSAP animates opacity and transform
+   inline, and a CSS transition on the same properties would fight it and
+   produce a double ease. .is-revealed is kept as the finished marker so
+   anything (tests, print styles) can still assert on it. */
 [data-reveal] {
   opacity: 0;
-  transform: translateY(8px);
-  transition: opacity 480ms ease, transform 480ms ease;
-  transition-delay: var(--rd, 0ms);
+  transform: translateY(14px);
+  will-change: opacity, transform;
 }
 [data-reveal].is-revealed {
   opacity: 1;
-  transform: translateY(0);
+  transform: none;
+  will-change: auto;
 }
 @media (prefers-reduced-motion: reduce) {
   [data-reveal] { opacity: 1; transform: none; }
+}
+
+/* ─── live knowledge graph (canvas) ──────────────────────── */
+
+.kgc {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  min-height: 190px;
+  border-radius: 12px;
+  border: 1px solid var(--hp-border);
+  background:
+    radial-gradient(120% 90% at 50% 0%, rgba(217, 119, 6, 0.05), transparent 60%),
+    var(--hp-surface);
+  overflow: hidden;
+}
+.kgc canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 /* ─── product mocks ──────────────────────────────────────── */
@@ -606,13 +630,13 @@
   border-radius: 8px;
   background: var(--hp-surface-alt);
   border: 1px solid var(--hp-border);
-  font-size: 13px;
+  font-size: 16px;
   color: var(--hp-text);
 }
 .mk-prompt svg { width: 13px; height: 13px; color: var(--hp-muted); }
 .mk-answer p {
   margin: 0 0 10px;
-  font-size: 13.5px;
+  font-size: 16.5px;
   line-height: 1.55;
   color: var(--hp-text-subtle);
 }
@@ -628,14 +652,14 @@
   border-top: 1px solid var(--hp-border);
 }
 .mk-src-label {
-  font-size: 10px;
+  font-size: 14px;
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--hp-muted);
 }
 .mk-chip {
-  font-size: 11px;
+  font-size: 14px;
   padding: 2px 8px;
   border-radius: 999px;
   background: var(--hp-surface-alt);
@@ -648,7 +672,7 @@
 .mk-row { display: flex; align-items: center; gap: 8px; }
 .mk-tag {
   font-family: var(--font-mono, ui-monospace, SFMono-Regular, monospace);
-  font-size: 11px;
+  font-size: 14px;
   color: var(--hp-muted);
   padding: 2px 7px;
   background: var(--hp-surface-alt);
@@ -656,7 +680,7 @@
   font-feature-settings: "tnum" 1;
 }
 .mk-lozenge {
-  font-size: 10.5px;
+  font-size: 14px;
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -666,7 +690,7 @@
 .mk-lozenge-green { background: rgba(16, 185, 129, 0.14); color: #047857; }
 .mk-title {
   margin: 4px 0;
-  font-size: 14px;
+  font-size: 17px;
   font-weight: 600;
   color: var(--hp-text);
   letter-spacing: -0.005em;
@@ -675,7 +699,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 11.5px;
+  font-size: 14.5px;
   color: var(--hp-muted);
 }
 .mk-avatar {
@@ -686,7 +710,7 @@
   border-radius: 50%;
   background: var(--hp-surface-alt);
   border: 1px solid var(--hp-border);
-  font-size: 9.5px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--hp-text);
 }
@@ -696,6 +720,35 @@
   border-radius: 50%;
   background: var(--hp-border-strong);
 }
+/* PR rows for the GitHub card — merged pull requests sitting under the
+   decision they implemented. Uses the existing mock vocabulary and palette. */
+.mk-pr {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--hp-border);
+}
+.mk-pr:last-child { border-bottom: 0; }
+.mk-pr svg { width: 14px; height: 14px; color: var(--hp-muted); flex-shrink: 0; }
+.mk-pr-id {
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, monospace);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--hp-muted);
+  font-feature-settings: "tnum" 1;
+}
+.mk-pr-title {
+  flex: 1;
+  min-width: 0;
+  font-size: 15.5px;
+  color: var(--hp-text-subtle);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mk-lozenge-merged { background: rgba(139, 92, 246, 0.14); color: #6d28d9; }
+
 .mk-divider {
   height: 1px;
   background: var(--hp-border);
@@ -720,7 +773,7 @@
   padding: 6px 10px;
   border-radius: 6px;
   background: var(--hp-surface-alt);
-  font-size: 11.5px;
+  font-size: 14.5px;
   color: var(--hp-text-subtle);
   align-self: flex-start;
 }

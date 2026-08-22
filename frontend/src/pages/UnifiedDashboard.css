@@ -26,12 +26,12 @@
 .dash-hero-left { display: flex; flex-direction: column; gap: 2px; }
 .dash-hero-date {
   margin: 0;
-  font-size: 12.5px;
+  font-size: 15.5px;
   color: var(--app-muted);
 }
 .dash-hero-title {
   margin: 0;
-  font-size: 26px;
+  font-size: 29px;
   font-weight: 600;
   letter-spacing: -0.02em;
   line-height: 1.1;
@@ -39,7 +39,7 @@
 }
 .dash-hero-summary {
   margin: 4px 0 0;
-  font-size: 13.5px;
+  font-size: 16.5px;
   color: var(--app-muted);
 }
 .dash-hero-actions {
@@ -56,7 +56,7 @@
   border: 1px solid var(--app-border);
   background: var(--app-surface);
   color: var(--app-text);
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 500;
   text-decoration: none;
   transition: background 100ms ease, border-color 100ms ease;
@@ -81,18 +81,21 @@
 
 /* ─── stat strip — plain numbers, hairlines between ───────── */
 
+/* Four numbers, not six. The strip now answers 'is the memory any good?'
+   rather than reporting intelligence-layer telemetry that needs months of
+   history before it says anything. */
 .dash-stats {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   border: 1px solid var(--app-border);
   border-radius: 10px;
   background: var(--app-surface);
   overflow: hidden;
 }
 @media (max-width: 880px) {
-  .dash-stats { grid-template-columns: repeat(3, 1fr); }
-  .dash-stat:nth-child(3n) { border-right: none; }
-  .dash-stat:nth-child(n+4) { border-top: 1px solid var(--app-border); }
+  .dash-stats { grid-template-columns: repeat(2, 1fr); }
+  .dash-stat:nth-child(2n) { border-right: none; }
+  .dash-stat:nth-child(n+3) { border-top: 1px solid var(--app-border); }
 }
 @media (max-width: 560px) {
   .dash-stats { grid-template-columns: repeat(2, 1fr); }
@@ -113,7 +116,7 @@
 .dash-stat:last-child { border-right: none; }
 .dash-stat:hover { background: var(--app-surface-alt); text-decoration: none; }
 .dash-stat-value {
-  font-size: 22px;
+  font-size: 25px;
   font-weight: 600;
   letter-spacing: -0.02em;
   line-height: 1;
@@ -122,13 +125,32 @@
 }
 .dash-stat.is-emphasized .dash-stat-value { color: #ef4444; }
 .dash-stat-label {
-  font-size: 12px;
+  font-size: 15px;
   color: var(--app-muted);
 }
 .dash-stat-sub {
-  font-size: 11px;
+  font-size: 14px;
   color: var(--app-text-disabled, var(--app-muted));
 }
+
+/* A share is easier to judge against a bar than as a bare percentage. */
+.dash-stat-bar {
+  display: block;
+  height: 3px;
+  margin-top: 8px;
+  border-radius: 999px;
+  background: var(--app-border);
+  overflow: hidden;
+}
+.dash-stat-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--app-text-subtle, var(--app-text));
+  transition: width 220ms ease;
+}
+.dash-stat.is-emphasized .dash-stat-bar > span { background: #ef4444; }
+
 
 /* ─── card grid ─────────────────────────────────────────────── */
 
@@ -166,18 +188,24 @@
 }
 .dash-card-head h2 {
   margin: 0;
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 600;
   color: var(--app-text);
   letter-spacing: -0.005em;
 }
 .dash-card-count {
-  font-size: 12px;
+  font-size: 15px;
   color: var(--app-muted);
   font-feature-settings: "tnum" 1;
 }
+/* Off-track moved here from the headline strip. Colour is reserved for a real
+   alert, which this is: a prediction that landed wrong. */
+.dash-card-count.is-alert {
+  color: #ef4444;
+  font-weight: 600;
+}
 .dash-card-link {
-  font-size: 12px;
+  font-size: 15px;
   color: var(--app-muted);
   text-decoration: none;
   transition: color 120ms ease;
@@ -202,7 +230,7 @@
 .dash-row-kind {
   flex-shrink: 0;
   width: 90px;
-  font-size: 11px;
+  font-size: 14px;
   color: var(--app-muted);
   text-transform: lowercase;
   letter-spacing: 0.02em;
@@ -210,13 +238,13 @@
 }
 .dash-row-main { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .dash-row-title {
-  font-size: 13.5px;
+  font-size: 16.5px;
   color: var(--app-text-subtle, var(--app-text));
   font-weight: 500;
   transition: color 120ms ease;
 }
 .dash-row-meta {
-  font-size: 12px;
+  font-size: 15px;
   color: var(--app-muted);
 }
 
@@ -230,20 +258,20 @@
 .dash-table tr:last-child { border-bottom: none; }
 .dash-table td {
   padding: 10px 0;
-  font-size: 13px;
+  font-size: 16px;
   color: var(--app-text-subtle, var(--app-text));
   vertical-align: top;
 }
 .dash-table-num {
   width: 56px;
-  font-size: 18px;
+  font-size: 21px;
   font-weight: 600;
   color: var(--app-text);
   font-feature-settings: "tnum" 1;
   letter-spacing: -0.01em;
 }
 .dash-table-label {
-  font-size: 13px;
+  font-size: 16px;
   color: var(--app-text-subtle, var(--app-muted));
 }
 .dash-table-main {
@@ -252,7 +280,7 @@
 }
 .dash-table-link {
   display: block;
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 500;
   color: var(--app-text);
   text-decoration: none;
@@ -260,7 +288,7 @@
 .dash-table-link:hover { text-decoration: underline; text-underline-offset: 3px; }
 .dash-table-sub {
   display: block;
-  font-size: 11.5px;
+  font-size: 14.5px;
   color: var(--app-muted);
   margin-top: 2px;
 }
@@ -268,7 +296,7 @@
   width: 70px;
   text-align: right;
   font-family: var(--font-mono, ui-monospace, SFMono-Regular, monospace);
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 600;
   color: var(--app-text);
   font-feature-settings: "tnum" 1;
@@ -276,7 +304,7 @@
 .dash-table-band {
   width: 90px;
   text-align: right;
-  font-size: 11.5px;
+  font-size: 14.5px;
   text-transform: lowercase;
   color: var(--app-muted);
   white-space: nowrap;
@@ -303,13 +331,13 @@
 .dash-lesson:hover { text-decoration: none; }
 .dash-lesson-text {
   margin: 0;
-  font-size: 14px;
+  font-size: 17px;
   line-height: 1.55;
   color: var(--app-text);
 }
 .dash-lesson-attrib {
   margin: 0;
-  font-size: 12px;
+  font-size: 15px;
   color: var(--app-muted);
   display: flex;
   align-items: center;
@@ -327,11 +355,11 @@
   gap: 10px;
 }
 .dash-sprint-name {
-  font-size: 13.5px;
+  font-size: 16.5px;
   font-weight: 500;
   color: var(--app-text);
 }
-.dash-sprint-end { font-size: 12px; color: var(--app-muted); }
+.dash-sprint-end { font-size: 15px; color: var(--app-muted); }
 .dash-sprint-bar {
   height: 4px;
   background: var(--app-surface-alt);
@@ -347,7 +375,7 @@
 }
 .dash-sprint-counts {
   margin: 0;
-  font-size: 11.5px;
+  font-size: 14.5px;
   color: var(--app-muted);
 }
 
@@ -364,7 +392,7 @@
 }
 .dash-activity-row:last-child { border-bottom: none; }
 .dash-activity-body {
-  font-size: 13px;
+  font-size: 16px;
   color: var(--app-text-subtle, var(--app-text));
   min-width: 0;
 }
@@ -375,7 +403,7 @@
 .dash-activity-text { color: var(--app-text-subtle, var(--app-text)); }
 .dash-activity-target { color: var(--app-muted); }
 .dash-activity-time {
-  font-size: 12px;
+  font-size: 15px;
   color: var(--app-muted);
   flex-shrink: 0;
   font-feature-settings: "tnum" 1;
@@ -390,7 +418,7 @@
 
 .dash-empty {
   padding: 18px 0;
-  font-size: 13px;
+  font-size: 16px;
   color: var(--app-muted);
   text-align: center;
 }
@@ -412,5 +440,90 @@
 
 @media (max-width: 720px) {
   .dash { padding: 16px 18px 28px; }
-  .dash-hero-title { font-size: 22px; }
+  .dash-hero-title { font-size: 25px; }
+}
+
+/* The ask box in the hero. This is the product's output, and it belongs where
+   the reader's own first name used to be — a greeting tells someone they have
+   an account, not what the workspace holds. */
+.dash-ask {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 12px 0 0;
+  max-width: 560px;
+}
+
+.dash-ask-input {
+  flex: 1;
+  min-width: 0;
+  height: 40px;
+  padding: 0 14px;
+  border-radius: 10px;
+  border: 1px solid var(--app-border-strong, var(--app-border));
+  background: var(--app-surface);
+  color: var(--app-text);
+  font: inherit;
+  font-size: 15px;
+}
+
+.dash-ask-input::placeholder { color: var(--app-text-disabled, var(--app-muted)); }
+
+.dash-ask-input:focus {
+  outline: none;
+  border-color: var(--app-accent, var(--app-border-strong));
+}
+
+.dash-ask .dash-btn { flex-shrink: 0; }
+.dash-ask .dash-btn:disabled { opacity: 0.5; cursor: default; }
+
+/* The gap, stated as something to do rather than a percentage to admire. */
+.dash-hero-gap {
+  margin: 10px 0 0;
+  font-size: 13px;
+  color: var(--app-danger, #bf2600);
+}
+
+.dash-hero-gap a { color: inherit; font-weight: 600; }
+
+@media (max-width: 640px) {
+  .dash-ask { flex-wrap: wrap; }
+  .dash-ask-input { width: 100%; }
+}
+
+/* One concrete example under the box. An empty field beneath an imperative
+   gives no clue what a good question looks like, and this is the feature
+   nobody has used before. Clicking it fills the box rather than asking
+   outright — the reader should see it as their question before it runs. */
+.dash-ask-hint {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: var(--app-muted);
+}
+
+.dash-ask-example {
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-size: 13px;
+  color: var(--app-muted);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.dash-ask-example:hover { color: var(--app-text); }
+
+/* Stood down. Better to say why than to accept a question and fail. */
+.dash-ask-down {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  max-width: 560px;
+  border: 1px solid var(--app-border);
+  border-radius: 10px;
+  background: var(--app-surface);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--app-muted);
 }

@@ -63,6 +63,15 @@ class MissingElementsViewTests(TestCase):
         self.assertEqual(list_response.data[0]['title'], 'Checkout Journey')
 
     def test_slot_task_suggests_time_after_busy_meeting(self):
+        # _find_slot skips weekends (day.weekday() >= 5). This test used to
+        # anchor everything to "today", so it passed Monday to Friday and failed
+        # every Saturday and Sunday — the search window was a single weekend day
+        # with no working hours in it. Anchor to a fixed Monday instead, so the
+        # result depends on the scheduling logic rather than the day it runs.
+        monday = timezone.now()
+        monday += timedelta(days=(7 - monday.weekday()) % 7 or 7)
+        base = monday.replace(hour=9, minute=0, second=0, microsecond=0)
+
         task = Task.objects.create(
             organization=self.org,
             title='Prepare QBR deck',
@@ -73,13 +82,13 @@ class MissingElementsViewTests(TestCase):
         meeting = Meeting.objects.create(
             organization=self.org,
             title='Morning sync',
-            meeting_date=timezone.now().replace(hour=9, minute=0, second=0, microsecond=0),
+            meeting_date=base,
             duration_minutes=120,
             created_by=self.user,
         )
         meeting.attendees.add(self.member)
 
-        start = timezone.now().replace(hour=9, minute=0, second=0, microsecond=0)
+        start = base
         end = start + timedelta(days=1)
         request = self.factory.post(
             '/api/business/calendar/slot-task/',

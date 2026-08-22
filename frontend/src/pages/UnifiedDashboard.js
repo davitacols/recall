@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import api from "../services/api";
 import "./UnifiedDashboard.css";
@@ -36,15 +36,20 @@ function bandLabel(band) {
 
 // ─── page ───────────────────────────────────────────────────────────────────
 
+// One concrete example beats a placeholder. Phrased the way someone actually
+// asks — a question about a choice, not a search term.
+const EXAMPLE_QUESTION = "Why are we using a two-stage pipeline?";
+
 export default function UnifiedDashboard() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
+  const [aiState, setAiState] = useState(null);
   const [overview, setOverview] = useState(null);
   const [personal, setPersonal] = useState(null);
   const [workspace, setWorkspace] = useState(null);
   const [timeline, setTimeline] = useState([]);
   const [drift, setDrift] = useState({ items: [], total: 0 });
-  const [sprint, setSprint] = useState(null);
 
   const [conversations, setConversations] = useState([]);
 
@@ -56,12 +61,17 @@ export default function UnifiedDashboard() {
       api.get("/api/knowledge/dashboard/workspace-briefing/"),
       api.get("/api/knowledge/timeline/?days=7&page=1&per_page=15"),
       api.get("/api/decisions/outcomes/drift-alerts/"),
-      api.get("/api/agile/current-sprint/"),
       // Pipeline buckets come from conversations — same source the
       // Conversations page buckets so the dashboard counts agree.
       api.get("/api/conversations/?page=1&per_page=80"),
+      // Whether the model API is actually answering, so the question box does
+      // not promise something that will fail the moment it is used.
+      api.get("/api/decisions/memory-health/"),
     ])
-      .then(([ovRes, pRes, wRes, tRes, dRes, sRes, cRes]) => {
+      .then(([ovRes, pRes, wRes, tRes, dRes, cRes, mRes]) => {
+        if (mRes?.status === "fulfilled") {
+          setAiState(unwrap(mRes.value?.data, {})?.ai || null);
+        }
         if (!mounted) return;
         if (ovRes.status === "fulfilled") setOverview(unwrap(ovRes.value?.data, {}));
         if (pRes.status === "fulfilled") setPersonal(unwrap(pRes.value?.data, {}));
@@ -74,7 +84,6 @@ export default function UnifiedDashboard() {
           const d = unwrap(dRes.value?.data, { items: [] });
           setDrift({ items: d.items || [], total: d.total || 0 });
         }
-        if (sRes.status === "fulfilled") setSprint(unwrap(sRes.value?.data, null));
         if (cRes.status === "fulfilled") {
           const data = cRes.value?.data;
           const list = Array.isArray(data?.results)
@@ -121,53 +130,92 @@ export default function UnifiedDashboard() {
     () => driftSignals.filter((d) => d.drift_band === "off_track").length,
     [driftSignals]
   );
-  const openRetrosCount = useMemo(
-    () => recentRetros.filter((r) => !r.closed_at).length,
-    [recentRetros]
+  // workspace-briefing was being fetched on every load and thrown away. It
+  // computes what changed, what needs attention and the shortest next move,
+  // each with a reason and a link — a request paid for and discarded.
+  const nextMoves = useMemo(
+    () => (Array.isArray(workspace?.suggested_next_moves) ? workspace.suggested_next_moves : []),
+    [workspace]
   );
-  const capturedLessonsCount = useMemo(
-    () => recentRetros.filter((r) => (r.lesson || "").trim().length > 0).length,
-    [recentRetros]
-  );
+
+  // The scorecard used to be six numbers about the intelligence layer —
+  // predictions, outcome checks, off-track, open retros, lessons. Those only
+  // mean something after months of history, and together they crowded out the
+  // question the product exists to answer: is the memory any good?
+  //
+  // A decision without its reasoning is a row in a list; six months later it is
+  // exactly as useless as the ticket that prompted it. So the share of
+  // decisions carrying a why leads, and the share reaching the code that
+  // implemented them comes second. The intelligence numbers are not lost —
+  // they moved to where they are actionable: pending checks are already in
+  // "Needs your attention", and off-track sits on the Drift panel it describes.
+  const memory = useMemo(() => {
+    const decisions = totals.decisions ?? 0;
+    const withWhy = totals.decisions_with_rationale ?? 0;
+    const linked = totals.decisions_linked_to_code ?? 0;
+    const convos = totals.conversations ?? 0;
+    const captured = totals.conversations_captured ?? 0;
+    const pct = (n, d) => (d > 0 ? Math.round((n / d) * 100) : null);
+    return {
+      decisions,
+      withWhy,
+      linked,
+      convos,
+      captured,
+      whyPct: pct(withWhy, decisions),
+      linkedPct: pct(linked, decisions),
+    };
+  }, [totals]);
+
+  const [askQuery, setAskQuery] = useState("");
+
+  const askSubmit = (e) => {
+    e.preventDefault();
+    const q = askQuery.trim();
+    if (!q) return;
+    navigate(`/ask?q=${encodeURIComponent(q)}`);
+  };
+
+  // Decisions that record no reasoning. The percentage is already on the stat
+  // strip; this is the same fact phrased as something to do about it.
+  const missingWhy = Math.max(0, (memory.decisions || 0) - (memory.withWhy || 0));
 
   const stats = useMemo(
     () => [
-      { key: "decisions", label: "Decisions", value: totals.decisions ?? "—", to: "/decisions" },
       {
-        key: "predictions",
-        label: "Predictions",
-        value: totals.predictions ?? "—",
-        to: "/decisions/intelligence",
+        key: "decisions",
+        label: "Decisions recorded",
+        value: memory.decisions,
+        to: "/decisions",
       },
       {
-        key: "outcomes",
-        label: "Outcomes",
-        value: totals.outcome_checks ?? "—",
-        sub: pendingChecks.length ? `${pendingChecks.length} pending` : null,
-        to: "/decisions/intelligence",
+        key: "why",
+        label: "Carry their why",
+        value: memory.whyPct === null ? "—" : `${memory.whyPct}%`,
+        sub: memory.decisions ? `${memory.withWhy} of ${memory.decisions}` : null,
+        // The one number worth reacting to: below half means the record is
+        // filling up with decisions nobody will be able to explain.
+        emphasized: memory.whyPct !== null && memory.whyPct < 50,
+        bar: memory.whyPct,
+        to: "/decisions",
       },
       {
-        key: "drift",
-        label: "Off-track",
-        value: offTrackCount,
-        emphasized: offTrackCount > 0,
-        to: "/decisions/intelligence",
+        key: "linked",
+        label: "Linked to code",
+        value: memory.linkedPct === null ? "—" : `${memory.linkedPct}%`,
+        sub: memory.decisions ? `${memory.linked} of ${memory.decisions}` : null,
+        bar: memory.linkedPct,
+        to: "/decisions",
       },
       {
-        key: "retros",
-        label: "Open retros",
-        value: openRetrosCount,
-        sub: totals.retrospectives ? `${totals.retrospectives} total` : null,
-        to: "/decisions/intelligence",
-      },
-      {
-        key: "lessons",
-        label: "Lessons",
-        value: capturedLessonsCount || totals.retrospectives || "—",
-        to: "/decisions/intelligence",
+        key: "captured",
+        label: "Captured for you",
+        value: memory.captured,
+        sub: memory.convos ? `of ${memory.convos} conversations` : null,
+        to: "/conversations",
       },
     ],
-    [totals, pendingChecks.length, offTrackCount, openRetrosCount, capturedLessonsCount]
+    [memory]
   );
 
   // Awaiting items — flat, no colored mark
@@ -262,6 +310,20 @@ export default function UnifiedDashboard() {
     [recentRetros]
   );
 
+  // A brand-new workspace has nothing in it, and the panels below each render
+  // their own reassuring empty state — "You're clear", "Nothing's drifted".
+  // Those are right for a returning user with a quiet week and exactly wrong
+  // for someone thirty seconds past signup, who reads them as "this is empty
+  // and there is nothing to do". Detect the zero state and say what to do next.
+  const isNewWorkspace = useMemo(
+    () =>
+      !loading &&
+      conversations.length === 0 &&
+      timeline.length === 0 &&
+      awaiting.length === 0,
+    [loading, conversations, timeline, awaiting]
+  );
+
   // ─── render ───────────────────────────────────────────────────────────────
 
   return (
@@ -276,26 +338,98 @@ export default function UnifiedDashboard() {
             })}
           </p>
           <h1 className="dash-hero-title">
-            {firstName || "Welcome back"}
+            {isNewWorkspace ? `Welcome, ${firstName || "there"}` : "What did we decide, and why?"}
           </h1>
-          {awaiting.length > 0 ? (
+          {isNewWorkspace ? (
             <p className="dash-hero-summary">
-              {awaiting.length} item{awaiting.length === 1 ? "" : "s"} waiting on you.
+              Your workspace is empty, which is the right place to start. Connect a
+              repository and Knoledgr begins recording decisions against the pull
+              requests that implement them.
             </p>
           ) : (
-            <p className="dash-hero-summary">No open items waiting on you.</p>
+            <>
+              {/* The product's output, on landing. The largest thing on this
+                  page used to be the reader's own first name, which tells
+                  them they have an account rather than what this holds. */}
+              {aiState && aiState.available === false ? (
+                /* Do not offer a box that cannot answer. Letting someone type
+                   a question, wait, and receive an error reads as the product
+                   being broken rather than the balance being empty. */
+                <p className="dash-ask-down">
+                  {aiState.reason || "The AI service is not responding."}{" "}
+                  Answering questions is unavailable until it is restored. The
+                  record below is unaffected.
+                </p>
+              ) : (
+                <>
+                  <form className="dash-ask" onSubmit={askSubmit}>
+                    <input
+                      className="dash-ask-input"
+                      value={askQuery}
+                      onChange={(e) => setAskQuery(e.target.value)}
+                      placeholder="Why did we…"
+                      aria-label="Ask why"
+                    />
+                    <button
+                      type="submit"
+                      className="dash-btn dash-btn-primary"
+                      disabled={!askQuery.trim()}
+                    >
+                      Ask
+                    </button>
+                  </form>
+                  {/* An empty box under an imperative gives no clue what a
+                      good question looks like, and this is the one feature
+                      nobody has used before. */}
+                  <p className="dash-ask-hint">
+                    try:{" "}
+                    <button
+                      type="button"
+                      className="dash-ask-example"
+                      onClick={() => setAskQuery(EXAMPLE_QUESTION)}
+                    >
+                      {EXAMPLE_QUESTION}
+                    </button>
+                  </p>
+                </>
+              )}
+              {missingWhy > 0 ? (
+                <p className="dash-hero-gap">
+                  {missingWhy} of {memory.decisions} decision
+                  {memory.decisions === 1 ? "" : "s"} cannot answer anything —
+                  no why recorded.{" "}
+                  <Link to="/decisions">Fix them</Link>
+                </p>
+              ) : awaiting.length > 0 ? (
+                <p className="dash-hero-summary">
+                  {awaiting.length} item{awaiting.length === 1 ? "" : "s"} waiting on you.
+                </p>
+              ) : (
+                <p className="dash-hero-summary">No open items waiting on you.</p>
+              )}
+            </>
           )}
         </div>
         <div className="dash-hero-actions">
-          <Link to="/decisions/new" className="dash-btn dash-btn-primary">
-            Draft a decision
-          </Link>
-          <Link to="/ask" className="dash-btn">
-            Ask Recall
-          </Link>
-          <Link to="/agent" className="dash-btn">
-            Run agent
-          </Link>
+          {isNewWorkspace ? (
+            <>
+              <Link to="/integrations/github" className="dash-btn dash-btn-primary">
+                Connect GitHub
+              </Link>
+              <Link to="/decisions/new" className="dash-btn">
+                Record a decision
+              </Link>
+            </>
+          ) : (
+            <>
+              <Link to="/decisions/new" className="dash-btn dash-btn-primary">
+                Draft a decision
+              </Link>
+              <Link to="/agent" className="dash-btn">
+                Run agent
+              </Link>
+            </>
+          )}
         </div>
       </header>
 
@@ -310,6 +444,11 @@ export default function UnifiedDashboard() {
             <span className="dash-stat-value">{loading ? "—" : s.value}</span>
             <span className="dash-stat-label">{s.label}</span>
             {s.sub ? <span className="dash-stat-sub">{s.sub}</span> : null}
+            {!loading && typeof s.bar === "number" ? (
+              <span className="dash-stat-bar" aria-hidden="true">
+                <span style={{ width: `${Math.max(2, Math.min(100, s.bar))}%` }} />
+              </span>
+            ) : null}
           </Link>
         ))}
       </section>
@@ -366,6 +505,12 @@ export default function UnifiedDashboard() {
         <article className="dash-card">
           <header className="dash-card-head">
             <h2>Drift</h2>
+            {/* Off-track used to be a headline stat. It belongs here, beside
+                the rows it describes, where the number is actionable rather
+                than decorative. */}
+            {offTrackCount > 0 ? (
+              <span className="dash-card-count is-alert">{offTrackCount} off-track</span>
+            ) : null}
           </header>
           {loading ? (
             <DashSkeleton lines={3} />
@@ -434,20 +579,34 @@ export default function UnifiedDashboard() {
           )}
         </article>
 
-        {/* Sprint */}
+        {/* Next moves — from the briefing that was previously discarded. */}
         <article className="dash-card">
           <header className="dash-card-head">
-            <h2>Sprint</h2>
-            {sprint?.id ? (
-              <Link to={`/sprint/${sprint.id}`} className="dash-card-link">
-                Open
-              </Link>
+            <h2>Next moves</h2>
+            {nextMoves.length ? (
+              <span className="dash-card-count">{nextMoves.length}</span>
             ) : null}
           </header>
-          {sprint?.id ? (
-            <SprintSnapshot sprint={sprint} />
+          {loading ? (
+            <DashSkeleton lines={3} />
+          ) : nextMoves.length === 0 ? (
+            <div className="dash-empty">Nothing suggested right now.</div>
           ) : (
-            <div className="dash-empty">No active sprint.</div>
+            <ul className="dash-rows">
+              {nextMoves.slice(0, 4).map((m) => (
+                <li key={m.id}>
+                  <Link to={m.suggested_action_url || m.source_url || "/"} className="dash-row">
+                    <span className="dash-row-kind">{m.kind}</span>
+                    <span className="dash-row-main">
+                      <span className="dash-row-title">{m.title}</span>
+                      {m.why_it_matters ? (
+                        <span className="dash-row-meta">{m.why_it_matters}</span>
+                      ) : null}
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
           )}
         </article>
 
@@ -498,35 +657,6 @@ export default function UnifiedDashboard() {
 
 // ─── small bits ─────────────────────────────────────────────────────────────
 
-function SprintSnapshot({ sprint }) {
-  const done = sprint.completed_count ?? 0;
-  const wip = sprint.in_progress_count ?? 0;
-  const todo = sprint.todo_count ?? 0;
-  const total = Math.max(1, done + wip + todo);
-  const pct = Math.round((done / total) * 100);
-  return (
-    <div className="dash-sprint">
-      <div className="dash-sprint-meta">
-        <span className="dash-sprint-name">{sprint.name || "Active sprint"}</span>
-        {sprint.end_date ? (
-          <span className="dash-sprint-end">
-            ends{" "}
-            {new Date(sprint.end_date).toLocaleDateString(undefined, {
-              month: "short",
-              day: "numeric",
-            })}
-          </span>
-        ) : null}
-      </div>
-      <div className="dash-sprint-bar">
-        <span style={{ width: `${pct}%` }} />
-      </div>
-      <p className="dash-sprint-counts">
-        {done} done · {wip} in progress · {todo} to do
-      </p>
-    </div>
-  );
-}
 
 function DashSkeleton({ lines = 3 }) {
   return (

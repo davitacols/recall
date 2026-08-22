@@ -242,7 +242,7 @@ export default function FeedbackInbox() {
       />
 
       <WorkspaceToolbar palette={palette}>
-        <div style={{ display: "grid", gridTemplateColumns: "minmax(240px, 1fr) minmax(180px, 220px) minmax(180px, 220px)", gap: 12 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
           <input
             value={filters.q}
             onChange={(event) => setFilters((current) => ({ ...current, q: event.target.value }))}
@@ -270,7 +270,7 @@ export default function FeedbackInbox() {
         </div>
       </WorkspaceToolbar>
 
-      <section style={{ display: "grid", gridTemplateColumns: "minmax(320px, 0.92fr) minmax(320px, 1.08fr)", gap: 14, alignItems: "start" }}>
+      <section style={{ display: "grid", gridTemplateColumns: "var(--split-even)", gap: 14, alignItems: "start" }}>
         <WorkspacePanel
           palette={palette}
           eyebrow="Inbox"

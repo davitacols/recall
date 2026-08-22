@@ -587,11 +587,9 @@ def _iso(value):
 
 
 def _truncate(text, limit=220):
-    text = unescape(strip_tags((text or '').replace('<br>', '\n').replace('<br/>', '\n').replace('<br />', '\n')))
-    text = ' '.join(text.split())
-    if len(text) <= limit:
-        return text
-    return f'{text[:limit].rstrip()}...'
+    from apps.knowledge.text_utils import to_plain_text
+
+    return to_plain_text(text, limit=limit)
 
 
 def _parse_iso(value):
@@ -642,7 +640,20 @@ def _requested_types(filters):
     return valid
 
 
-def _build_query(search_fields, query):
+def _build_query(search_fields, query, relaxed=False):
+    """Build the lookup for a free-text query.
+
+    Strict mode (the default) requires every token to appear in the same
+    record. That is good for precision and useless for the way people actually
+    ask questions: "what did we decide about authentication?" only matches a
+    record containing *all* of those words, so a decision titled "Auth strategy"
+    is invisible even though it is exactly what was wanted.
+
+    Relaxed mode ORs the tokens instead, so any single meaningful term can
+    match. It is only used as a fallback when strict matching finds nothing —
+    see EnhancedSearchEngine.search — so precise queries keep their precision
+    and vague ones stop coming back empty.
+    """
     conditions = Q()
     for field in search_fields:
         conditions |= Q(**{f'{field}__icontains': query})
@@ -660,7 +671,10 @@ def _build_query(search_fields, query):
         token_match = Q()
         for field in search_fields:
             token_match |= Q(**{f'{field}__icontains': token})
-        token_conditions &= token_match
+        if relaxed:
+            token_conditions |= token_match
+        else:
+            token_conditions &= token_match
 
     return conditions | token_conditions
 
@@ -693,6 +707,21 @@ def _query_matches_terms(query, match_terms):
 
 class EnhancedSearchEngine:
     def search(self, query, organization_id, filters=None, limit=10):
+        """Search the workspace, widening the query only if it finds nothing.
+
+        Two passes. The first requires all tokens together; if that returns no
+        results at all, the second lets any token match. Retrieval feeds the
+        copilot, and an empty result set there produces "there are no workspace
+        records available to answer this question" — which is indistinguishable
+        to a user from the product not knowing anything, even when the content
+        is sitting right there under different words.
+        """
+        results = self._search_pass(query, organization_id, filters, limit, relaxed=False)
+        if query and not results.get('total'):
+            results = self._search_pass(query, organization_id, filters, limit, relaxed=True)
+        return results
+
+    def _search_pass(self, query, organization_id, filters=None, limit=10, relaxed=False):
         filters = filters or {}
         date_from = _parse_iso(filters.get('date_from'))
         date_to = _parse_iso(filters.get('date_to'))
@@ -716,7 +745,7 @@ class EnhancedSearchEngine:
             if query:
                 broad_match_terms = config.get('broad_match_terms') or set()
                 if not (broad_match_terms and _query_matches_terms(query, broad_match_terms)):
-                    filters_q &= _build_query(config['search_fields'], query)
+                    filters_q &= _build_query(config['search_fields'], query, relaxed=relaxed)
 
             if date_from:
                 filters_q &= Q(**{f"{config['date_field']}__gte": date_from})

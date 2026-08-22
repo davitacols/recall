@@ -3,7 +3,7 @@ import React from "react";
 /**
  * EmptyState — Atlassian-style empty state with icon, headline, description, action.
  */
-export default function EmptyState({ icon, title, description, primaryAction, secondaryAction, style }) {
+export default function EmptyState({ icon, title, description, primaryAction, secondaryAction, style, children }) {
   return (
     <div
       style={{
@@ -13,7 +13,10 @@ export default function EmptyState({ icon, title, description, primaryAction, se
         justifyContent: "center",
         textAlign: "center",
         padding: "48px 24px",
-        maxWidth: 480,
+        // 480 is right for icon + a sentence + a button. Supplementary content
+        // needs room to breathe, so widen only when there is some — existing
+        // callers pass no children and are unaffected.
+        maxWidth: children ? 760 : 480,
         margin: "0 auto",
         ...style,
       }}
@@ -39,6 +42,7 @@ export default function EmptyState({ icon, title, description, primaryAction, se
           {secondaryAction}
         </div>
       ) : null}
+      {children ? <div style={{ marginTop: 32, width: "100%" }}>{children}</div> : null}
     </div>
   );
 }

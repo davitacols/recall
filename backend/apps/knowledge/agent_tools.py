@@ -84,8 +84,9 @@ def get_tool(name: str) -> Optional[ToolSpec]:
 # ----------------------------------------------------------------------------
 
 def _truncate(value, limit: int = 480) -> str:
-    text = strip_tags(str(value or "")).replace("\r", " ").replace("\n", " ").strip()
-    return text if len(text) <= limit else text[: limit - 1] + "…"
+    from apps.knowledge.text_utils import to_plain_text
+
+    return to_plain_text(value, limit=limit, ellipsis="…")
 
 
 def _person(user) -> Optional[Dict[str, Any]]:

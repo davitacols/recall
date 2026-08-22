@@ -1,7 +1,11 @@
+import logging
+
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from django.db.models import Q
+from django.db.models import Count, Q
+
+from apps.knowledge.text_utils import to_plain_text
 from django.utils import timezone
 from datetime import timedelta
 from django.contrib.contenttypes.models import ContentType
@@ -10,6 +14,8 @@ from .models import Decision
 from apps.integrations.github_engineering import link_manual_pr_to_decision
 from apps.organizations.activity import log_activity
 from apps.knowledge.unified_models import UnifiedActivity
+
+logger = logging.getLogger(__name__)
 
 
 def _clamp(value, minimum, maximum):
@@ -168,6 +174,17 @@ def decisions(request):
         else:
             limit = None
 
+        # The list used to return description and not rationale, so the one
+        # field the product exists to preserve was searchable and invisible.
+        # Hiding an empty why is also why it stays empty: a gap nobody can see
+        # is a gap nobody fills.
+        #
+        # select_related is not decoration either - this loop touched the
+        # decision maker, project and conversation once per row.
+        queryset = queryset.select_related(
+            'decision_maker', 'project', 'conversation'
+        ).annotate(_pr_count=Count('github_pull_requests', distinct=True))
+
         decision_iterable = queryset.order_by('-created_at')[:limit] if limit else queryset.order_by('-created_at')
         for decision in decision_iterable:
             confidence = calculate_confidence(decision)
@@ -184,6 +201,17 @@ def decisions(request):
                 'confidence': confidence,
                 'review_completed_at': decision.review_completed_at,
                 'was_successful': decision.was_successful,
+                # Python's strip() folds newlines and tabs, matching the
+                # whitespace-aware definition the dashboard percentage uses.
+                # Whitespace-only is not a rationale.
+                'has_rationale': bool(str(decision.rationale or '').strip()),
+                'rationale': to_plain_text(decision.rationale, limit=260),
+                # What this decision is connected to. Without these the list
+                # cannot show whether a decision reaches the code at all.
+                'pull_request_count': getattr(decision, '_pr_count', 0),
+                'conversation_id': decision.conversation_id,
+                'project_id': decision.project_id,
+                'project_name': decision.project.name if decision.project_id else None,
             })
         
         return Response(decisions_data)
@@ -404,8 +432,144 @@ def decisions_timeline(request):
     
     return Response(timeline_data)
 
-@api_view(['GET'])
+#: The text a person can correct after the fact. Deliberately not status,
+#: impact or ownership: each carries its own rules about who may change what
+#: and when, and folding them into one PATCH would settle those by accident.
+_EDITABLE_TEXT_FIELDS = ("title", "description", "rationale")
+
+
+def _update_decision_text(request, decision_id, allowed):
+    """Apply text edits to a decision, one implementation for every caller.
+
+    Decisions had no update endpoint of any kind, so the interface could say a
+    decision cannot answer anything and offer no way to change that, and a
+    description pasted as one flat block could never be broken up.
+    """
+    decision = Decision.objects.filter(
+        id=decision_id, organization=request.user.organization
+    ).first()
+    if not decision:
+        return Response({'error': 'Decision not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    data = request.data or {}
+    updates = {f: data[f] for f in allowed if f in data}
+    if not updates:
+        return Response(
+            {'error': f'Nothing to update. Send one of: {", ".join(allowed)}'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    for field, raw in updates.items():
+        value = str(raw or '').strip()
+        if len(value) > 20000:
+            return Response(
+                {'error': f'That {field} is too long'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        # A decision with no title is unfindable; the model asks for 5.
+        # The other two may be emptied - an empty why is a visible gap someone
+        # can fill, which is the point of showing it.
+        if field == 'title' and len(value) < 5:
+            return Response(
+                {'error': 'A title needs at least 5 characters'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        setattr(decision, field, value)
+
+    decision.save(update_fields=list(updates.keys()))
+
+    return Response({
+        'id': decision.id,
+        'title': decision.title,
+        'description': decision.description,
+        'rationale': decision.rationale,
+        'has_rationale': bool(str(decision.rationale or '').strip()),
+    })
+
+
+@api_view(['PATCH'])
+def decision_rationale(request, decision_id):
+    """Record or correct the why alone.
+
+    Kept as its own route because it is the field the product exists to hold
+    and the interface links straight to it. It shares the implementation below
+    rather than repeating the checks.
+    """
+    return _update_decision_text(request, decision_id, ('rationale',))
+
+
+def _delete_decision(request, decision_id):
+    """Remove a decision, with the things it would take down named first.
+
+    Decisions could be created and never removed - no endpoint, no admin
+    registration, nothing in the interface - so a conversation converted by
+    mistake stayed in the count forever, holding down the one number the
+    product turns on. Four of the nine decisions in the first workspace were
+    of that kind.
+
+    A hard delete rather than a soft one, deliberately: soft deletion needs a
+    column, and there is an uncommitted migration in flight that a second one
+    would collide with. The guards below matter more than recoverability here,
+    because the rows worth deleting are the ones carrying nothing.
+
+    Refuses when pull requests are linked. Those links are evidence someone
+    said this decision is about that code, the cascade would take them with it,
+    and no confirmation dialog conveys what is actually being lost.
+    """
+    decision = Decision.objects.filter(
+        id=decision_id, organization=request.user.organization
+    ).first()
+    if not decision:
+        return Response({'error': 'Decision not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    # Admins and managers, or whoever recorded it. A member who converted a
+    # conversation by mistake should be able to undo it without an admin.
+    is_owner = decision.decision_maker_id == request.user.id
+    if request.user.role not in ('admin', 'manager') and not is_owner:
+        return Response(
+            {'error': 'Only an admin, a manager, or whoever recorded this can delete it.'},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    linked_prs = decision.github_pull_requests.count()
+    if linked_prs:
+        return Response({
+            'error': (
+                f'This decision is linked to {linked_prs} pull request'
+                f'{"" if linked_prs == 1 else "s"}. Unlink them first — deleting '
+                'now would remove the record of which code this decision shaped.'
+            ),
+            'pull_request_count': linked_prs,
+        }, status=status.HTTP_409_CONFLICT)
+
+    removed = {
+        'predictions': decision.predictions.count(),
+        'retrospectives': decision.retrospectives.count(),
+        'twin_runs': decision.twin_runs.count(),
+    }
+    title = decision.title
+
+    log_activity(
+        organization=request.user.organization,
+        actor=request.user,
+        action_type='decision_deleted',
+        content_object=None,
+        title=title,
+    )
+    decision.delete()
+    logger.info(
+        "Decision %s (%r) deleted by user %s", decision_id, title[:80], request.user.id
+    )
+
+    return Response({'deleted': True, 'title': title, 'also_removed': removed})
+
+
+@api_view(['GET', 'PATCH', 'DELETE'])
 def decision_detail(request, decision_id):
+    if request.method == 'DELETE':
+        return _delete_decision(request, decision_id)
+    if request.method == 'PATCH':
+        return _update_decision_text(request, decision_id, _EDITABLE_TEXT_FIELDS)
     try:
         decision = Decision.objects.get(
             id=decision_id,
@@ -1363,20 +1527,47 @@ def convert_to_decision(request, conversation_id):
             return Response({'error': 'Decision already exists for this conversation'}, 
                           status=status.HTTP_400_BAD_REQUEST)
         
-        # Generate AI summary from conversation
-        from apps.agile.ai_service import generate_sprint_update_summary
-        ai_summary = generate_sprint_update_summary(
-            conversation.title,
-            conversation.content
+        # Extract the reasoning, not a summary. This used to call
+        # generate_sprint_update_summary, whose prompt asks for "a summary of
+        # this sprint update" — so the rationale field ended up restating what
+        # was said rather than why it was chosen. Returns '' rather than
+        # inventing a why when the discussion does not contain one.
+        from apps.decisions.rationale import (
+            RationaleUnavailable,
+            generate_decision_rationale,
         )
-        
+
+        # Two different empties, and the client has to be able to tell them
+        # apart. "The discussion stated no reason" is a finding about the
+        # source. "The model API refused the request" is a finding about us,
+        # and reporting it as the former quietly degrades the record: every
+        # conversion during an outage adds a why-less decision that looks like
+        # the discussion's fault.
+        rationale_unavailable = ""
+        try:
+            ai_rationale = generate_decision_rationale(
+                conversation.title,
+                conversation.content,
+                strict=True,
+            )
+        except RationaleUnavailable as exc:
+            # Still create the decision. Losing the record because an API is
+            # down would be worse than recording it without a why - the
+            # conversion is the deliberate act, and it can be filled in.
+            ai_rationale = ""
+            rationale_unavailable = str(exc)
+            logger.warning(
+                "Converted conversation %s without a rationale: %s",
+                conversation.id, exc,
+            )
+
         # Create decision from conversation
         decision = Decision.objects.create(
             organization=request.user.organization,
             conversation=conversation,
             title=conversation.title,
             description=conversation.content,
-            rationale=ai_summary,
+            rationale=ai_rationale,
             impact_level=request.data.get('impact_level', 'medium'),
             decision_maker=request.user,
             status='proposed'
@@ -1398,7 +1589,13 @@ def convert_to_decision(request, conversation_id):
             'id': decision.id,
             'title': decision.title,
             'status': decision.status,
-            'ai_summary': ai_summary
+            # Empty when the discussion contained no reasoning to extract. The
+            # client says so plainly rather than implying the why was captured.
+            'rationale': ai_rationale,
+            # Set only when nothing examined the discussion at all, so the
+            # client can say "we could not check" instead of "there was no
+            # reason here".
+            'rationale_unavailable': rationale_unavailable,
         }, status=status.HTTP_201_CREATED)
         
     except Conversation.DoesNotExist:

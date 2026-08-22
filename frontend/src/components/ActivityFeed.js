@@ -15,8 +15,11 @@ function ActivityFeed() {
 
   const fetchActivity = async () => {
     try {
-      const res = await api.get('/api/conversations/activity-feed/');
-      setActivities(res.data);
+      // Was /api/conversations/activity-feed/, which is not a route — the feed
+      // lives in the organizations app. It also returns {activities: [...]},
+      // not a bare array, so fixing only the URL would still render nothing.
+      const res = await api.get('/api/organizations/activity/feed/');
+      setActivities(Array.isArray(res.data?.activities) ? res.data.activities : []);
     } catch (error) {
       console.error('Failed to fetch activity:', error);
     } finally {

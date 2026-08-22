@@ -7,6 +7,7 @@ import {
   ChatBubbleLeftIcon,
   ChatBubbleLeftRightIcon,
   CheckCircleIcon,
+  InboxArrowDownIcon,
   ExclamationTriangleIcon,
   HandThumbUpIcon,
   LightBulbIcon,
@@ -428,6 +429,13 @@ export default function ConversationDetail() {
   const createdLabel = new Date(conversation.created_at).toLocaleDateString();
   const updatedLabel = conversation.updated_at ? new Date(conversation.updated_at).toLocaleDateString() : createdLabel;
   const isOwner = Number(conversation.author?.id || conversation.author_id) === Number(currentUserId);
+  // A captured conversation was written by people who are usually not
+  // Knoledgr users. The byline names whoever the workspace attributed it to,
+  // so without saying where it came from the page implies they wrote it.
+  const captured = conversation.source === "github_pr";
+  const prNumber = String(conversation.source_url || "").match(/\/pull\/(\d+)/)?.[1];
+  const decisionId = conversation.decision_id || null;
+
   const askQuestion = `For the conversation titled "${conversation.title || "Untitled conversation"}", what needs a response, decision, or follow-up next?`;
 
   return (
@@ -435,6 +443,21 @@ export default function ConversationDetail() {
       <Link to="/conversations" className="cd-back"><ArrowLeftIcon /> All conversations</Link>
 
       <header className="cd-head">
+        {captured ? (
+          <div className="cd-origin">
+            <InboxArrowDownIcon />
+            <span>
+              Captured from a merged pull request. Nobody typed this — the
+              transcript below names who said what.
+            </span>
+            {conversation.source_url ? (
+              <a href={conversation.source_url} target="_blank" rel="noreferrer noopener">
+                {prNumber ? `View PR #${prNumber}` : "View on GitHub"}
+              </a>
+            ) : null}
+          </div>
+        ) : null}
+
         <div className="cd-head-meta">
           <span className="cd-type-badge">
             <TypeIcon /> {type}
@@ -456,17 +479,31 @@ export default function ConversationDetail() {
           </span>
           <div>
             <div className="cd-byline-name">{authorName}</div>
-            <div className="cd-byline-meta">Created {createdLabel} · Updated {updatedLabel}</div>
+            <div className="cd-byline-meta">
+              {captured ? "Recorded for the workspace · " : "Created "}
+              {createdLabel} · Updated {updatedLabel}
+            </div>
           </div>
         </div>
 
         <div className="cd-actions">
-          <button type="button" className="cd-btn cd-btn-primary" onClick={() => navigate(buildAskRecallPath(askQuestion))}>
+          {/* Convert is the one deliberate act in the whole loop, and it was
+              styled as a secondary next to Ask Recall. When the conversation
+              has already been converted there is nothing to press: the button
+              would return "a decision already exists", so it becomes a link to
+              the decision instead. */}
+          {decisionId ? (
+            <Link to={`/decisions/${decisionId}`} className="cd-btn cd-btn-primary">
+              <CheckCircleIcon /> Recorded as DEC-{decisionId}
+            </Link>
+          ) : (
+            <button type="button" className="cd-btn cd-btn-primary" onClick={handleConvertToDecision} disabled={converting}>
+              {converting ? <ArrowPathIcon style={{ animation: "cd-spin 1s linear infinite" }} /> : <CheckCircleIcon />}
+              {converting ? "Converting…" : "Convert to decision"}
+            </button>
+          )}
+          <button type="button" className="cd-btn" onClick={() => navigate(buildAskRecallPath(askQuestion))}>
             <SparklesIcon /> Ask Recall
-          </button>
-          <button type="button" className="cd-btn" onClick={handleConvertToDecision} disabled={converting}>
-            {converting ? <ArrowPathIcon style={{ animation: "cd-spin 1s linear infinite" }} /> : <CheckCircleIcon />}
-            Convert to decision
           </button>
           <button type="button" className={`cd-btn ${bookmark.on ? "is-on" : ""}`} onClick={handleToggleBookmark} disabled={bookmark.loading}>
             {bookmark.on ? <StarSolidIcon /> : <StarIcon />}

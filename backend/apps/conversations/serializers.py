@@ -69,12 +69,33 @@ class ConversationDetailSerializer(serializers.ModelSerializer):
     tags = TagSerializer(many=True, read_only=True)
     replies = ConversationReplySerializer(many=True, read_only=True)
     action_items = ActionItemSerializer(many=True, read_only=True)
-    
+    decision_id = serializers.SerializerMethodField()
+
+    def get_decision_id(self, obj):
+        """The decision this conversation already became, if it did.
+
+        Without it the page offers Convert to decision on a conversation that
+        has already been converted, and the click returns an error. Both live
+        captured conversations are in different states - one converted, one
+        not - and the page could not tell them apart.
+        """
+        decision = getattr(obj, 'decision', None)
+        if decision is not None:
+            return decision.id
+        from apps.decisions.models import Decision
+        found = Decision.objects.filter(conversation=obj).only('id').first()
+        return found.id if found else None
+
     class Meta:
         model = Conversation
         fields = [
             'id', 'title', 'content', 'post_type', 'priority',
             'author', 'owner', 'created_at', 'updated_at',
+            # Where it came from. A captured conversation was written by people
+            # who are usually not Knoledgr users, and the byline names a
+            # custodian rather than an author - without the source the page
+            # implies that custodian wrote it.
+            'source', 'source_url', 'external_id', 'decision_id',
             'reply_count', 'view_count', 'is_pinned', 'is_closed',
             'closed_at', 'closure_summary', 'next_steps',
             'ai_summary', 'ai_action_items', 'ai_keywords',

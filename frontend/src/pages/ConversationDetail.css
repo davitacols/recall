@@ -298,3 +298,43 @@
   .cd-layout { grid-template-columns: 1fr; }
   .cd-rail { position: static; }
 }
+
+/* Where a captured conversation came from.
+   The byline names whoever the workspace attributed it to, and for a capture
+   that is a custodian rather than an author — the people in the transcript are
+   usually not Knoledgr users at all. Without this strip the page quietly
+   credits the wrong person. */
+.cd-origin {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--app-border);
+  border-radius: 10px;
+  background: var(--app-surface-subtle, var(--app-surface));
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--app-text-subtle, var(--app-muted));
+}
+
+.cd-origin svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.cd-origin span { flex: 1; min-width: 220px; }
+
+.cd-origin a {
+  flex-shrink: 0;
+  color: var(--app-text);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* The convert action becomes a link once the decision exists, so it needs to
+   sit on the same baseline as the buttons beside it. */
+a.cd-btn { text-decoration: none; }

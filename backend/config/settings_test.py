@@ -39,6 +39,17 @@ MIGRATION_MODULES = {
     "integrations": None,
 }
 
+# No test may reach a third-party service. REDIS_URL was inherited from the
+# environment, so the health check dialled the production Upstash host on every
+# run - a real outbound connection to a live service, from a test suite, which
+# is exactly what the mail-provider key was blanked to prevent.
+#
+# Pointed at a local address that nothing is listening on. The health check
+# reports redis as error, which is honest: there is no broker in a test run.
+REDIS_URL = "redis://127.0.0.1:6379/15"
+CELERY_BROKER_URL = REDIS_URL
+CELERY_RESULT_BACKEND = REDIS_URL
+
 # Faster tests.
 PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
 

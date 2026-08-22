@@ -78,15 +78,37 @@ def health_check(request):
     # endpoint exposes the state, never installation identifiers.
     try:
         from apps.integrations.github_app import get_app_config
-        from apps.integrations.github_app_models import GitHubAppDriftCheck
+        from apps.integrations.github_app_models import (
+            GitHubAppDriftCheck,
+            GitHubAppInstallation,
+        )
 
         if not get_app_config():
             status['components']['github_integration'] = 'not_configured'
         else:
             latest = GitHubAppDriftCheck.objects.first()
             if latest is None:
-                status['components']['github_integration'] = 'unchecked'
-                status['status'] = 'degraded'
+                # Never run. On a fresh deployment that is expected, and
+                # degrading for it would leave every new environment reporting
+                # unhealthy until the nightly task first fires — which trips
+                # any uptime monitor on day one and teaches people to ignore
+                # the endpoint.
+                #
+                # But a schedule that never starts would then stay invisible
+                # forever, because 'stale' needs a first row to age. The
+                # oldest installation is the clock: if a connection has existed
+                # for longer than the check interval and nothing has ever
+                # looked at it, the schedule is broken rather than young.
+                oldest = GitHubAppInstallation.objects.order_by('created_at').first()
+                overdue = bool(
+                    oldest
+                    and oldest.created_at < timezone.now() - timedelta(hours=36)
+                )
+                status['components']['github_integration'] = (
+                    'overdue' if overdue else 'unchecked'
+                )
+                if overdue:
+                    status['status'] = 'degraded'
             elif latest.checked_at < timezone.now() - timedelta(hours=36):
                 status['components']['github_integration'] = 'stale'
                 status['status'] = 'degraded'

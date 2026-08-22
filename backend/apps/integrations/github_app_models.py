@@ -104,6 +104,40 @@ class GitHubAppInstallation(models.Model):
         return self.suspended_at is None and self.revoked_at is None
 
 
+class GitHubAppDriftCheck(models.Model):
+    """Result of reconciling GitHub App installs with our database.
+
+    Webhooks cannot detect an installation row disappearing locally: once the
+    row is gone, otherwise-valid GitHub events are deliberately acknowledged
+    and ignored. A periodic App-level comparison supplies an independent
+    signal for that silent failure mode.
+    """
+
+    STATUS_HEALTHY = "healthy"
+    STATUS_DRIFT = "drift"
+    STATUS_ERROR = "error"
+    STATUS_NOT_CONFIGURED = "not_configured"
+    STATUS_CHOICES = [
+        (STATUS_HEALTHY, "Healthy"),
+        (STATUS_DRIFT, "Drift detected"),
+        (STATUS_ERROR, "Check failed"),
+        (STATUS_NOT_CONFIGURED, "GitHub App not configured"),
+    ]
+
+    status = models.CharField(max_length=24, choices=STATUS_CHOICES, db_index=True)
+    local_installation_count = models.PositiveIntegerField(default=0)
+    github_installation_count = models.PositiveIntegerField(default=0)
+    # IDs are retained for operator diagnosis. They are never returned by the
+    # unauthenticated health endpoint.
+    missing_locally = models.JSONField(default=list, blank=True)
+    missing_on_github = models.JSONField(default=list, blank=True)
+    checked_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        db_table = "github_app_drift_checks"
+        ordering = ["-checked_at"]
+
+
 class GitHubRepo(models.Model):
     """One row per repo Knoledgr has connected for a given installation.
 

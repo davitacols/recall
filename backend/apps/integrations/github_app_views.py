@@ -19,6 +19,7 @@ import hashlib
 import json
 import logging
 import secrets
+from datetime import timedelta
 from typing import Optional
 
 from django.core.cache import cache
@@ -38,6 +39,7 @@ from apps.integrations.github_app import (
 from apps.integrations.github_app_models import (
     DecisionPullRequest,
     GitHubAppDelivery,
+    GitHubAppDriftCheck,
     GitHubAppInstallation,
     GitHubRepo,
 )
@@ -58,6 +60,24 @@ logger = logging.getLogger(__name__)
 def _serialize_installation(installation: Optional[GitHubAppInstallation]) -> dict:
     if not installation:
         return {"connected": False}
+
+    latest_check = GitHubAppDriftCheck.objects.first()
+    if latest_check is None:
+        verification_status = "unchecked"
+        last_verified_at = None
+    else:
+        last_verified_at = latest_check.checked_at.isoformat()
+        if installation.installation_id in (latest_check.missing_on_github or []):
+            verification_status = "missing_on_github"
+        elif latest_check.checked_at < timezone.now() - timedelta(hours=36):
+            verification_status = "check_stale"
+        elif latest_check.status == GitHubAppDriftCheck.STATUS_ERROR:
+            verification_status = "check_failed"
+        elif latest_check.status == GitHubAppDriftCheck.STATUS_NOT_CONFIGURED:
+            verification_status = "not_configured"
+        else:
+            verification_status = "verified"
+
     return {
         "connected": True,
         "installation_id": installation.installation_id,
@@ -70,6 +90,8 @@ def _serialize_installation(installation: Optional[GitHubAppInstallation]) -> di
         "suspended_at": installation.suspended_at.isoformat() if installation.suspended_at else None,
         "revoked_at": installation.revoked_at.isoformat() if installation.revoked_at else None,
         "created_at": installation.created_at.isoformat() if installation.created_at else None,
+        "verification_status": verification_status,
+        "last_verified_at": last_verified_at,
         "installed_by": (
             installation.installed_by.get_full_name() if installation.installed_by else None
         ),

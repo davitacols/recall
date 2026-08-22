@@ -1,13 +1,16 @@
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from django.db import connection
-from django.conf import settings
+import logging
+import re
+from datetime import timedelta
+from urllib.parse import urlparse
+
+import redis
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
-import logging
-import redis
-import re
-from urllib.parse import urlparse
+from django.conf import settings
+from django.db import connection
+from django.http import JsonResponse
+from django.utils import timezone
+from django.views.decorators.csrf import csrf_exempt
 
 logger = logging.getLogger(__name__)
 
@@ -69,6 +72,36 @@ def health_check(request):
         status['components']['semantic_search'] = 'available' if semantic else 'unavailable'
     except Exception:
         status['components']['semantic_search'] = 'unknown'
+
+    # Do not call GitHub from an unauthenticated health request. Celery performs
+    # the external reconciliation once a day and persists only the result; the
+    # endpoint exposes the state, never installation identifiers.
+    try:
+        from apps.integrations.github_app import get_app_config
+        from apps.integrations.github_app_models import GitHubAppDriftCheck
+
+        if not get_app_config():
+            status['components']['github_integration'] = 'not_configured'
+        else:
+            latest = GitHubAppDriftCheck.objects.first()
+            if latest is None:
+                status['components']['github_integration'] = 'unchecked'
+                status['status'] = 'degraded'
+            elif latest.checked_at < timezone.now() - timedelta(hours=36):
+                status['components']['github_integration'] = 'stale'
+                status['status'] = 'degraded'
+            elif latest.status == GitHubAppDriftCheck.STATUS_HEALTHY:
+                status['components']['github_integration'] = 'ok'
+            elif latest.status == GitHubAppDriftCheck.STATUS_DRIFT:
+                status['components']['github_integration'] = 'drift'
+                status['status'] = 'degraded'
+            else:
+                status['components']['github_integration'] = 'error'
+                status['status'] = 'degraded'
+    except Exception:
+        logger.exception('Health check: GitHub integration state unavailable')
+        status['components']['github_integration'] = 'error'
+        status['status'] = 'degraded'
 
     return JsonResponse(status)
 

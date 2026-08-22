@@ -376,6 +376,42 @@ def fetch_installation_metadata(installation_id: int) -> dict:
     return resp.json()
 
 
+def list_app_installations() -> list[dict]:
+    """Return every installation GitHub currently associates with this App.
+
+    This deliberately uses App authentication rather than an installation
+    token. It is the only view that can reveal an installation which still
+    exists on GitHub after its local database row has disappeared.
+    """
+    cfg = get_app_config()
+    if not cfg:
+        raise RuntimeError("GitHub App is not configured for this deployment")
+
+    installations: list[dict] = []
+    url = f"{GITHUB_API}/app/installations?per_page=100"
+    app_jwt = build_app_jwt(cfg)
+    while url:
+        resp = requests.get(
+            url,
+            headers={
+                "Authorization": f"Bearer {app_jwt}",
+                "Accept": "application/vnd.github+json",
+                "X-GitHub-Api-Version": "2022-11-28",
+            },
+            timeout=20,
+        )
+        if resp.status_code != 200:
+            raise RuntimeError(
+                f"GitHub rejected app/installations ({resp.status_code}): {resp.text[:200]}"
+            )
+        body = resp.json()
+        if not isinstance(body, list):
+            raise RuntimeError("GitHub returned an invalid app/installations response")
+        installations.extend(body)
+        url = _next_page_url(resp.headers.get("Link", ""))
+    return installations
+
+
 def _next_page_url(link_header: str) -> Optional[str]:
     """Parse the RFC 5988 Link header and return the rel="next" URL."""
     if not link_header:

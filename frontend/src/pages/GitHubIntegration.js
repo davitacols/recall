@@ -288,6 +288,7 @@ export default function GitHubIntegration() {
     }
   };
 
+
   // Five outcomes, and the wording of each matters more than the layout.
   // "Nothing met the bar" is the filter working; a repo with no merged pull
   // requests can never produce anything at all. Reporting both as a zero
@@ -392,6 +393,9 @@ export default function GitHubIntegration() {
   }, [repos, filter]);
 
   const enabledCount = useMemo(() => repos.filter((r) => r.is_enabled_for_decisions).length, [repos]);
+  const installationMissingOnGitHub = installation?.verification_status === "missing_on_github";
+  const installationCheckFailed = installation?.verification_status === "check_failed";
+  const installationCheckStale = installation?.verification_status === "check_stale";
 
   return (
     <div className="gh-page">
@@ -409,7 +413,7 @@ export default function GitHubIntegration() {
           <span className="gh-connection-mark"><GitHubGlyph size={26} /></span>
           {installation ? (
             <div>
-              <p className="gh-eyebrow">Connected</p>
+              <p className="gh-eyebrow">{installationMissingOnGitHub ? "Needs attention" : "Connected"}</p>
               <h2 className="gh-account">{installation.account_login}</h2>
               <p className="gh-sub">
                 {installation.repository_selection === "all" ? "All repositories" : `${enabledCount} of ${repos.length} repos enabled for decisions`}
@@ -419,6 +423,24 @@ export default function GitHubIntegration() {
                 <p className="gh-warning">
                   <ExclamationCircleIcon />
                   {installation.revoked_at ? "Install was revoked on the GitHub side." : "Install is suspended."} Webhook events have stopped.
+                </p>
+              ) : null}
+              {installation.is_active && installationMissingOnGitHub ? (
+                <p className="gh-warning">
+                  <ExclamationCircleIcon />
+                  GitHub no longer reports this installation. New webhook events may have stopped; reconnect the App to restore the integration.
+                </p>
+              ) : null}
+              {installation.is_active && installationCheckFailed ? (
+                <p className="gh-warning">
+                  <ExclamationCircleIcon />
+                  Knoledgr could not complete the latest automatic GitHub installation check. The connection has not been verified.
+                </p>
+              ) : null}
+              {installation.is_active && installationCheckStale ? (
+                <p className="gh-warning">
+                  <ExclamationCircleIcon />
+                  The automatic GitHub installation check is overdue. Confirm the Celery beat process is running.
                 </p>
               ) : null}
             </div>

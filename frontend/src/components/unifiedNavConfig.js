@@ -130,29 +130,31 @@ export function buildUnifiedNavModel({ experienceMode = "standard", installedApp
       icon: Squares2X2Icon,
       summary: "Ways back into the record",
       items: [
+        // Browse used to sit here. Its page is six lines that redirect to
+        // Search, so the item promised somewhere to browse and quietly landed
+        // you somewhere else. The route stays for old links; the nav entry
+        // does not, because an item that goes to another item's destination is
+        // worse than no item.
         {
           name: "Search",
           href: "/knowledge",
           icon: MagnifyingGlassIcon,
-          description: "Find the source context behind AI answers",
-        },
-        {
-          name: "Browse",
-          href: "/knowledge/base",
-          icon: CubeIcon,
-          description: "Browse the workspace knowledge base",
+          description: "Search everything: decisions, discussions, documents",
         },
         {
           name: "Graph",
           href: "/knowledge/graph",
           icon: CubeIcon,
-          description: "Trace the context graph AI uses to reason",
+          description: "See how records connect to each other",
         },
         {
           name: "Insights",
           href: "/knowledge/insights",
           icon: ChartBarIcon,
-          description: "Measure AI context coverage, freshness, and flow",
+          // Was "Measure AI context coverage, freshness, and flow", which
+          // described a page that does not exist. This one counts records,
+          // ranks contributors and lists recent activity.
+          description: "Totals, contributors and recent activity",
         },
       ],
     },

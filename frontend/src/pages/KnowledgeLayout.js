@@ -2,7 +2,6 @@ import React from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import {
   MagnifyingGlassIcon,
-  BookOpenIcon,
   ShareIcon,
   ChartBarIcon,
 } from "@heroicons/react/24/outline";
@@ -16,7 +15,9 @@ import {
  */
 const TABS = [
   { to: "/knowledge", label: "Search", icon: MagnifyingGlassIcon, end: true },
-  { to: "/knowledge/base", label: "Browse", icon: BookOpenIcon },
+  // Browse is gone: its page redirects to Search, so clicking the tab left
+  // you on Search with the Search tab highlighted. The route survives for
+  // old links.
   { to: "/knowledge/graph", label: "Graph", icon: ShareIcon },
   { to: "/knowledge/insights", label: "Insights", icon: ChartBarIcon },
 ];

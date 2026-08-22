@@ -29,38 +29,65 @@ from apps.business.models import Task
 from apps.conversations.models import Conversation
 
 
+# The three first-party apps seeded into every environment.
+#
+# These used to describe capabilities nobody had built. "Jira Portfolio Bridge"
+# offered cross-project rollups, dependency views and execution drift alerts;
+# what exists is a one-way push that turns a blocker into a Jira issue.
+# "Incident Ops Feed" offered streaming to on-call and response channels; what
+# exists is a Slack webhook that posts decisions, blockers and sprint summaries
+# to one channel. "GitHub Advanced Sync" offered commit and release sync into
+# delivery timelines, none of which exists.
+#
+# That mattered more here than in a brochure, because the interface puts an
+# Install button next to each one. An admin could install Jira Portfolio
+# Bridge, get a success message, and reasonably believe their workspace now had
+# portfolio rollups. Installing records a row and changes nothing else.
+#
+# The names and descriptions below say what the code does. Where a capability
+# is narrow, the description is narrow.
 DEFAULT_MARKETPLACE_APPS = [
     {
         'slug': 'github-advanced-sync',
-        'name': 'GitHub Advanced Sync',
-        'description': 'Deep PR, commit, and release sync into decisions and delivery timelines.',
+        'name': 'GitHub',
+        'description': (
+            'Capture discussion from merged pull requests, link decisions to the '
+            'code that implemented them, and surface earlier reasoning on new '
+            'pull requests.'
+        ),
         'vendor': 'Knoledgr',
         'category': 'engineering',
         'pricing': 'included',
         'docs_url': 'https://knoledgr.com/docs/integrations/github',
-        'launch_path': '/integrations',
+        'launch_path': '/integrations/github',
         'is_active': True,
     },
     {
         'slug': 'incident-ops-feed',
-        'name': 'Incident Ops Feed',
-        'description': 'Stream blocker and incident signals to on-call and response channels.',
+        'name': 'Slack notifications',
+        'description': (
+            'Post decisions, blockers and sprint summaries to a Slack channel '
+            'through an incoming webhook. One direction, one channel.'
+        ),
         'vendor': 'Knoledgr',
         'category': 'automation',
-        'pricing': 'enterprise',
-        'docs_url': 'https://knoledgr.com/docs/enterprise/incident-ops',
-        'launch_path': '/enterprise',
+        'pricing': 'included',
+        'docs_url': 'https://knoledgr.com/docs/integrations/slack',
+        'launch_path': '/integrations#slack',
         'is_active': True,
     },
     {
         'slug': 'jira-portfolio-bridge',
-        'name': 'Jira Portfolio Bridge',
-        'description': 'Cross-project rollups, dependency views, and execution drift alerts.',
+        'name': 'Jira issue sync',
+        'description': (
+            'Create a Jira issue from a blocker, automatically when auto-sync is '
+            'switched on. Nothing is read back from Jira.'
+        ),
         'vendor': 'Knoledgr',
-        'category': 'reporting',
+        'category': 'engineering',
         'pricing': 'included',
         'docs_url': 'https://knoledgr.com/docs/integrations/jira',
-        'launch_path': '/enterprise',
+        'launch_path': '/integrations#jira',
         'is_active': True,
     },
 ]

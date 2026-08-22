@@ -1609,25 +1609,32 @@ const BASE_DOCUMENTATION_GROUPS = [
       {
         id: "jira",
         slug: "integrations/jira",
-        title: "Jira Portfolio Bridge",
-        summary: "Connect Jira portfolio and dependency views to Knoledgr reporting and execution context.",
-        readTime: "4 min",
-        audience: "PMO, delivery, transformation teams",
+        title: "Jira issue sync",
+        summary: "Turn a blocker into a Jira issue. One direction, one object type.",
+        readTime: "2 min",
+        audience: "Engineers, delivery leads",
         sections: [
           {
-            heading: "What it is for",
-            bullets: [
-              "Portfolio rollups across multiple projects and workstreams.",
-              "Dependency visibility alongside decision and blocker context.",
-              "A stronger bridge between traditional portfolio tracking and organizational memory.",
+            heading: "What it does",
+            paragraphs: [
+              "When a blocker is raised in Knoledgr and auto-sync is switched on, a matching issue is created in your Jira site. That is the whole feature.",
             ],
           },
           {
-            heading: "Where it helps most",
+            heading: "What it does not do",
+            paragraphs: [
+              "This page previously described portfolio rollups, dependency views and execution drift alerts. None of those were ever built, and the description has been corrected.",
+            ],
             bullets: [
-              "Multi-project initiatives with changing priorities and handoffs.",
-              "Reporting environments where raw status is not enough without rationale.",
-              "Organizations trying to reduce duplicate context across Jira and internal collaboration.",
+              "Nothing is read back from Jira. Issues you change there are invisible here.",
+              "No rollups across projects, and no dependency graph.",
+              "Only blockers sync. Decisions, conversations and predictions do not.",
+            ],
+          },
+          {
+            heading: "Setting it up",
+            paragraphs: [
+              "Integrations, then Jira. You need your site URL, the email on the account, and an API token. Switch on auto-sync if you want blockers pushed without being asked each time.",
             ],
           },
         ],

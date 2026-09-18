@@ -160,12 +160,15 @@ find "$BACKUP_DIR" -name 'knoledgr-*.sql.gz' -mtime +14 -delete
 # discarding a verified dump. It is loud instead, because a silent off-site
 # failure is how you discover months later that only the local copy existed.
 # ---------------------------------------------------------------------------
-if [ -n "${BACKUP_OFFSITE_DEST:-}" ]; then
+offsite_dest="${BACKUP_OFFSITE_DEST:-}"
+[ -n "$offsite_dest" ] || offsite_dest=$(get_env BACKUP_OFFSITE_DEST)
+
+if [ -n "$offsite_dest" ]; then
   if ! command -v rclone >/dev/null 2>&1; then
     echo "WARNING: BACKUP_OFFSITE_DEST is set but rclone is not installed" >&2
     notify_failure "off-site copy skipped: rclone is not installed. The local backup is verified and kept."
-  elif rclone copy "$ARCHIVE" "$BACKUP_OFFSITE_DEST" --no-traverse 2>&1; then
-    echo "off-site copy done: $BACKUP_OFFSITE_DEST"
+  elif rclone copy "$ARCHIVE" "$offsite_dest" --no-traverse 2>&1; then
+    echo "off-site copy done: $offsite_dest"
   else
     echo "WARNING: off-site copy failed" >&2
     notify_failure "off-site copy failed. The local backup is verified and kept, but it is the only copy."

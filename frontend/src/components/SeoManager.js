@@ -36,9 +36,9 @@ function docsSlugFromPathname(pathname) {
 function resolveMeta(pathname) {
   if (pathname === "/") {
     return {
-      title: `${BRAND} | Decision Memory for Teams`,
+      title: `${BRAND} | Decision Intelligence for Teams`,
       description:
-        "Knoledgr helps teams capture decisions, documents, and conversations in one knowledge-first workspace that keeps context searchable and reusable.",
+        "Knoledgr records why teams make decisions, checks predicted outcomes against reality, and carries each lesson into the next decision.",
       robots: "index,follow",
       canonicalPath: "/",
       ogType: "website",
@@ -56,7 +56,7 @@ function resolveMeta(pathname) {
           name: BRAND,
           url: SITE_URL,
           description:
-            "Decision memory and knowledge-first collaboration for teams.",
+            "Decision intelligence that checks predicted outcomes against reality.",
         },
         {
           "@context": "https://schema.org",
@@ -66,7 +66,7 @@ function resolveMeta(pathname) {
           operatingSystem: "Web",
           url: SITE_URL,
           description:
-            "A knowledge-first collaboration platform for decisions, conversations, projects, and documents.",
+            "A decision intelligence platform that turns outcomes and retrospectives into reusable lessons.",
         },
       ],
     };

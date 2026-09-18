@@ -168,7 +168,7 @@ const PUBLIC_ROUTES = [
   { path: "/login", element: <Login /> },
   { path: "/forgot-password", element: <ForgotPassword /> },
   { path: "/reset-password", element: <ResetPassword /> },
-  { path: "/signup", element: <Navigate to="/login" replace /> },
+  { path: "/signup", element: <Navigate to="/login?mode=signup" replace /> },
   { path: "/invite/:token", element: <AcceptInvite /> },
 ];
 

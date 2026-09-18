@@ -182,5 +182,7 @@ changes them.
   are titled things like `Introduction` and `code implementation`. Those are
   conversations that got converted because the button was there, and they
   drag the "carry their why" percentage down for no reason.
-- **Off-site backups.** Currently on the same disk as the database, which is
-  the largest single operational risk on this box.
+- **Off-site backups.** Set `BACKUP_OFFSITE_DEST` in `deploy/.env.prod` to an
+  rclone remote, run `deploy/backup.sh`, and confirm the uploaded archive from
+  a second machine. Until that check passes, every backup is still on the same
+  disk as the database and remains the largest operational risk on this box.

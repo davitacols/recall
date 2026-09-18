@@ -13,7 +13,7 @@ one has to stay visible. The oldest installation is the clock.
 from datetime import timedelta
 from unittest.mock import patch
 
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.utils import timezone
 
 from apps.integrations.github_app_models import (
@@ -121,3 +121,33 @@ class HealthDriftTests(TestCase):
         self._check(GitHubAppDriftCheck.STATUS_DRIFT)
 
         self.assertNotIn("33001", str(self._get()))
+
+    @override_settings(ANTHROPIC_API_KEY="", CLAUDE_API_KEY="")
+    def test_missing_ai_key_reports_fallback_without_failing_the_app(self, _cfg, _redis):
+        body = self._get()
+
+        self.assertEqual(body["components"]["ask_recall"], "fallback_only")
+        self.assertEqual(body["status"], "healthy")
+
+    @override_settings(ANTHROPIC_API_KEY="test-key", CLAUDE_API_KEY="")
+    def test_configured_ai_is_not_claimed_as_live_verified(self, _cfg, _redis):
+        with patch(
+            "apps.knowledge.ai_health.get_state",
+            return_value={"available": True, "reason": ""},
+        ):
+            body = self._get()
+
+        self.assertEqual(body["components"]["ask_recall"], "configured")
+        self.assertEqual(body["status"], "healthy")
+
+    @override_settings(ANTHROPIC_API_KEY="test-key", CLAUDE_API_KEY="")
+    def test_persistent_ai_failure_degrades_without_exposing_reason(self, _cfg, _redis):
+        with patch(
+            "apps.knowledge.ai_health.get_state",
+            return_value={"available": False, "reason": "The AI API key is not being accepted."},
+        ):
+            body = self._get()
+
+        self.assertEqual(body["components"]["ask_recall"], "unavailable")
+        self.assertEqual(body["status"], "degraded")
+        self.assertNotIn("API key", str(body))

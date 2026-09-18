@@ -73,6 +73,31 @@ def health_check(request):
     except Exception:
         status['components']['semantic_search'] = 'unknown'
 
+    # Ask Recall can fall back to its deterministic rules engine, so a missing
+    # model key does not make the whole app unavailable. It must still be
+    # visible: the public product should never imply that an LLM-backed answer
+    # was verified when only the fallback is active. A persistent provider
+    # failure is recorded by real model calls in ai_health.
+    try:
+        api_key = (
+            (getattr(settings, 'ANTHROPIC_API_KEY', '') or '').strip()
+            or (getattr(settings, 'CLAUDE_API_KEY', '') or '').strip()
+        )
+        if not api_key:
+            status['components']['ask_recall'] = 'fallback_only'
+        else:
+            from apps.knowledge.ai_health import get_state
+            ai_state = get_state()
+            if ai_state.get('available', True):
+                status['components']['ask_recall'] = 'configured'
+            else:
+                status['components']['ask_recall'] = 'unavailable'
+                status['status'] = 'degraded'
+    except Exception:
+        logger.exception('Health check: Ask Recall state unavailable')
+        status['components']['ask_recall'] = 'unknown'
+        status['status'] = 'degraded'
+
     # Do not call GitHub from an unauthenticated health request. Celery performs
     # the external reconciliation once a day and persists only the result; the
     # endpoint exposes the state, never installation identifiers.

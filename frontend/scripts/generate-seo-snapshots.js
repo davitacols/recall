@@ -529,9 +529,9 @@ const docsSnapshotConfigs = [
 const pageConfigs = [
   {
     route: "/",
-    title: `${BRAND} | Decision Memory for Teams`,
+    title: `${BRAND} | Decision Intelligence for Teams`,
     description:
-      "Knoledgr helps teams capture decisions, documents, and conversations in one knowledge-first workspace that keeps context searchable and reusable.",
+      "Knoledgr records why teams make decisions, checks predicted outcomes against reality, and carries each lesson into the next decision.",
     ogType: "website",
     structuredData: [
       {
@@ -546,7 +546,7 @@ const pageConfigs = [
         "@type": "WebSite",
         name: BRAND,
         url: SITE_URL,
-        description: "Decision memory and knowledge-first collaboration for teams.",
+        description: "Decision intelligence that checks predicted outcomes against reality.",
       },
       {
         "@context": "https://schema.org",
@@ -556,16 +556,16 @@ const pageConfigs = [
         operatingSystem: "Web",
         url: SITE_URL,
         description:
-          "A knowledge-first collaboration platform for decisions, conversations, projects, and documents.",
+          "A decision intelligence platform that turns outcomes and retrospectives into reusable lessons.",
       },
     ],
     body: renderLayout({
       eyebrow: "Knoledgr",
-      heading: "Decision memory for teams",
+      heading: "Decisions your team will remember",
       lead:
-        "Knoledgr brings conversations, decisions, documents, and execution into one knowledge-first workspace so context stays searchable, linked, and reusable as work moves.",
+        "Knoledgr records why a choice was made, checks the predicted outcome against reality, and carries the lesson into the next similar decision.",
       actions: [
-        { href: "/login", label: "Open the app", primary: true },
+        { href: "/login?mode=signup", label: "Start free", primary: true },
         { href: "/docs", label: "Read documentation" },
       ],
       sections: [

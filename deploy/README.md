@@ -77,3 +77,10 @@ it is its own job. `deploy/backup.sh` therefore covers Postgres only.
 `deploy/backup.sh`, on its own cron entry and its own retention, separate from
 `~/solakuti/backup.sh` so neither can break the other. 14 days, and it exits
 non-zero on an empty dump rather than quietly keeping a truncated one.
+
+For launch, install `rclone`, configure a remote for the `deploy` user, and set
+`BACKUP_OFFSITE_DEST` in `deploy/.env.prod` (for example
+`s3:knoledgr-backups/database`). The cron script reads that value directly from
+the env file, uploads every verified archive, and sends a backup alert if the
+off-site copy fails. Run the script by hand once and confirm the object exists
+outside the VPS before accepting customer data.

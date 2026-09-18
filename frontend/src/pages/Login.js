@@ -5,6 +5,7 @@ import { useAuth } from "../hooks/useAuth";
 import { useToast } from "../components/Toast";
 import GoogleSignInButton from "../components/GoogleSignInButton";
 import BrandLogo from "../components/BrandLogo";
+import { resolveLoginMode } from "./loginMode";
 import "./Login.css";
 
 export default function Login() {
@@ -15,7 +16,10 @@ export default function Login() {
   const { addToast } = useToast();
   const { login, register, googleLogin } = useAuth();
 
-  const [mode, setMode] = useState(inviteToken ? "signup" : "login");
+  const [mode, setMode] = useState(() => resolveLoginMode({
+    inviteToken,
+    requestedMode: searchParams.get("mode"),
+  }));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);

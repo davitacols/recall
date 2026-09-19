@@ -843,31 +843,32 @@
   bottom: 24px;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  height: 44px;
-  padding: 0 14px 0 5px;
-  background: var(--ad-gradient);
-  color: #FFFFFF;
-  border: none;
+  gap: 7px;
+  height: 40px;
+  padding: 0 12px 0 4px;
+  background: var(--app-surface-overlay);
+  color: var(--app-text);
+  border: 1px solid var(--app-border-strong, var(--app-border));
   border-radius: 999px;
   font-family: inherit;
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  box-shadow: 0 12px 28px -8px rgba(110, 86, 255, 0.6);
-  transition: transform 120ms ease, filter 120ms ease, box-shadow 120ms ease;
+  box-shadow: 0 10px 24px -12px rgba(0, 0, 0, 0.7);
+  transition: transform 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
 }
 .ad-fab:hover {
   transform: translateY(-2px);
-  filter: brightness(1.08);
-  box-shadow: 0 16px 32px -10px rgba(110, 86, 255, 0.7);
+  border-color: var(--app-accent);
+  box-shadow: 0 14px 28px -12px rgba(0, 0, 0, 0.8);
 }
 .ad-fab-mark {
-  width: 34px;
-  height: 34px;
+  width: 32px;
+  height: 32px;
   display: grid;
   place-items: center;
-  background: rgba(255, 255, 255, 0.16);
+  background: var(--app-accent-soft);
+  color: var(--app-accent);
   border-radius: 999px;
 }
 .ad-fab-mark svg { width: 16px; height: 16px; }
@@ -878,24 +879,10 @@
   line-height: 1.05;
 }
 .ad-fab-context {
-  font-size: 14px;
-  font-weight: 500;
-  opacity: 0.85;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 160px;
+  display: none;
 }
 .ad-fab-kbd {
-  display: inline-flex;
-  align-items: center;
-  height: 22px;
-  padding: 0 7px;
-  background: rgba(255, 255, 255, 0.18);
-  border-radius: 6px;
-  font-family: var(--font-mono);
-  font-size: 14px;
-  font-weight: 600;
+  display: none;
 }
 
 @media (max-width: 640px) {

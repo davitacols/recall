@@ -395,10 +395,9 @@ export default function UnifiedDashboard() {
               )}
               {missingWhy > 0 ? (
                 <p className="dash-hero-gap">
-                  {missingWhy} of {memory.decisions} decision
-                  {memory.decisions === 1 ? "" : "s"} cannot answer anything —
-                  no why recorded.{" "}
-                  <Link to="/decisions">Fix them</Link>
+                  {missingWhy} decision{missingWhy === 1 ? " needs" : "s need"} more context
+                  before they can answer why.{" "}
+                  <Link to="/decisions">Review them</Link>
                 </p>
               ) : awaiting.length > 0 ? (
                 <p className="dash-hero-summary">
@@ -422,8 +421,8 @@ export default function UnifiedDashboard() {
             </>
           ) : (
             <>
-              <Link to="/decisions/new" className="dash-btn dash-btn-primary">
-                Draft a decision
+              <Link to="/decisions" className="dash-btn dash-btn-primary">
+                Review decisions
               </Link>
               <Link to="/agent" className="dash-btn">
                 Run agent

@@ -168,6 +168,56 @@ function GitHubMock() {
   );
 }
 
+function PullRequestDecisionArtifact() {
+  return (
+    <div className="hp-review-artifact" aria-label="A pull request linked to a Knoledgr decision">
+      <div className="hp-review-head">
+        <span className="hp-review-repo">acme / platform</span>
+        <span className="hp-review-number">pull / 412</span>
+        <span className="hp-review-state"><i aria-hidden="true" /> merged</span>
+      </div>
+
+      <div className="hp-review-main">
+        <div className="hp-review-title-row">
+          <span className="hp-review-type">pull request</span>
+          <span className="hp-review-branch">deploy-window → main</span>
+        </div>
+        <h3>Move deploy window to Friday AM</h3>
+        <p className="hp-review-summary">2 files changed <span>+18</span> <em>−4</em></p>
+
+        <div className="hp-review-thread">
+          <span className="hp-review-avatar">PN</span>
+          <div className="hp-review-comment">
+            <div className="hp-review-comment-meta">
+              <strong>priya-nair</strong>
+              <span>commented on line 86</span>
+            </div>
+            <p>Friday mornings give us a staffed recovery window if the rollout drifts.</p>
+          </div>
+        </div>
+
+        <div className="hp-review-link">
+          <span className="hp-review-link-label">Knoledgr · linked context</span>
+          <div className="hp-review-decision">
+            <span className="hp-review-decision-id">DEC-128</span>
+            <strong>Release inside staffed recovery windows</strong>
+          </div>
+          <dl>
+            <div><dt>Expected</dt><dd>Failures below 2%</dd></div>
+            <div><dt>Observed</dt><dd className="is-drift">4.8% · drift</dd></div>
+            <div><dt>Next review</dt><dd>24 Oct</dd></div>
+          </dl>
+        </div>
+      </div>
+
+      <div className="hp-review-foot">
+        <span>Context stays with the code.</span>
+        <strong>Lesson returns at the next decision →</strong>
+      </div>
+    </div>
+  );
+}
+
 
 export default function Homepage() {
   const { user } = useAuth();
@@ -252,19 +302,24 @@ export default function Homepage() {
     <div className="hp" ref={revealRef}>
       <header className={`hp-header ${isScrolled ? "hp-header-scrolled" : ""}`}>
         <div className="hp-container hp-header-row">
-          <Link to="/" className="hp-brand-link" aria-label="Knoledgr homepage">
-            <BrandLogo tone="warm" size="md" />
-          </Link>
+          <div className="hp-header-identity">
+            <Link to="/" className="hp-brand-link" aria-label="Knoledgr homepage">
+              <BrandLogo tone="warm" size="md" />
+            </Link>
+            <span className="hp-header-descriptor"><i aria-hidden="true" /> Decision memory</span>
+          </div>
           <nav className="hp-nav" aria-label="Public navigation">
-            <a href="#product">Product</a>
-            <a href="#how">How it works</a>
-            <Link to="/docs">Docs</Link>
-            <Link to="/partners">Partners</Link>
+            <a href="#product"><span>01</span> Product</a>
+            <a href="#how"><span>02</span> How it works</a>
+            <Link to="/docs"><span>03</span> Docs</Link>
+            <Link to="/partners"><span>04</span> Partners</Link>
           </nav>
           <div className="hp-header-actions">
             <Link to="/login" className="hp-text-link">Sign in</Link>
-            <Link to={appEntryHref} className="hp-button hp-button-primary">
-              {user ? "Open app" : "Get started"}
+            <Link to={appEntryHref} className="hp-button hp-button-primary hp-header-cta">
+              <CodeBracketIcon aria-hidden="true" />
+              <span className="hp-header-cta-desktop">{user ? "Open workspace" : "Connect GitHub"}</span>
+              <span className="hp-header-cta-mobile">{user ? "Open" : "Start free"}</span>
             </Link>
           </div>
         </div>
@@ -282,20 +337,20 @@ export default function Homepage() {
             >
               <motion.div variants={rise(reduceMotion)}>
                 <Link to={tryLink("/decisions/intelligence")} className="hp-hero-badge">
-                  <span className="hp-hero-badge-pill">Decision intelligence</span>
-                  Outcomes checked against reality
+                  <span className="hp-hero-badge-pill">PR #412 → DEC-128</span>
+                  Decision context, without another meeting
                   <ArrowRightIcon aria-hidden="true" />
                 </Link>
               </motion.div>
               <motion.h1 variants={rise(reduceMotion)}>
-                Decisions your team will remember.
+                The commit says what.
                 <br />
-                <span className="hp-hero-accent">Because reality checks them.</span>
+                <span className="hp-hero-accent">Keep the why with it.</span>
               </motion.h1>
               <motion.p className="hp-hero-sub" variants={rise(reduceMotion)}>
-                Knoledgr records why a choice was made, what your team expected, and what
-                actually happened. When results drift, it opens the retrospective and
-                carries the lesson into the next decision.
+                Knoledgr captures qualifying discussions around merged work, links them to
+                the decision behind it, and brings the result back when your team faces the
+                same tradeoff again.
               </motion.p>
               <motion.div className="hp-actions" variants={rise(reduceMotion)}>
                 <Link to={appEntryHref} className="hp-button hp-button-primary hp-button-large">
@@ -307,7 +362,7 @@ export default function Homepage() {
                 </a>
               </motion.div>
               <motion.ul className="hp-proof" variants={rise(reduceMotion)}>
-                <li><CheckCircleIcon aria-hidden="true" /> Connect GitHub in a minute</li>
+                <li><CheckCircleIcon aria-hidden="true" /> GitHub App, no migration</li>
                 <li><CheckCircleIcon aria-hidden="true" /> Free while we're in beta</li>
               </motion.ul>
             </motion.div>
@@ -318,12 +373,12 @@ export default function Homepage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: reduceMotion ? 0 : 0.6, ease: EASE, delay: reduceMotion ? 0 : 0.25 }}
             >
-              <DecisionLoopMock />
+              <PullRequestDecisionArtifact />
             </motion.div>
           </div>
 
           <div className="hp-container hp-works">
-            <p className="hp-works-label">The evidence already exists across your tools</p>
+            <p className="hp-works-label">Context in. Decision memory out.</p>
             <div className="hp-works-row">
               {SOURCES.map(({ label, icon: Icon }) => (
                 <span key={label} className="hp-works-chip"><Icon aria-hidden="true" /> {label}</span>
@@ -379,8 +434,8 @@ export default function Homepage() {
                   <span className="hp-feature-eyebrow"><CodeBracketIcon aria-hidden="true" /> GitHub</span>
                   <h3>The decision, next to the code that shipped it.</h3>
                   <p className="hp-bento-body">
-                    Connect a repo and Knoledgr links merged pull requests back to the
-                    decision they came from. Nothing to migrate.
+                    Capture meaningful discussions from merged pull requests, then link
+                    the relevant PR to the decision it informed. Nothing to migrate.
                   </p>
                   <span className="hp-inline-link">Connect GitHub <ArrowRightIcon aria-hidden="true" /></span>
                 </div>
@@ -420,7 +475,7 @@ export default function Homepage() {
                 <span className="hp-step-num">01</span>
                 <div>
                   <h4>Connect GitHub</h4>
-                  <p>Bring in the pull requests and discussions that explain why the work changed.</p>
+                  <p>Capture qualifying discussions from merged pull requests as reusable context.</p>
                 </div>
               </li>
               <li data-reveal style={{ "--rd": "110ms" }}>
@@ -488,18 +543,38 @@ export default function Homepage() {
       </main>
 
       <footer className="hp-footer">
-        <div className="hp-container hp-footer-row">
+        <div className="hp-container hp-footer-main">
           <div className="hp-footer-brand">
-            <BrandLogo tone="blue" size="sm" />
-            <span>© {new Date().getFullYear()} Knoledgr</span>
+            <BrandLogo tone="warm" size="md" />
+            <p>Decision memory for teams that ship software.</p>
           </div>
-          <div className="hp-footer-links">
-            <Link to="/feedback">Feedback</Link>
-            <Link to="/partners">Partners</Link>
+
+          <nav className="hp-footer-index" aria-label="Product links">
+            <span className="hp-footer-label">Explore / 04</span>
+            <Link to={tryLink("/decisions")}><span>01</span> Decisions <ArrowUpRightIcon aria-hidden="true" /></Link>
+            <Link to={tryLink("/integrations/github")}><span>02</span> GitHub <ArrowUpRightIcon aria-hidden="true" /></Link>
+            <Link to={tryLink("/ask")}><span>03</span> Ask Recall <ArrowUpRightIcon aria-hidden="true" /></Link>
+            <Link to="/docs"><span>04</span> Docs <ArrowUpRightIcon aria-hidden="true" /></Link>
+          </nav>
+
+          <div className="hp-footer-status">
+            <span className="hp-footer-label">Current release</span>
+            <div className="hp-footer-status-line"><i aria-hidden="true" /> Public beta</div>
+            <p>GitHub decision context is available now. Start with one repository.</p>
+            <div className="hp-footer-reference-links">
+              <Link to="/feedback">Feedback</Link>
+              <Link to="/partners">Partners</Link>
+              <Link to="/security-annex">Security</Link>
+            </div>
+          </div>
+        </div>
+
+        <div className="hp-container hp-footer-bottom">
+          <span>&copy; {new Date().getFullYear()} Knoledgr</span>
+          <span className="hp-footer-coordinate">github → decision → outcome → lesson</span>
+          <div>
             <Link to="/privacy">Privacy</Link>
             <Link to="/terms">Terms</Link>
-            <Link to="/security-annex">Security</Link>
-            <Link to="/docs">Docs</Link>
           </div>
         </div>
       </footer>

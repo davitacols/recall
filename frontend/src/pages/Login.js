@@ -125,14 +125,14 @@ export default function Login() {
 
   const title =
     mode === "login"
-      ? "Welcome back"
+      ? "Open your workspace"
       : inviteToken
       ? "Join your workspace"
       : "Create your workspace";
 
   const subtitle =
     mode === "login"
-      ? "Sign in to your Knoledgr workspace."
+      ? "Continue with Google or your Knoledgr credentials."
       : inviteToken
       ? "Set up your account to accept the invitation."
       : "Set up a new workspace for your team.";
@@ -140,14 +140,44 @@ export default function Login() {
   return (
     <div className="lg">
       <header className="lg-top">
-        <Link to="/" className="lg-brand" aria-label="Knoledgr home">
-          <BrandLogo tone="warm" size="md" />
-        </Link>
+        <div className="lg-top-identity">
+          <Link to="/" className="lg-brand" aria-label="Knoledgr home">
+            <BrandLogo tone="warm" size="md" />
+          </Link>
+          <span className="lg-top-label"><i aria-hidden="true" /> Secure access</span>
+        </div>
         <Link to="/" className="lg-back">← Back to home</Link>
       </header>
 
-      <main className="lg-main">
-        <div className="lg-card">
+      <main className="lg-main lg-main-split">
+        <aside className="lg-context" aria-label="How Knoledgr connects work to decisions">
+          <span className="lg-context-eyebrow">Knoledgr / decision memory</span>
+          <h2>{mode === "login" ? "Your team's why is waiting." : "Start with the work your team already ships."}</h2>
+          <p>
+            Keep the discussion behind shipped code connected to the decision,
+            the expected outcome, and what your team learned.
+          </p>
+
+          <div className="lg-context-record">
+            <div className="lg-context-record-head">
+              <span>acme / platform</span>
+              <strong>context chain</strong>
+            </div>
+            <ol>
+              <li><span>01</span><div><strong>Merged discussion</strong><small>pull / 412</small></div></li>
+              <li><span>02</span><div><strong>Decision linked</strong><small>DEC-128</small></div></li>
+              <li><span>03</span><div><strong>Outcome checked</strong><small>4.8% · drift found</small></div></li>
+              <li><span>04</span><div><strong>Lesson retained</strong><small>ready for the next decision</small></div></li>
+            </ol>
+          </div>
+
+          <div className="lg-context-foot">
+            <i aria-hidden="true" /> GitHub integration available in public beta
+          </div>
+        </aside>
+
+        <section className="lg-auth-shell" aria-label={title}>
+          <div className="lg-card lg-auth-card">
           <div className="lg-head">
             <h1 className="lg-title">{title}</h1>
             <p className="lg-subtitle">{subtitle}</p>
@@ -303,7 +333,8 @@ export default function Login() {
             By continuing, you agree to the <Link to="/terms">Terms</Link> and{" "}
             <Link to="/privacy">Privacy</Link>.
           </p>
-        </div>
+          </div>
+        </section>
       </main>
     </div>
   );

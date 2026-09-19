@@ -20,7 +20,9 @@
   flex-direction: column;
   height: 100%;
   width: var(--nav-w, 248px);
+  transition: width 180ms cubic-bezier(0.4, 0, 0.2, 1);
 }
+.nav.is-collapsed .nav-inner { width: var(--nav-cw, 60px); }
 
 /* ─── pinned ─────────────────────────────────────────────────── */
 /* No workspace header inside the sidebar — the top nav owns workspace
@@ -30,8 +32,8 @@
 .nav-pinned {
   display: flex;
   flex-direction: column;
-  gap: 1px;
-  padding: 10px 8px 8px;
+  gap: 2px;
+  padding: 12px 10px 10px;
   border-bottom: 1px solid var(--app-border);
 }
 
@@ -41,22 +43,24 @@
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 8px 0;
+  padding: 10px 2px 6px;
   scrollbar-width: thin;
-  scrollbar-color: var(--app-border) transparent;
+  scrollbar-color: transparent transparent;
 }
-.nav-scroll::-webkit-scrollbar { width: 4px; }
+.nav-scroll:hover { scrollbar-color: var(--app-border) transparent; }
+.nav-scroll::-webkit-scrollbar { width: 3px; }
 .nav-scroll::-webkit-scrollbar-thumb {
-  background: var(--app-border);
+  background: transparent;
   border-radius: 2px;
 }
+.nav-scroll:hover::-webkit-scrollbar-thumb { background: var(--app-border); }
 
-.nav-group { margin-bottom: 4px; }
+.nav-group { margin-bottom: 8px; }
 .nav-group.is-collapsed {
-  padding: 0 8px;
+  padding: 0 10px;
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 2px;
 }
 
 .nav-group-head {
@@ -65,7 +69,7 @@
   justify-content: space-between;
   gap: 8px;
   width: 100%;
-  padding: 8px 14px 6px;
+  padding: 8px 12px 5px;
   border: none;
   background: transparent;
   cursor: pointer;
@@ -73,9 +77,9 @@
   text-align: left;
 }
 .nav-group-name {
-  font-size: 14px;
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--app-muted);
   transition: color 100ms ease;
@@ -124,9 +128,9 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 1px;
-  padding: 0 8px 4px 18px;
-  margin-left: 14px;
+  gap: 2px;
+  padding: 2px 8px 5px 16px;
+  margin-left: 12px;
 }
 .nav-group-list::before {
   content: "";
@@ -145,12 +149,13 @@
   position: relative;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 9px;
+  min-height: 34px;
   padding: 7px 10px;
-  border-radius: 6px;
+  border-radius: 7px;
   color: var(--app-text-subtle, var(--app-text));
   text-decoration: none;
-  font-size: 16px;
+  font-size: 14.5px;
   font-weight: 500;
   transition: background 100ms ease, color 100ms ease;
   white-space: nowrap;
@@ -170,13 +175,13 @@
 .nav-item.is-active::before {
   content: "";
   position: absolute;
-  left: -18px;
+  left: -16px;
   top: 50%;
   transform: translateY(-50%);
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: var(--app-text);
+  background: var(--app-accent);
   box-shadow: 0 0 0 3px var(--app-surface);
 }
 /* Pinned and footer items are not on the spine, so they keep the edge bar. */
@@ -190,15 +195,20 @@
   height: auto;
   border-radius: 1px;
   box-shadow: none;
+  background: var(--app-accent);
 }
+.nav-pinned .nav-item.is-active {
+  box-shadow: inset 0 0 0 1px var(--app-border);
+}
+.nav-pinned .nav-item.is-active .nav-item-icon { color: var(--app-accent); opacity: 1; }
 .nav-item.is-small {
   padding: 6px 10px;
-  font-size: 15.5px;
+  font-size: 14px;
 }
 
 .nav-item-icon {
-  width: 16px;
-  height: 16px;
+  width: 17px;
+  height: 17px;
   flex-shrink: 0;
   color: currentColor;
   opacity: 0.85;
@@ -232,7 +242,7 @@
 
 .nav-footer {
   border-top: 1px solid var(--app-border);
-  padding: 6px 8px;
+  padding: 7px 10px 6px;
   display: flex;
   flex-direction: column;
   gap: 1px;
@@ -258,35 +268,40 @@
    conscience. Quiet by default; it earns colour only below half. */
 .nav-memory {
   display: block;
-  margin: 0 8px 10px;
-  padding: 10px 12px;
-  border: 1px solid var(--app-border);
-  border-radius: 10px;
-  background: var(--app-surface-alt);
+  margin: 0;
+  padding: 11px 18px 14px;
+  border: 0;
+  border-top: 1px solid var(--app-border);
+  border-radius: 0;
+  background: transparent;
   text-decoration: none;
   color: inherit;
   flex-shrink: 0;
-  transition: border-color 120ms ease;
+  transition: background 120ms ease;
 }
 .nav-memory:hover {
-  border-color: var(--app-border-strong);
+  background: var(--app-surface-alt);
   text-decoration: none;
 }
 .nav-memory-head {
   display: flex;
-  align-items: baseline;
+  align-items: center;
+  justify-content: space-between;
   gap: 6px;
 }
-.nav-memory-count {
-  font-size: 20px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
+.nav-memory-score {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
   color: var(--app-text);
   font-feature-settings: "tnum" 1;
 }
 .nav-memory-label {
-  font-size: 13.5px;
-  color: var(--app-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--app-text-subtle, var(--app-muted));
   line-height: 1.2;
 }
 .nav-memory-bar {
@@ -305,11 +320,11 @@
   transition: width 260ms ease;
 }
 .nav-memory-foot {
-  font-size: 13px;
+  font-size: 12.5px;
   color: var(--app-muted);
 }
-.nav-memory.is-thin .nav-memory-bar > span { background: #ef4444; }
-.nav-memory.is-thin .nav-memory-foot { color: #ef4444; }
+.nav-memory.is-thin .nav-memory-bar > span { background: var(--app-warning, #ff8b00); }
+.nav-memory.is-thin .nav-memory-score { color: var(--app-warning, #ff8b00); }
 
 /* Collapsed, there is no room for it and no room for the sentence that gives
    it meaning. A bare number would be worse than nothing. */

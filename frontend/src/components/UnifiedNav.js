@@ -191,7 +191,8 @@ export default function UnifiedNav({
 function MemoryMeter({ decisions, withWhy }) {
   const pct = decisions > 0 ? Math.round((withWhy / decisions) * 100) : null;
   // Below half, the record is filling up with decisions nobody will be able to
-  // explain. That is worth a colour; everything above it is not.
+  // explain. That earns a restrained warning accent; everything above it stays
+  // neutral so the sidebar remains navigation rather than an alert panel.
   const thin = pct !== null && pct < 50;
 
   return (
@@ -203,16 +204,16 @@ function MemoryMeter({ decisions, withWhy }) {
       title={`${withWhy} of ${decisions} decisions record why they were made`}
     >
       <span className="nav-memory-head">
-        <span className="nav-memory-count">{decisions}</span>
-        <span className="nav-memory-label">
-          decision{decisions === 1 ? "" : "s"} recorded
-        </span>
+        <span className="nav-memory-label">Memory health</span>
+        <span className="nav-memory-score">{pct === null ? "—" : `${pct}%`}</span>
       </span>
       <span className="nav-memory-bar" aria-hidden="true">
         <span style={{ width: `${Math.max(2, Math.min(100, pct ?? 0))}%` }} />
       </span>
       <span className="nav-memory-foot">
-        {pct === null ? "nothing recorded yet" : `${pct}% carry their why`}
+        {pct === null
+          ? "Record your first decision"
+          : `${withWhy} of ${decisions} decision${decisions === 1 ? "" : "s"} carry their why`}
       </span>
     </Link>
   );

@@ -79,8 +79,8 @@ function AskMock({ compact }) {
         <div className="mk-sources">
           <span className="mk-src-label">Sources</span>
           <span className="mk-chip">DEC-128</span>
-          <span className="mk-chip">Sprint 42 retro</span>
-          <span className="mk-chip">Roadmap brief</span>
+          <span className="mk-chip">PR #412</span>
+          <span className="mk-chip">Architecture brief</span>
         </div>
       </div>
     </div>
@@ -336,7 +336,7 @@ export default function Homepage() {
               variants={riseParent(reduceMotion, 0.09)}
             >
               <motion.div variants={rise(reduceMotion)}>
-                <Link to={tryLink("/decisions/intelligence")} className="hp-hero-badge">
+                <Link to={tryLink("/decisions")} className="hp-hero-badge">
                   <span className="hp-hero-badge-pill">PR #412 → DEC-128</span>
                   Decision context, without another meeting
                   <ArrowRightIcon aria-hidden="true" />
@@ -448,8 +448,8 @@ export default function Homepage() {
                   <span className="hp-feature-eyebrow"><SparklesIcon aria-hidden="true" /> Ask Recall</span>
                   <h3>Ask what happened, and see the evidence behind the answer.</h3>
                   <p className="hp-bento-body">
-                    Ask Recall pulls from decisions, conversations, documents, meetings, and tasks,
-                    then shows which workspace sources support the response.
+                    Ask Recall pulls from decisions, merged pull-request discussions, and linked
+                    evidence, then shows which sources support the response.
                   </p>
                   <span className="hp-inline-link">{user ? "Open Ask Recall" : "Try Ask Recall"} <ArrowRightIcon aria-hidden="true" /></span>
                 </div>
@@ -505,7 +505,7 @@ export default function Homepage() {
                 <span className="hp-quote-tag">Recall</span>
                 <p>
                   Two weeks ago the team agreed to ship Friday mornings only, pushed by the on-call
-                  rotation change. Owner: Priya. Linked to DEC-128 and the Sprint 42 retro.
+                  rotation change. Owner: Priya. Linked to DEC-128 and PR #412.
                 </p>
               </div>
             </blockquote>

@@ -1,29 +1,11 @@
 import {
-  ChartBarIcon,
-  ChatBubbleLeftIcon,
-  CpuChipIcon,
   CubeIcon,
   DocumentCheckIcon,
-  DocumentTextIcon,
   HomeIcon,
   MagnifyingGlassIcon,
   SparklesIcon,
   Squares2X2Icon,
 } from "@heroicons/react/24/outline";
-
-export function getAppLaunchTarget(app) {
-  const launchPath = (app?.launch_path || "").trim();
-  if (launchPath) {
-    if (launchPath.startsWith("http://") || launchPath.startsWith("https://")) {
-      return { type: "external", href: launchPath };
-    }
-    return { type: "internal", href: launchPath };
-  }
-  if (app?.docs_url) {
-    return { type: "external", href: app.docs_url };
-  }
-  return { type: "internal", href: "/enterprise" };
-}
 
 export function formatWorkspaceName(orgSlug) {
   if (!orgSlug) return "Team navigation";
@@ -39,12 +21,7 @@ export function isHrefActive(pathname, href) {
 
 export function isNavItemActive(pathname, item) {
   if (!item) return false;
-  if (item.special === "apps") {
-    return isHrefActive(pathname, "/enterprise");
-  }
-  if (item.href) {
-    return isHrefActive(pathname, item.href);
-  }
+  if (item.href) return isHrefActive(pathname, item.href);
   return Array.isArray(item.items) && item.items.some((subItem) => isHrefActive(pathname, subItem.href));
 }
 
@@ -54,40 +31,26 @@ export function getNavItemCount(item) {
 }
 
 export function getFirstNavTarget(item) {
-  if (item?.special === "apps") return "/enterprise";
   if (item?.href) return item.href;
   return item?.items?.[0]?.href || "/dashboard";
 }
 
-export function buildUnifiedNavModel({ experienceMode = "standard", installedApps = [] }) {
+export function buildUnifiedNavModel({ experienceMode = "standard", canManageIntegrations = false }) {
   const homeItem = {
     name: "Home",
     href: "/dashboard",
     icon: HomeIcon,
-    summary: "AI workspace, priorities, and live team context",
+    summary: "Decision health, priorities, and live team context",
   };
 
   const askRecallItem = {
     name: "Ask Recall",
     href: "/ask",
     icon: SparklesIcon,
-    description: "Ask, summarize, draft, and reason over workspace memory with grounded AI.",
-    summary: "AI assistant for memory, work, and decisions.",
+    description: "Ask questions, draft updates, and take action from workspace memory.",
+    summary: "Ask questions and act on workspace memory.",
   };
 
-  const agentItem = {
-    name: "Agent",
-    href: "/agent",
-    icon: CpuChipIcon,
-    description: "Autonomous tool-using copilot that plans multi-step work and asks for approval before write actions.",
-    summary: "Autonomous workspace agent with tool use.",
-  };
-
-  // Memory leads. The navigation opened with "Knowledge" — the search tooling —
-  // while the decision record sat under "Collaborate", a name that describes an
-  // activity rather than the thing being built. The record *is* the product;
-  // search is how you get back into it. Ordering them the other way round asked
-  // every new user to find the point of the tool on their own.
   const workstreamGroupsBase = [
     {
       name: "Memory",
@@ -98,66 +61,52 @@ export function buildUnifiedNavModel({ experienceMode = "standard", installedApp
           name: "Decisions",
           href: "/decisions",
           icon: DocumentCheckIcon,
-          description: "Committed choices, the reasoning behind them, and the code that implemented them",
-        },
-        {
-          name: "Conversations",
-          href: "/conversations",
-          icon: ChatBubbleLeftIcon,
-          description: "The discussions decisions come from — written here or captured from merged PRs",
-        },
-        {
-          name: "Decision Intelligence",
-          href: "/decisions/intelligence",
-          icon: ChartBarIcon,
-          description: "Predicted outcomes vs. reality across every decision",
-        },
-        // Documents sits here rather than in a group of its own. It is not a
-        // place to go and write — Notion and Confluence do that better, and ten
-        // documents in five months says nobody was using it that way. It is the
-        // material the record cites: indexed for search, and already the target
-        // of 41 content links. So it belongs beside the record, quietly.
-        {
-          name: "Documents",
-          href: "/business/documents",
-          icon: DocumentTextIcon,
-          description: "Briefs and specs the record cites — indexed, so Ask Recall can quote them",
+          description: "Committed choices, their reasoning, and the code that implemented them",
         },
       ],
     },
     {
       name: "Explore",
       icon: Squares2X2Icon,
-      summary: "Ways back into the record",
+      summary: "Find and understand recorded context",
       items: [
-        // Browse used to sit here. Its page is six lines that redirect to
-        // Search, so the item promised somewhere to browse and quietly landed
-        // you somewhere else. The route stays for old links; the nav entry
-        // does not, because an item that goes to another item's destination is
-        // worse than no item.
         {
           name: "Search",
           href: "/knowledge",
           icon: MagnifyingGlassIcon,
-          description: "Search everything: decisions, discussions, documents",
+          description: "Search decisions, discussions, and supporting evidence",
         },
         {
           name: "Graph",
           href: "/knowledge/graph",
           icon: CubeIcon,
-          description: "See how records connect to each other",
-        },
-        {
-          name: "Insights",
-          href: "/knowledge/insights",
-          icon: ChartBarIcon,
-          // Was "Measure AI context coverage, freshness, and flow", which
-          // described a page that does not exist. This one counts records,
-          // ranks contributors and lists recent activity.
-          description: "Totals, contributors and recent activity",
+          description: "See how decisions, discussions, and code connect",
         },
       ],
     },
+    ...(canManageIntegrations
+      ? [
+          {
+            name: "Connect",
+            icon: CubeIcon,
+            summary: "Bring code context into the decision record",
+            items: [
+              {
+                name: "GitHub",
+                href: "/integrations/github",
+                icon: CubeIcon,
+                description: "Link pull requests and commits to the decisions behind them",
+              },
+              {
+                name: "Integrations",
+                href: "/integrations",
+                icon: CubeIcon,
+                description: "Manage tools connected to this workspace",
+              },
+            ],
+          },
+        ]
+      : []),
   ];
 
   const workstreamGroups =
@@ -168,65 +117,14 @@ export function buildUnifiedNavModel({ experienceMode = "standard", installedApp
             if (group.name === "Explore") {
               return {
                 ...group,
-                items: group.items.filter((item) => ["/knowledge"].includes(item.href)),
+                items: group.items.filter((item) => item.href === "/knowledge"),
               };
             }
-            // Two arms used to live here, for Execute and Resources. Both
-            // filtered groups that have since been dissolved, so both went on
-            // matching nothing — the same dead branch twice over. Simple mode
-            // now only has to narrow Explore.
             return group;
           })
           .filter((group) => group.items.length > 0);
 
-  const appItems = installedApps.map((app) => {
-    const target = getAppLaunchTarget(app);
-    return {
-      id: `app-${app.id}`,
-      name: app.name,
-      href: target.href,
-      external: target.type === "external",
-      icon: CubeIcon,
-      description: app.tagline || app.short_description || app.description || "Open installed app",
-    };
-  });
-
-  const appsItem = {
-    name: "Apps",
-    href: "/enterprise",
-    icon: CubeIcon,
-    special: "apps",
-    summary: appItems.length
-      ? `${appItems.length} installed tool${appItems.length === 1 ? "" : "s"} and extensions`
-      : "Install workspace tools and workflow extensions",
-    items: appItems,
-  };
-
-  // One item.
-  //
-  // This was eight: Profile, Settings, Integrations, two staff inboxes,
-  // Import/Export, Analytics and Dashboards. Profile and Settings are both in
-  // the account menu in the top bar, so they were a second route to a page
-  // already one click away. Of the rest, saved dashboards number zero, partner
-  // inquiries one, and search analytics four rows — surfaces that exist rather
-  // than surfaces anyone uses.
-  //
-  // Integrations stays because it is the only way to connect GitHub and
-  // nothing else offers it.
-  //
-  // I moved three of these here an hour ago arguing that hiding them would
-  // orphan them. That was the wrong trade: it swapped an unreachable page for
-  // a permanently cluttered footer on every screen. They remain reachable by
-  // URL, and if any of them turns out to matter it belongs in Settings, which
-  // already has sections, rather than back in the nav.
-  const utilityItems = [
-    {
-      name: "Integrations",
-      href: "/integrations",
-      icon: CubeIcon,
-      description: "Connected tools, credentials, and service setup.",
-    },
-  ];
+  const utilityItems = [];
 
   const bottomNavItems = [
     { path: homeItem.href, icon: homeItem.icon, label: "Home", match: [homeItem.href] },
@@ -242,24 +140,18 @@ export function buildUnifiedNavModel({ experienceMode = "standard", installedApp
   const mobileMenuSections = [
     {
       title: "Overview",
-      items: [homeItem, askRecallItem, agentItem],
-    },
-    {
-      title: "Workstreams",
-      items: workstreamGroups,
+      items: [homeItem, askRecallItem],
     },
     {
       title: "Workspace",
-      items: [appsItem, ...utilityItems],
+      items: workstreamGroups,
     },
   ];
 
   return {
     homeItem,
     askRecallItem,
-    agentItem,
     workstreamGroups,
-    appsItem,
     utilityItems,
     bottomNavItems,
     mobileMenuSections,

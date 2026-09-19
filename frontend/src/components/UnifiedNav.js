@@ -2,11 +2,11 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
   ChevronDownIcon,
-  CpuChipIcon,
   HomeIcon,
   SparklesIcon,
 } from "@heroicons/react/24/outline";
 import api from "../services/api";
+import { useAuth } from "../hooks/useAuth";
 import { buildUnifiedNavModel, isHrefActive } from "./unifiedNavConfig";
 import "./UnifiedNav.css";
 
@@ -22,7 +22,7 @@ export default function UnifiedNav({
   collapsedWidth = 60,
 }) {
   const location = useLocation();
-  const [installedApps, setInstalledApps] = useState([]);
+  const { user } = useAuth();
   const [openGroups, setOpenGroups] = useState(() => {
     try {
       const raw = localStorage.getItem(OPEN_GROUPS_KEY);
@@ -31,37 +31,11 @@ export default function UnifiedNav({
     // Memory open by default because it is the product; Resources closed
     // because it is reference material. "Execute" was in this list long after
     // the group itself was deleted.
-    return { Memory: true, Explore: true, Resources: false };
+    return { Memory: true, Explore: true, Connect: true };
   });
 
   const experienceMode =
     (typeof window !== "undefined" && localStorage.getItem("ui_experience_mode")) || "standard";
-
-  useEffect(() => {
-    let mounted = true;
-    // Was /api/enterprise/apps/installed/ — a route that does not exist (there
-    // is no /api/enterprise/ prefix at all), so this 404'd on every page load
-    // and the empty catch swallowed it. The nav simply never showed installed
-    // apps and nothing surfaced the failure.
-    //
-    // The marketplace endpoint carries an `installed` flag per app, so filter
-    // on that rather than treating every listed app as installed.
-    api
-      .get("/api/organizations/enterprise/marketplace/apps/")
-      .then((res) => {
-        if (!mounted) return;
-        const list = Array.isArray(res.data?.results)
-          ? res.data.results
-          : Array.isArray(res.data)
-          ? res.data
-          : [];
-        setInstalledApps(list.filter((app) => app?.installed));
-      })
-      .catch(() => {});
-    return () => {
-      mounted = false;
-    };
-  }, []);
 
   // The foot of the sidebar carries the state of the memory itself.
   //
@@ -95,8 +69,12 @@ export default function UnifiedNav({
   }, []);
 
   const navModel = useMemo(
-    () => buildUnifiedNavModel({ experienceMode, installedApps }),
-    [experienceMode, installedApps]
+    () =>
+      buildUnifiedNavModel({
+        experienceMode,
+        canManageIntegrations: user?.role === "admin",
+      }),
+    [experienceMode, user?.role]
   );
 
   const toggleGroup = (name) => {
@@ -132,15 +110,6 @@ export default function UnifiedNav({
             collapsed={collapsed}
             active={isHrefActive(location.pathname, navModel.askRecallItem.href)}
           />
-          {navModel.agentItem ? (
-            <NavItem
-              to={navModel.agentItem.href}
-              Icon={CpuChipIcon}
-              label="Agent"
-              collapsed={collapsed}
-              active={isHrefActive(location.pathname, navModel.agentItem.href)}
-            />
-          ) : null}
         </div>
 
         {/* Scrollable nav */}
@@ -156,15 +125,6 @@ export default function UnifiedNav({
             />
           ))}
 
-          {navModel.appsItem.items?.length ? (
-            <NavGroup
-              group={navModel.appsItem}
-              collapsed={collapsed}
-              open={!!openGroups.Apps}
-              onToggle={() => toggleGroup("Apps")}
-              pathname={location.pathname}
-            />
-          ) : null}
         </nav>
 
         {/* Footer utilities */}

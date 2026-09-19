@@ -15,18 +15,19 @@ import {
 import api from "../services/api";
 import { useAuth } from "../hooks/useAuth";
 import { Avatar } from "../components/atlas";
+import { useAgentDock } from "../components/AgentDock";
 import "./AskRecall.css";
 
 const THREAD_KEY_PREFIX = "knoledgr.askRecall.threadV2";
 const SAVED_KEY = "knoledgr.askRecall.savedV1";
 
 const SUGGESTIONS = [
-  "Summarize this week's key decisions and who owns them.",
-  "What's blocking the current sprint?",
-  "Who is overloaded right now and what should we reshuffle?",
-  "Draft a status update for our leadership review.",
-  "What recently changed in the workspace I should know about?",
-  "What did the design team decide this week?",
+  "Summarize this week's engineering decisions and their owners.",
+  "Which decisions are missing their reasoning?",
+  "What changed after the latest merged pull requests?",
+  "Draft a decision record from our recent discussion.",
+  "Find earlier tradeoffs related to authentication.",
+  "Which decisions are linked to code, and which are not?",
 ];
 
 // `id` values must match the backend whitelist in _normalize_assistant_mode
@@ -176,6 +177,7 @@ function normalizeActions(data) {
 export default function AskRecall() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const recallActions = useAgentDock();
   const [query, setQuery] = useState("");
   const [mode, setMode] = useState("answer");
   const [thread, setThread] = useState(() => loadThread(user));
@@ -494,9 +496,14 @@ export default function AskRecall() {
               <span>{members.length}</span>
             </span>
           ) : null}
-          <button type="button" className="ar-btn" onClick={() => navigate("/agent")} title="Switch to autonomous agent">
+          <button
+            type="button"
+            className="ar-btn"
+            onClick={() => recallActions.open({ goal: query })}
+            title="Plan and run a task with approval"
+          >
             <BoltIcon />
-            Agent
+            Take action
           </button>
           <button type="button" className="ar-btn" onClick={handleNewChat}>
             <PlusIcon />
@@ -538,8 +545,8 @@ export default function AskRecall() {
               <p className="ar-empty-eyebrow">Workspace copilot</p>
               <h2>What do you want to know?</h2>
               <p className="ar-empty-tagline">
-                Ask about anyone in {user?.organization_name || "your workspace"} — what they're working on,
-                which decisions they own, what's blocked. Answers are grounded in pages, decisions, sprints, and tasks.
+                Ask what {user?.organization_name || "your workspace"} decided, why it chose that path,
+                and which code shipped it. Answers are grounded in decisions, discussions, and linked evidence.
               </p>
               {members.length ? (
                 <div className="ar-team-strip">

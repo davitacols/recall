@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import AtlasTopNav from "./AtlasTopNav";
 import UnifiedNav from "./UnifiedNav";
-import { AgentDock, AgentDockFab, AgentDockProvider } from "./AgentDock";
+import { AgentDock, AgentDockProvider } from "./AgentDock";
 import { DocsDrawer, DocsDrawerProvider } from "./DocsDrawer";
 
 const SIDEBAR_W = 248;
@@ -91,8 +91,7 @@ export default function UnifiedLayout({ children }) {
             handler. MobileNav already returns null above 768px, so App.js
             covers both cases on its own. */}
 
-        {/* Global agent dock: FAB launcher + slide-over panel. */}
-        <AgentDockFab />
+        {/* Ask Recall opens this action panel when a question needs execution. */}
         <AgentDock />
 
         {/* Global docs drawer: searchable inline help, toggled by the

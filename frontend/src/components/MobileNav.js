@@ -7,7 +7,6 @@ import {
   SparklesIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
-import api from "../services/api";
 import { useAuth } from "../hooks/useAuth";
 import { useTheme } from "../utils/ThemeAndAccessibility";
 import { getUnifiedNavPalette } from "../utils/projectUi";
@@ -42,7 +41,6 @@ export const MobileNav = () => {
   const [requestingCodeOrgSlug, setRequestingCodeOrgSlug] = useState(null);
   const [switchingOrgSlug, setSwitchingOrgSlug] = useState(null);
   const [workspaceError, setWorkspaceError] = useState("");
-  const [installedApps, setInstalledApps] = useState([]);
   const [experienceMode, setExperienceMode] = useState(
     localStorage.getItem("ui_experience_mode") || "standard"
   );
@@ -108,20 +106,7 @@ export const MobileNav = () => {
       setWorkspaceLoading(false);
     };
 
-    const loadInstalledApps = async () => {
-      try {
-        const response = await api.get("/api/organizations/enterprise/marketplace/apps/");
-        if (!active) return;
-        const apps = Array.isArray(response.data) ? response.data : [];
-        setInstalledApps(apps.filter((app) => app.installed));
-      } catch {
-        if (!active) return;
-        setInstalledApps([]);
-      }
-    };
-
     loadWorkspaces();
-    loadInstalledApps();
 
     return () => {
       active = false;
@@ -138,9 +123,9 @@ export const MobileNav = () => {
     () =>
       buildUnifiedNavModel({
         experienceMode,
-        installedApps,
+        canManageIntegrations: user?.role === "admin",
       }),
-    [experienceMode, installedApps]
+    [experienceMode, user?.role]
   );
 
   const workspaceName = formatWorkspaceName(user?.organization_slug);

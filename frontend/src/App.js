@@ -1,17 +1,13 @@
-import { Suspense, lazy, useEffect, useMemo, useState } from "react";
-import { BrowserRouter as Router, Navigate, Outlet, Route, Routes, useLocation, useNavigate } from "react-router-dom";
+import { Suspense, lazy, useEffect, useState } from "react";
+import { BrowserRouter as Router, Navigate, Outlet, Route, Routes, useLocation } from "react-router-dom";
 import ErrorBoundary from "./components/ErrorBoundary";
 import Spinner from "./components/Spinner";
 import RouteErrorBoundary from "./components/RouteErrorBoundary";
 import "./components/RouteErrorBoundary.css";
 import { GlobalSearch } from "./components/GlobalSearch";
-import { CommandPalette } from "./components/CommandPalette";
-import { CommandBar } from "./components/GestureControls";
 import { MobileNav } from "./components/MobileNav";
-import NLPCommandBar from "./components/NLPCommandBar";
 import OnboardingTour from "./components/OnboardingTour";
 import SeoManager from "./components/SeoManager";
-import SmartSearch from "./components/SmartSearch";
 import { ToastProvider } from "./components/Toast";
 import UnifiedLayout from "./components/UnifiedLayout";
 import { AuthProvider, useAuth } from "./hooks/useAuth";
@@ -327,23 +323,11 @@ function renderRoute(route, idx) {
 }
 
 function AppContent() {
-  const navigate = useNavigate();
   const location = useLocation();
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [showSearch, setShowSearch] = useState(false);
   const { user } = useAuth();
   const isPublicPage = isPublicPath(location.pathname);
-
-  const commandRouteMap = useMemo(
-    () => ({
-      "create-issue": "/projects",
-      "new-sprint": "/sprint-history",
-      "show-blockers": "/blockers",
-      "my-tasks": "/projects",
-      "goto-dashboard": "/dashboard",
-    }),
-    []
-  );
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
@@ -375,28 +359,17 @@ function AppContent() {
     <>
       <SeoManager />
       {!isPublicPage ? <OnboardingTour /> : null}
-      {!isPublicPage ? <SmartSearch /> : null}
-      {!isPublicPage ? <NLPCommandBar /> : null}
       {!isOnline ? (
         <div className="fixed top-0 left-0 right-0 bg-yellow-500 text-white p-2 text-center z-50">
           You are offline. Some features may be limited.
         </div>
       ) : null}
-      {!isPublicPage ? <CommandPalette /> : null}
       {!isPublicPage ? <GlobalSearch isOpen={showSearch} onClose={() => setShowSearch(false)} /> : null}
       {/* The bottom bar no longer carries a Search tab — five tabs forced the
           labels down to 9px, and search is in the top bar at every width. The
           prop this used to pass is gone with it; GlobalSearch is still opened
           by the command palette. */}
       {user && !isPublicPage ? <MobileNav /> : null}
-      {user && !isPublicPage ? (
-        <CommandBar
-          onCommand={(cmd) => {
-            const destination = commandRouteMap[cmd];
-            if (destination) navigate(destination);
-          }}
-        />
-      ) : null}
 
       <Suspense fallback={<RouteLoading />}>
         <Routes>

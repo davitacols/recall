@@ -435,8 +435,8 @@ export default function UnifiedDashboard() {
                 <Link to="/decisions" className="dash-btn dash-btn-primary">
                   Review
                 </Link>
-                <Link to="/agent" className="dash-btn">
-                  Run agent
+                <Link to="/ask" className="dash-btn">
+                  Ask Recall
                 </Link>
               </>
             )}
@@ -534,7 +534,7 @@ export default function UnifiedDashboard() {
                   <tr key={d.prediction_id || d.id || i}>
                     <td className="dash-table-main">
                       <Link
-                        to={d.decision_id ? `/decisions/${d.decision_id}` : "/decisions/intelligence"}
+                        to={d.decision_id ? `/decisions/${d.decision_id}` : "/decisions"}
                         className="dash-table-link"
                       >
                         {d.dimension || d.statement || d.decision_title || "Drift event"}
@@ -572,7 +572,7 @@ export default function UnifiedDashboard() {
               to={
                 latestLesson.decision_id
                   ? `/decisions/${latestLesson.decision_id}`
-                  : "/decisions/intelligence"
+                  : "/decisions"
               }
               className="dash-lesson"
             >

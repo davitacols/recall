@@ -1,11 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import {
   ArrowRightIcon,
-  ArrowsPointingOutIcon,
-  ArrowUpRightIcon,
   CheckCircleIcon,
   CheckIcon,
   ChevronDownIcon,
@@ -37,7 +35,7 @@ const PROFILE_ICON = {
 
 const FALLBACK_PROFILE = {
   slug: "general",
-  name: "General agent",
+  name: "General actions",
   tagline: "All tools, broadest scope.",
   icon: "cpu",
 };
@@ -83,7 +81,6 @@ function summarizeOutput(out) {
 }
 
 export default function AgentDock() {
-  const navigate = useNavigate();
   const dock = useAgentDock();
   const { isOpen, close, seedGoal, seedProfile, activeRunId, setActiveRunId, activeHint } = dock;
 
@@ -232,28 +229,22 @@ export default function AgentDock() {
     setTimeout(() => composerRef.current?.focus(), 50);
   };
 
-  const handleOpenFull = () => {
-    close();
-    if (run?.id) navigate(`/agent/${run.id}`);
-    else navigate("/agent");
-  };
-
   if (!isOpen) return null;
 
   const ProfileIcon = PROFILE_ICON[activeProfile?.icon] || CpuChipIcon;
   const placeholder = activeHint?.goalPrefix
     ? `Continue: ${activeHint.goalPrefix.trim().slice(0, 60)}…`
-    : "Ask the agent to do something — it'll plan, search, and propose actions.";
+    : "Tell Recall what to do — it will plan, search, and ask before making changes.";
 
   return (
     <>
       <div className="ad-backdrop" onClick={close} aria-hidden="true" />
-      <aside className="ad" role="dialog" aria-modal="true" aria-label="Workspace agent">
+      <aside className="ad" role="dialog" aria-modal="true" aria-label="Recall actions">
         <header className="ad-head">
           <div className="ad-head-title">
             <span className="ad-head-mark"><CpuChipIcon /></span>
             <div>
-              <p className="ad-head-name">Workspace Agent</p>
+              <p className="ad-head-name">Recall actions</p>
               {activeHint?.label ? (
                 <p className="ad-head-context">
                   Context: <strong>{activeHint.label}</strong>
@@ -264,15 +255,6 @@ export default function AgentDock() {
             </div>
           </div>
           <div className="ad-head-actions">
-            <button
-              type="button"
-              className="ad-iconbtn"
-              onClick={handleOpenFull}
-              title="Open full view"
-              aria-label="Open in full page"
-            >
-              <ArrowsPointingOutIcon />
-            </button>
             {run ? (
               <button
                 type="button"
@@ -312,7 +294,6 @@ export default function AgentDock() {
               busy={busy}
               onApprove={handleApprove}
               onCancel={handleCancel}
-              onOpenFull={handleOpenFull}
             />
           )}
           <div ref={traceEndRef} />
@@ -357,7 +338,7 @@ export default function AgentDock() {
             type="submit"
             className="ad-send"
             disabled={busy || !goal.trim()}
-            aria-label="Run agent"
+            aria-label="Run action"
           >
             {busy ? <span className="ad-spinner" /> : <PaperAirplaneIcon />}
           </button>
@@ -385,7 +366,7 @@ function Empty({ profile, hint, onPick, onOpenProfilePicker, busy }) {
         <span className="ad-empty-icon">
           <Icon />
         </span>
-        <h3>{profile?.name || "General agent"}</h3>
+        <h3>{profile?.name || "General actions"}</h3>
         <p>{profile?.tagline}</p>
         <button type="button" className="ad-empty-switch" onClick={onOpenProfilePicker}>
           Switch specialist
@@ -424,7 +405,7 @@ function Empty({ profile, hint, onPick, onOpenProfilePicker, busy }) {
   );
 }
 
-function RunView({ run, busy, onApprove, onCancel, onOpenFull }) {
+function RunView({ run, busy, onApprove, onCancel }) {
   const meta = STATUS_META[run.status] || STATUS_META.running;
   return (
     <div className="ad-run">
@@ -441,9 +422,6 @@ function RunView({ run, busy, onApprove, onCancel, onOpenFull }) {
             <StopIcon /> Cancel
           </button>
         ) : null}
-        <button type="button" className="ad-cancel" onClick={onOpenFull}>
-          <ArrowUpRightIcon /> Full view
-        </button>
       </div>
 
       <p className="ad-run-goal">{run.goal}</p>
@@ -688,14 +666,14 @@ export function AgentDockFab() {
       type="button"
       className="ad-fab"
       onClick={() => toggle()}
-      title={activeHint?.label ? `Ask Agent about ${activeHint.label} · ⌘J` : "Ask Agent · ⌘J"}
-      aria-label="Open workspace agent"
+      title={activeHint?.label ? `Take action on ${activeHint.label} · ⌘J` : "Open Recall actions · ⌘J"}
+      aria-label="Open Recall actions"
     >
       <span className="ad-fab-mark">
         <BoltIcon />
       </span>
       <span className="ad-fab-text">
-        Ask Agent
+        Recall actions
         {activeHint?.label ? <span className="ad-fab-context">{activeHint.label}</span> : null}
       </span>
       <span className="ad-fab-kbd">⌘J</span>

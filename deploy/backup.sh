@@ -186,7 +186,8 @@ if [ -n "$offsite_dest" ]; then
   else
     offsite_ok=1
     for backup_file in "$ARCHIVE" "$MEDIA_ARCHIVE"; do
-      if ! "$rclone_bin" copy "$backup_file" "$offsite_dest" --no-traverse 2>&1; then
+      remote_file="${offsite_dest%/}/$(basename "$backup_file")"
+      if ! "$rclone_bin" copyto "$backup_file" "$remote_file" --s3-no-head 2>&1; then
         offsite_ok=0
       fi
     done

@@ -44,6 +44,7 @@ function Profile() {
   });
   const [profileIdentity, setProfileIdentity] = useState(createEmptyIdentity());
   const [avatarPreview, setAvatarPreview] = useState(null);
+  const [avatarLoadFailed, setAvatarLoadFailed] = useState(false);
   const [passwords, setPasswords] = useState({
     old_password: "",
     new_password: "",
@@ -59,6 +60,10 @@ function Profile() {
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
+
+  useEffect(() => {
+    setAvatarLoadFailed(false);
+  }, [avatarPreview]);
 
   useEffect(() => {
     if (!user) return;
@@ -323,8 +328,8 @@ function Profile() {
       <header className="pf-header">
         <div className="pf-header-left">
           <div className="pf-avatar">
-            {avatarPreview ? (
-              <img src={avatarPreview} alt={subjectName} />
+            {avatarPreview && !avatarLoadFailed ? (
+              <img src={avatarPreview} alt={subjectName} onError={() => setAvatarLoadFailed(true)} />
             ) : (
               <div className="pf-avatar-fallback">{(subjectName || "U").charAt(0).toUpperCase()}</div>
             )}

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 
 const sizes = {
   xs:    { px: 16, font: 8 },
@@ -40,13 +40,19 @@ export default function Avatar({
   className = "",
 }) {
   const s = sizes[size] || sizes.md;
+  const [imageFailed, setImageFailed] = useState(false);
   const [bg, fg] = hashColor(name);
+  const showImage = Boolean(src) && !imageFailed;
   const initials = name
     .trim()
     .split(/\s+/)
     .slice(0, 2)
     .map((p) => p[0]?.toUpperCase() || "")
     .join("");
+
+  useEffect(() => {
+    setImageFailed(false);
+  }, [src]);
 
   return (
     <span
@@ -68,7 +74,7 @@ export default function Avatar({
           overflow: "hidden",
           display: "grid",
           placeItems: "center",
-          background: src ? "var(--n30)" : bg,
+          background: showImage ? "var(--n30)" : bg,
           color: fg,
           fontSize: s.font,
           fontWeight: 700,
@@ -76,8 +82,13 @@ export default function Avatar({
           lineHeight: 1,
         }}
       >
-        {src ? (
-          <img src={src} alt={name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+        {showImage ? (
+          <img
+            src={src}
+            alt={name}
+            onError={() => setImageFailed(true)}
+            style={{ width: "100%", height: "100%", objectFit: "cover" }}
+          />
         ) : (
           initials || "?"
         )}

@@ -184,13 +184,13 @@ export default function UnifiedDashboard() {
     () => [
       {
         key: "decisions",
-        label: "Decisions recorded",
+        label: "Decisions",
         value: memory.decisions,
         to: "/decisions",
       },
       {
         key: "why",
-        label: "Carry their why",
+        label: "With rationale",
         value: memory.whyPct === null ? "—" : `${memory.whyPct}%`,
         sub: memory.decisions ? `${memory.withWhy} of ${memory.decisions}` : null,
         // The one number worth reacting to: below half means the record is
@@ -201,7 +201,7 @@ export default function UnifiedDashboard() {
       },
       {
         key: "linked",
-        label: "Linked to code",
+        label: "Code-linked",
         value: memory.linkedPct === null ? "—" : `${memory.linkedPct}%`,
         sub: memory.decisions ? `${memory.linked} of ${memory.decisions}` : null,
         bar: memory.linkedPct,
@@ -209,7 +209,7 @@ export default function UnifiedDashboard() {
       },
       {
         key: "captured",
-        label: "Captured for you",
+        label: "Auto-captured",
         value: memory.captured,
         sub: memory.convos ? `of ${memory.convos} conversations` : null,
         to: "/conversations",
@@ -332,8 +332,8 @@ export default function UnifiedDashboard() {
         <div className="dash-hero-left">
           <p className="dash-hero-date">
             {new Date().toLocaleDateString(undefined, {
-              weekday: "long",
-              month: "long",
+              weekday: "short",
+              month: "short",
               day: "numeric",
             })}
           </p>
@@ -395,9 +395,8 @@ export default function UnifiedDashboard() {
               )}
               {missingWhy > 0 ? (
                 <p className="dash-hero-gap">
-                  {missingWhy} decision{missingWhy === 1 ? " needs" : "s need"} more context
-                  before they can answer why.{" "}
-                  <Link to="/decisions">Review them</Link>
+                  <strong>{missingWhy}</strong> rationale gap{missingWhy === 1 ? "" : "s"}.{" "}
+                  <Link to="/decisions">Review</Link>
                 </p>
               ) : awaiting.length > 0 ? (
                 <p className="dash-hero-summary">
@@ -409,26 +408,39 @@ export default function UnifiedDashboard() {
             </>
           )}
         </div>
-        <div className="dash-hero-actions">
-          {isNewWorkspace ? (
-            <>
-              <Link to="/integrations/github" className="dash-btn dash-btn-primary">
-                Connect GitHub
-              </Link>
-              <Link to="/decisions/new" className="dash-btn">
-                Record a decision
-              </Link>
-            </>
-          ) : (
-            <>
-              <Link to="/decisions" className="dash-btn dash-btn-primary">
-                Review decisions
-              </Link>
-              <Link to="/agent" className="dash-btn">
-                Run agent
-              </Link>
-            </>
-          )}
+        <div className="dash-hero-side">
+          {!isNewWorkspace ? (
+            <Link
+              to="/decisions"
+              className="dash-memory-pulse"
+              style={{ "--dash-progress": `${memory.whyPct ?? 0}%` }}
+              aria-label={`${memory.whyPct ?? 0}% of decisions include rationale`}
+            >
+              <strong>{memory.whyPct === null ? "—" : `${memory.whyPct}%`}</strong>
+              <span>rationale</span>
+            </Link>
+          ) : null}
+          <div className="dash-hero-actions">
+            {isNewWorkspace ? (
+              <>
+                <Link to="/integrations/github" className="dash-btn dash-btn-primary">
+                  Connect GitHub
+                </Link>
+                <Link to="/decisions/new" className="dash-btn">
+                  Record a decision
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link to="/decisions" className="dash-btn dash-btn-primary">
+                  Review
+                </Link>
+                <Link to="/agent" className="dash-btn">
+                  Run agent
+                </Link>
+              </>
+            )}
+          </div>
         </div>
       </header>
 
@@ -456,7 +468,7 @@ export default function UnifiedDashboard() {
         {/* Needs your attention */}
         <article className="dash-card dash-card-tall">
           <header className="dash-card-head">
-            <h2>Needs your attention</h2>
+            <h2>Attention</h2>
             <span className="dash-card-count">{awaiting.length}</span>
           </header>
           {loading ? (
@@ -581,7 +593,7 @@ export default function UnifiedDashboard() {
         {/* Next moves — from the briefing that was previously discarded. */}
         <article className="dash-card">
           <header className="dash-card-head">
-            <h2>Next moves</h2>
+            <h2>Next actions</h2>
             {nextMoves.length ? (
               <span className="dash-card-count">{nextMoves.length}</span>
             ) : null}

@@ -1,6 +1,5 @@
-/* Dashboard — calmer, type-driven. Linear/Stripe register.
- * No gradients on cards, no colored icon tiles, no glow, no italic
- * blockquotes. Borders and dividers do the layout work. */
+/* Dashboard — a live decision console. Type and data do most of the work;
+ * motion is reserved for hierarchy, progress, and interaction feedback. */
 
 .dash {
   display: flex;
@@ -21,6 +20,7 @@
   gap: 18px;
   padding: 4px 0 18px;
   border-bottom: 1px solid var(--app-border);
+  animation: dash-enter 420ms cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
 }
 .dash-hero-left {
   display: flex;
@@ -52,7 +52,60 @@
   gap: 8px;
   flex-wrap: wrap;
   align-self: start;
-  margin-top: 28px;
+}
+.dash-hero-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 12px;
+  min-width: 168px;
+}
+.dash-memory-pulse {
+  --dash-progress: 0%;
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  place-content: center;
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  background: conic-gradient(
+    from -90deg,
+    var(--app-accent) var(--dash-progress),
+    var(--app-border) var(--dash-progress)
+  );
+  color: var(--app-text);
+  text-align: center;
+  text-decoration: none;
+  box-shadow: 0 12px 28px -20px var(--app-accent);
+  animation: dash-pulse-in 680ms 120ms cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+  transition: transform 160ms ease, box-shadow 160ms ease;
+}
+.dash-memory-pulse::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 7px;
+  border-radius: inherit;
+  background: var(--app-bg);
+}
+.dash-memory-pulse:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 16px 32px -18px var(--app-accent);
+  text-decoration: none;
+}
+.dash-memory-pulse strong {
+  font-size: 21px;
+  line-height: 1;
+  letter-spacing: -0.04em;
+}
+.dash-memory-pulse span {
+  margin-top: 5px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--app-muted);
 }
 
 .dash-btn {
@@ -66,7 +119,7 @@
   font-size: 16px;
   font-weight: 500;
   text-decoration: none;
-  transition: background 100ms ease, border-color 100ms ease;
+  transition: background 120ms ease, border-color 120ms ease, transform 120ms ease;
   cursor: pointer;
   line-height: 1.4;
 }
@@ -74,6 +127,7 @@
   background: var(--app-surface-alt);
   border-color: var(--app-border-strong, var(--app-border));
   text-decoration: none;
+  transform: translateY(-1px);
 }
 .dash-btn-primary {
   background: var(--app-text);
@@ -99,6 +153,7 @@
   background: var(--app-surface-alt);
   overflow: hidden;
   box-shadow: 0 1px 0 rgba(0, 0, 0, 0.08);
+  animation: dash-enter 460ms 70ms cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
 }
 @media (max-width: 880px) {
   .dash-stats { grid-template-columns: repeat(2, 1fr); }
@@ -119,10 +174,10 @@
   border-right: 1px solid var(--app-border);
   text-decoration: none;
   color: inherit;
-  transition: background 100ms ease;
+  transition: background 120ms ease, transform 120ms ease;
 }
 .dash-stat:last-child { border-right: none; }
-.dash-stat:hover { background: var(--app-surface); text-decoration: none; }
+.dash-stat:hover { background: var(--app-surface); text-decoration: none; transform: translateY(-1px); }
 .dash-stat-value {
   font-size: 25px;
   font-weight: 600;
@@ -155,7 +210,8 @@
   height: 100%;
   border-radius: 999px;
   background: var(--app-text-subtle, var(--app-text));
-  transition: width 220ms ease;
+  transform-origin: left;
+  animation: dash-bar-in 720ms 260ms cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
 }
 .dash-stat.is-emphasized .dash-stat-bar > span { background: #ef4444; }
 
@@ -164,7 +220,7 @@
 
 .dash-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1.15fr) minmax(300px, 0.85fr);
   gap: 16px;
 }
 @media (max-width: 960px) {
@@ -180,8 +236,25 @@
   border: 1px solid var(--app-border-strong, var(--app-border));
   background: var(--app-surface-alt);
   box-shadow: 0 1px 0 rgba(0, 0, 0, 0.08);
+  animation: dash-enter 480ms cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+  transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
 }
-.dash-card-tall { grid-row: span 2; }
+.dash-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--app-border-strong, var(--app-border));
+  box-shadow: 0 16px 30px -28px rgba(0, 0, 0, 0.9);
+}
+.dash-card:nth-child(1) { animation-delay: 120ms; }
+.dash-card:nth-child(2) { animation-delay: 170ms; }
+.dash-card:nth-child(3) { animation-delay: 220ms; }
+.dash-card:nth-child(4) { animation-delay: 270ms; }
+.dash-card:nth-child(5) { animation-delay: 320ms; }
+.dash-card:nth-child(6) { animation-delay: 370ms; }
+.dash-card-tall {
+  grid-row: span 2;
+  border-top: 2px solid var(--app-accent);
+  background: var(--app-surface-overlay, var(--app-surface-alt));
+}
 .dash-card-wide { grid-column: span 2; }
 @media (max-width: 960px) {
   .dash-card-tall, .dash-card-wide { grid-column: span 1; grid-row: span 1; }
@@ -230,11 +303,14 @@
   display: flex;
   align-items: flex-start;
   gap: 14px;
-  padding: 12px 0;
+  margin: 0 -10px;
+  padding: 10px;
+  border-radius: 8px;
   text-decoration: none;
   color: inherit;
+  transition: background 120ms ease, transform 120ms ease;
 }
-.dash-row:hover { text-decoration: none; }
+.dash-row:hover { background: var(--app-surface); text-decoration: none; transform: translateX(2px); }
 .dash-row:hover .dash-row-title { color: var(--app-text); }
 .dash-row-kind {
   flex-shrink: 0;
@@ -251,10 +327,17 @@
   color: var(--app-text-subtle, var(--app-text));
   font-weight: 500;
   transition: color 120ms ease;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
 }
 .dash-row-meta {
-  font-size: 15px;
+  font-size: 13.5px;
   color: var(--app-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* ─── tables ────────────────────────────────────────────────── */
@@ -343,6 +426,10 @@
   font-size: 17px;
   line-height: 1.55;
   color: var(--app-text);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
 }
 .dash-lesson-attrib {
   margin: 0;
@@ -447,10 +534,30 @@
 }
 @keyframes dash-shimmer { to { background-position: -200% 0; } }
 
+@keyframes dash-enter {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes dash-pulse-in {
+  from { opacity: 0; transform: scale(0.82) rotate(-12deg); }
+  to { opacity: 1; transform: scale(1) rotate(0); }
+}
+@keyframes dash-bar-in {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
 @media (max-width: 720px) {
   .dash { padding: 16px 18px 28px; }
   .dash-hero { grid-template-columns: 1fr; }
-  .dash-hero-actions { margin-top: 8px; }
+  .dash-hero-side {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    min-width: 0;
+  }
+  .dash-memory-pulse { width: 76px; height: 76px; }
   .dash-hero-title { font-size: 25px; }
 }
 
@@ -483,6 +590,7 @@
 .dash-ask-input:focus {
   outline: none;
   border-color: var(--app-accent, var(--app-border-strong));
+  box-shadow: 0 0 0 3px var(--app-accent-soft);
 }
 
 .dash-ask .dash-btn { flex-shrink: 0; }
@@ -490,13 +598,17 @@
 
 /* The gap, stated as something to do rather than a percentage to admire. */
 .dash-hero-gap {
+  align-self: flex-start;
   margin: 10px 0 0;
-  padding-left: 10px;
-  border-left: 2px solid var(--app-warning, #ff8b00);
-  font-size: 13.5px;
+  padding: 5px 9px;
+  border: 1px solid var(--app-border);
+  border-radius: 999px;
+  background: var(--app-surface-alt);
+  font-size: 12.5px;
   color: var(--app-muted);
 }
 
+.dash-hero-gap strong { color: var(--app-warning, #ff8b00); }
 .dash-hero-gap a { color: var(--app-text); font-weight: 600; }
 
 @media (max-width: 640px) {
@@ -527,6 +639,31 @@
 }
 
 .dash-ask-example:hover { color: var(--app-text); }
+
+@media (prefers-reduced-motion: reduce) {
+  .dash-hero,
+  .dash-stats,
+  .dash-card,
+  .dash-memory-pulse,
+  .dash-stat-bar > span,
+  .dash-skel-row {
+    animation: none;
+  }
+  .dash-btn,
+  .dash-stat,
+  .dash-card,
+  .dash-row,
+  .dash-memory-pulse {
+    transition: none;
+  }
+  .dash-btn:hover,
+  .dash-stat:hover,
+  .dash-card:hover,
+  .dash-row:hover,
+  .dash-memory-pulse:hover {
+    transform: none;
+  }
+}
 
 /* Stood down. Better to say why than to accept a question and fail. */
 .dash-ask-down {

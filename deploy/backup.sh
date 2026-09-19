@@ -175,13 +175,18 @@ offsite_dest="${BACKUP_OFFSITE_DEST:-}"
 [ -n "$offsite_dest" ] || offsite_dest=$(get_env BACKUP_OFFSITE_DEST)
 
 if [ -n "$offsite_dest" ]; then
-  if ! command -v rclone >/dev/null 2>&1; then
+  rclone_bin=$(command -v rclone 2>/dev/null || true)
+  if [ -z "$rclone_bin" ] && [ -x "$HOME/.local/bin/rclone" ]; then
+    rclone_bin="$HOME/.local/bin/rclone"
+  fi
+
+  if [ -z "$rclone_bin" ]; then
     echo "WARNING: BACKUP_OFFSITE_DEST is set but rclone is not installed" >&2
     notify_failure "off-site copy skipped: rclone is not installed. The local backup is verified and kept."
   else
     offsite_ok=1
     for backup_file in "$ARCHIVE" "$MEDIA_ARCHIVE"; do
-      if ! rclone copy "$backup_file" "$offsite_dest" --no-traverse 2>&1; then
+      if ! "$rclone_bin" copy "$backup_file" "$offsite_dest" --no-traverse 2>&1; then
         offsite_ok=0
       fi
     done

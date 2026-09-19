@@ -47,3 +47,20 @@ class ProfileAvatarTests(TestCase):
             _user_avatar_url(user, request),
             "http://testserver/media/avatars/uploaded.png",
         )
+
+    def test_missing_uploaded_avatar_falls_back_to_remote_avatar(self):
+        storage = SimpleNamespace(exists=lambda name: False)
+        missing_avatar = SimpleNamespace(
+            name="avatars/missing.png",
+            storage=storage,
+            url="/media/avatars/missing.png",
+        )
+        user = SimpleNamespace(
+            avatar=missing_avatar,
+            avatar_url="https://images.example.com/remote.png",
+        )
+
+        self.assertEqual(
+            _user_avatar_url(user),
+            "https://images.example.com/remote.png",
+        )

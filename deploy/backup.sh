@@ -3,8 +3,8 @@
 # separate schedule, separate retention, separate failure mode, so neither
 # stack's backups can be broken by a change to the other.
 #
-# Media is not included: it still lives in Cloudinary/S3, which keep their own
-# durability. Revisit this if media is ever moved onto local disk.
+# Both Postgres and the persistent media volume are included. A database-only
+# backup is incomplete once user uploads live on this server.
 #
 # On 2026-08-01 this script lost its executable bit and cron recorded
 # "Permission denied". No backup was taken that day and nothing said so — the
@@ -67,7 +67,7 @@ notify_failure() {
   curl -s -o /dev/null -X POST "https://api.resend.com/emails" \
     -H "Authorization: Bearer $api_key" \
     -H "Content-Type: application/json" \
-    -d "{\"from\":\"$from_addr\",\"to\":[\"$to_addr\"],\"subject\":\"Knoledgr backup FAILED ($STAMP)\",\"text\":\"The nightly Knoledgr database backup did not complete.\\n\\nReason: $reason\\nLast successful backup: $last_ok\\n\\nHost: $(hostname)\\nDirectory: $BACKUP_DIR\\n\\nRun it by hand to see the error:\\n  /home/deploy/recall/deploy/backup.sh\"}" \
+    -d "{\"from\":\"$from_addr\",\"to\":[\"$to_addr\"],\"subject\":\"Knoledgr backup FAILED ($STAMP)\",\"text\":\"The nightly Knoledgr database and media backup did not complete.\\n\\nReason: $reason\\nLast successful backup: $last_ok\\n\\nHost: $(hostname)\\nDirectory: $BACKUP_DIR\\n\\nRun it by hand to see the error:\\n  /home/deploy/recall/deploy/backup.sh\"}" \
     || echo "backup alert could not be delivered" >&2
 }
 
@@ -81,8 +81,8 @@ on_exit() {
   # Remove a half-written dump on any abnormal exit, including one from set -e
   # at the pipeline itself — which is before PARTIAL exists, hence the :- guard
   # under set -u.
-  rm -f "${PARTIAL:-}"
-  notify_failure "exit status $status"
+  rm -f "${PARTIAL:-}" "${MEDIA_PARTIAL:-}"
+  notify_failure "database or media backup exited with status $status"
   exit "$status"
 }
 trap on_exit EXIT
@@ -92,6 +92,8 @@ DC="docker compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.prod
 
 ARCHIVE="$BACKUP_DIR/knoledgr-$STAMP.sql.gz"
 PARTIAL="$ARCHIVE.partial"
+MEDIA_ARCHIVE="$BACKUP_DIR/knoledgr-media-$STAMP.tar.gz"
+MEDIA_PARTIAL="$MEDIA_ARCHIVE.partial"
 
 # Write to a .partial and only rename once every check has passed, so a failed
 # run can neither leave something that looks like a backup nor overwrite a good
@@ -99,7 +101,7 @@ PARTIAL="$ARCHIVE.partial"
 # healthy 932K backup taken in the same minute, because the filename is derived
 # from the timestamp and the shell had already truncated the target before
 # pg_dump was even asked to run.
-rm -f "$PARTIAL"
+rm -f "$PARTIAL" "$MEDIA_PARTIAL"
 
 # --clean --if-exists so the dump can be replayed into a non-empty database.
 $DC exec -T db pg_dump -U knoledgr --clean --if-exists knoledgr | gzip > "$PARTIAL"
@@ -107,7 +109,7 @@ $DC exec -T db pg_dump -U knoledgr --clean --if-exists knoledgr | gzip > "$PARTI
 # Three checks, because each catches something the others do not, and all three
 # were reachable in practice.
 reject() {
-  rm -f "$PARTIAL"
+  rm -f "$PARTIAL" "$MEDIA_PARTIAL"
   notify_failure "$1"
   COMPLETED=1   # already reported; do not report twice on the way out
   exit 1
@@ -141,7 +143,16 @@ fi
 # Every check passed: publish it under its real name.
 mv "$PARTIAL" "$ARCHIVE"
 
+# Archive the named volume through the read-only mount in the web container.
+# An empty media directory is valid, but the gzip and tar structure must both
+# be readable before the archive is published.
+$DC exec -T web tar -C /srv/media -czf - . > "$MEDIA_PARTIAL"
+gzip -t "$MEDIA_PARTIAL" 2>/dev/null || reject "media archive failed gzip integrity check"
+tar -tzf "$MEDIA_PARTIAL" >/dev/null 2>&1 || reject "media archive is not a readable tar file"
+mv "$MEDIA_PARTIAL" "$MEDIA_ARCHIVE"
+
 find "$BACKUP_DIR" -name 'knoledgr-*.sql.gz' -mtime +14 -delete
+find "$BACKUP_DIR" -name 'knoledgr-media-*.tar.gz' -mtime +14 -delete
 
 # ---------------------------------------------------------------------------
 # Off-site copy.
@@ -167,11 +178,20 @@ if [ -n "$offsite_dest" ]; then
   if ! command -v rclone >/dev/null 2>&1; then
     echo "WARNING: BACKUP_OFFSITE_DEST is set but rclone is not installed" >&2
     notify_failure "off-site copy skipped: rclone is not installed. The local backup is verified and kept."
-  elif rclone copy "$ARCHIVE" "$offsite_dest" --no-traverse 2>&1; then
-    echo "off-site copy done: $offsite_dest"
   else
-    echo "WARNING: off-site copy failed" >&2
-    notify_failure "off-site copy failed. The local backup is verified and kept, but it is the only copy."
+    offsite_ok=1
+    for backup_file in "$ARCHIVE" "$MEDIA_ARCHIVE"; do
+      if ! rclone copy "$backup_file" "$offsite_dest" --no-traverse 2>&1; then
+        offsite_ok=0
+      fi
+    done
+
+    if [ "$offsite_ok" -eq 1 ]; then
+      echo "off-site database and media copy done: $offsite_dest"
+    else
+      echo "WARNING: one or more off-site copies failed" >&2
+      notify_failure "off-site database or media copy failed. The local backups are verified and kept, but may be the only copies."
+    fi
   fi
 else
   echo "note: no BACKUP_OFFSITE_DEST set — this backup exists only on this disk"
@@ -179,4 +199,4 @@ fi
 
 date -u +%FT%TZ > "$STATUS_FILE"
 COMPLETED=1
-echo "backup done: $STAMP ($(du -h "$ARCHIVE" | cut -f1))"
+echo "backup done: $STAMP (database $(du -h "$ARCHIVE" | cut -f1), media $(du -h "$MEDIA_ARCHIVE" | cut -f1))"

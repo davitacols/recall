@@ -66,17 +66,24 @@ The edge resolves this stack through Docker DNS at request time rather than
 caching an IP at startup, so rebuilding Knoledgr does not strand solakuti's
 nginx on a dead address.
 
-## Still external
+## Media
 
-Media remains on Cloudinary/S3 — `settings.py` selects `MediaCloudinaryStorage`
-whenever `DEBUG` is off. Moving it here means rewriting stored asset URLs, so
-it is its own job. `deploy/backup.sh` therefore covers Postgres only.
+Uploads live in the persistent `media_data` Docker volume. Django writes the
+files and the stack's nginx serves `/media/` from that same volume. The nightly
+backup includes both Postgres and this media volume.
+
+The one-time move from Cloudinary must run against the old backend container
+before deploying the filesystem-storage release. Pipe
+`deploy/migrate_cloudinary_media.py` from the target Git commit into
+`python manage.py shell`; it copies all file-field data into the already-mounted
+media volume and exits non-zero if any source cannot be preserved.
 
 ## Backups
 
 `deploy/backup.sh`, on its own cron entry and its own retention, separate from
 `~/solakuti/backup.sh` so neither can break the other. 14 days, and it exits
-non-zero on an empty dump rather than quietly keeping a truncated one.
+non-zero on an empty dump or invalid media archive rather than quietly keeping
+a broken backup.
 
 For launch, install `rclone`, configure a remote for the `deploy` user, and set
 `BACKUP_OFFSITE_DEST` in `deploy/.env.prod` (for example

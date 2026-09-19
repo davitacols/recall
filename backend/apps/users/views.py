@@ -102,6 +102,8 @@ def _user_avatar_url(user, request=None):
     avatar = getattr(user, 'avatar', None)
     if avatar:
         try:
+            if hasattr(avatar, 'storage') and not avatar.storage.exists(avatar.name):
+                raise ValueError('Avatar file is missing from storage')
             avatar_url = avatar.url
         except (AttributeError, ValueError):
             avatar_url = ''

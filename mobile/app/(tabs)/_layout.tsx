@@ -2,7 +2,7 @@ import { Tabs } from 'expo-router';
 import React from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { HomeIcon, ChatIcon, DecisionIcon, KnowledgeIcon, SprintIcon } from '../../components/Icons';
+import { HomeIcon, ChatIcon, DecisionIcon, KnowledgeIcon } from '../../components/Icons';
 import { Brand } from '../../constants/brand';
 
 export default function TabLayout() {
@@ -103,10 +103,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="sprints"
         options={{
-          title: 'Sprints',
-          tabBarIcon: ({ color, focused }) => (
-            renderIcon(SprintIcon, color, focused)
-          ),
+          href: null,
         }}
       />
     </Tabs>

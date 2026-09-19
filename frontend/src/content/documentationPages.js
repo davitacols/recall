@@ -2193,7 +2193,13 @@ const BASE_DOCUMENTATION_GROUPS = [
   },
 ];
 
-export const DOCUMENTATION_GROUPS = [...BASE_DOCUMENTATION_GROUPS, ...DOCUMENTATION_FEATURE_GROUPS];
+// Agile routes remain in source for reversibility, but their documentation is
+// excluded with the product surface so public docs do not advertise tools that
+// are intentionally unavailable at launch.
+const HIDDEN_DOCUMENTATION_GROUP_IDS = new Set(["execution", "delivery-planning"]);
+
+export const DOCUMENTATION_GROUPS = [...BASE_DOCUMENTATION_GROUPS, ...DOCUMENTATION_FEATURE_GROUPS]
+  .filter((group) => !HIDDEN_DOCUMENTATION_GROUP_IDS.has(group.id));
 
 export const DOCUMENTATION_PAGES = DOCUMENTATION_GROUPS.flatMap((group) =>
   group.pages.map((page, index) => ({

@@ -125,7 +125,7 @@ function SearchResults({ results, query, onSelect }) {
       <div className="docs-drawer-empty">
         <p>No docs match <strong>"{query}"</strong>.</p>
         <p className="docs-drawer-empty-sub">
-          Try a feature name (predictions, drift, agent), a workflow (sprint planning),
+          Try a feature name (decisions, GitHub, Ask Recall), a workflow (recording rationale),
           or a concept (workspace memory).
         </p>
       </div>

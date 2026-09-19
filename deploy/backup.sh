@@ -187,7 +187,7 @@ if [ -n "$offsite_dest" ]; then
     offsite_ok=1
     for backup_file in "$ARCHIVE" "$MEDIA_ARCHIVE"; do
       remote_file="${offsite_dest%/}/$(basename "$backup_file")"
-      if ! "$rclone_bin" copyto "$backup_file" "$remote_file" --s3-no-head 2>&1; then
+      if ! "$rclone_bin" rcat "$remote_file" --s3-no-head < "$backup_file" 2>&1; then
         offsite_ok=0
       fi
     done

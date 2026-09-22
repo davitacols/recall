@@ -73,12 +73,54 @@ class RegistrationPolicyTests(TestCase):
         self.assertEqual(response.status_code, 201)
         self.assertTrue(response.data["created_workspace"])
         self.assertIn("access_token", response.data)
+        self.assertEqual(response.data["user"]["avatar"], "https://example.com/avatar.png")
 
         user = User.objects.get(email="owner@gmail.com")
         self.assertEqual(user.organization.name, "Corner Bakery")
         self.assertFalse(user.has_usable_password())
         self.assertEqual(user.avatar_url, "https://example.com/avatar.png")
         mock_send_welcome_email.assert_called_once_with(user)
+        mock_log_auth_audit.assert_called_once()
+
+    @override_settings(GOOGLE_OAUTH_ENABLED=True, GOOGLE_CLIENT_ID="test-google-client-id")
+    @patch("apps.users.views._log_auth_audit")
+    @patch("apps.users.views.google_requests")
+    @patch("apps.users.views.google_id_token")
+    def test_google_login_refreshes_existing_users_avatar_url(
+        self,
+        mock_google_id_token,
+        mock_google_requests,
+        mock_log_auth_audit,
+    ):
+        organization = Organization.objects.create(name="Existing Workspace", slug="existing-workspace")
+        user = User.objects.create_user(
+            username="existing-owner",
+            email="existing@gmail.com",
+            password=None,
+            organization=organization,
+            avatar_url="https://example.com/old-avatar.png",
+        )
+        mock_google_id_token.verify_oauth2_token.return_value = {
+            "iss": "https://accounts.google.com",
+            "email": user.email,
+            "email_verified": True,
+            "picture": "https://example.com/new-avatar.png",
+            "sub": "google-sub-existing",
+        }
+        mock_google_requests.Request.return_value = object()
+
+        request = self.factory.post(
+            "/api/auth/google/",
+            {"credential": "google-jwt"},
+            format="json",
+        )
+
+        response = google_login(request)
+
+        self.assertEqual(response.status_code, 200)
+        user.refresh_from_db()
+        self.assertEqual(user.avatar_url, "https://example.com/new-avatar.png")
+        self.assertEqual(response.data["user"]["avatar"], "https://example.com/new-avatar.png")
         mock_log_auth_audit.assert_called_once()
 
     @override_settings(GOOGLE_OAUTH_ENABLED=True, GOOGLE_CLIENT_ID="test-google-client-id")

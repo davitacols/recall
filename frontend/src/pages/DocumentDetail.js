@@ -9,6 +9,7 @@ import {
   TrashIcon,
 } from "@heroicons/react/24/outline";
 import { useToast } from "../components/Toast";
+import RichText from "../components/RichText";
 import {
   Avatar,
   Breadcrumb,
@@ -217,7 +218,7 @@ export default function DocumentDetail() {
   }
 
   return (
-    <div style={{ padding: "0 32px 32px" }}>
+    <div style={{ padding: "0 var(--page-x) 32px" }}>
       <PageHeader
         breadcrumb={[
           { label: "Knoledgr", to: "/" },
@@ -295,7 +296,7 @@ export default function DocumentDetail() {
                 </div>
               ) : null}
               {doc.content ? (
-                <div className="atlas-article" dangerouslySetInnerHTML={{ __html: doc.content }} />
+                <RichText content={doc.content} className="atlas-article" />
               ) : (
                 <p style={{ color: "var(--app-text-disabled)", fontSize: 14 }}>This page has no content yet.</p>
               )}
@@ -398,7 +399,7 @@ function DetailRow({ label, value }) {
 
 const pageGrid = {
   display: "grid",
-  gridTemplateColumns: "minmax(0, 1fr) 280px",
+  gridTemplateColumns: "var(--split-main)",
   gap: 32,
   marginTop: 16,
   alignItems: "start",

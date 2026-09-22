@@ -7,7 +7,6 @@ import {
   BoltIcon,
   CheckCircleIcon,
   ExclamationTriangleIcon,
-  LockClosedIcon,
   ServerIcon,
   ShieldCheckIcon,
   SparklesIcon,
@@ -23,12 +22,6 @@ import { getProjectPalette, getProjectUi } from "../utils/projectUi";
 import "./Enterprise.css";
 
 const ROLE_OPTIONS = ["admin", "manager", "contributor"];
-const PROVIDER_OPTIONS = [
-  ["saml", "SAML 2.0"],
-  ["okta", "Okta"],
-  ["azure", "Azure AD"],
-  ["google", "Google Workspace"],
-];
 const REGION_OPTIONS = [
   ["us", "United States"],
   ["eu", "European Union"],
@@ -61,18 +54,6 @@ const SEVERITY_OPTIONS = [
   ["critical", "Critical"],
 ];
 const FEATURED_SLUGS = ["github-advanced-sync", "incident-ops-feed", "jira-portfolio-bridge"];
-
-function emptySsoForm() {
-  return {
-    provider: "saml",
-    enabled: false,
-    entity_id: "",
-    sso_url: "",
-    x509_cert: "",
-    auto_provision_users: true,
-    default_role: "contributor",
-  };
-}
 
 function emptyComplianceForm() {
   return {
@@ -256,7 +237,6 @@ export default function Enterprise() {
   const [busyKey, setBusyKey] = useState("");
   const [warningText, setWarningText] = useState("");
 
-  const [showSsoEditor, setShowSsoEditor] = useState(false);
   const [showTrainingComposer, setShowTrainingComposer] = useState(false);
   const [showOnPremEditor, setShowOnPremEditor] = useState(false);
 
@@ -276,7 +256,6 @@ export default function Enterprise() {
   const [slaRules, setSlaRules] = useState([]);
   const [escalationRules, setEscalationRules] = useState([]);
 
-  const [ssoForm, setSsoForm] = useState(emptySsoForm);
   const [complianceForm, setComplianceForm] = useState(emptyComplianceForm);
   const [permissionForm, setPermissionForm] = useState(emptyPermissionForm);
   const [scopeForm, setScopeForm] = useState(emptyScopeForm);
@@ -353,11 +332,6 @@ export default function Enterprise() {
       setSlaRules(ensureArray(pick(13, [])));
       setEscalationRules(ensureArray(pick(14, [])));
 
-      setSsoForm({
-        ...emptySsoForm(),
-        ...ssoData,
-        default_role: ssoData?.default_role || "contributor",
-      });
       setComplianceForm({
         data_residency_region: complianceData?.data_residency_region || "us",
         require_sso: Boolean(complianceData?.require_sso),
@@ -434,25 +408,6 @@ export default function Enterprise() {
       return;
     }
     navigate(target.href);
-  };
-
-  const submitSso = async (event) => {
-    event.preventDefault();
-    await runAction({
-      key: "sso",
-      request: () =>
-        api({
-          url: "/api/organizations/enterprise/sso/",
-          method: ssoConfig?.id ? "put" : "post",
-          data: { ...ssoForm, default_role: ssoForm.default_role || "contributor" },
-        }),
-      success: "SSO configuration saved.",
-      failure: "Unable to save the SSO configuration.",
-      after: async () => {
-        setShowSsoEditor(false);
-        await refreshQuietly();
-      },
-    });
   };
 
   const submitCompliance = async (event) => {
@@ -719,10 +674,6 @@ export default function Enterprise() {
         description="Run identity, compliance, marketplace approvals, rollout enablement, and escalation logic from one calmer enterprise workspace."
         actions={
           <>
-            <button className="ui-btn-polish ui-focus-ring" type="button" onClick={() => setShowSsoEditor((value) => !value)} style={ui.primaryButton}>
-              <LockClosedIcon style={{ width: 14, height: 14 }} />
-              {showSsoEditor ? "Close SSO Editor" : ssoConfig?.enabled ? "Adjust SSO" : "Configure SSO"}
-            </button>
             <button
               className="ui-btn-polish ui-focus-ring"
               type="button"
@@ -742,9 +693,11 @@ export default function Enterprise() {
         stats={[
           {
             label: "Identity",
-            value: ssoConfig?.enabled ? formatLabel(ssoConfig.provider) : "Manual",
-            helper: ssoConfig?.enabled ? "SSO is live." : "SSO is not configured yet.",
-            tone: ssoConfig?.enabled ? palette.success : palette.warn,
+            value: "Password / JWT",
+            helper: ssoConfig?.id
+              ? "An SSO configuration draft is stored, but no login path uses it."
+              : "SAML SSO is not implemented.",
+            tone: palette.warn,
           },
           {
             label: "Controls",
@@ -784,10 +737,8 @@ export default function Enterprise() {
 
       <WorkspaceToolbar palette={palette}>
         <div className="enterprise-signal-grid">
-          <SignalCard tone={ssoConfig?.enabled ? "success" : "warn"} title={ssoConfig?.enabled ? "Identity Ready" : "Identity Gap"}>
-            {ssoConfig?.enabled
-              ? `${formatLabel(ssoConfig.provider)} is active with ${formatLabel(ssoConfig.default_role || "contributor")} as the default role.`
-              : "Single sign-on is still manual. Move identity out of ad hoc onboarding when the workspace is ready."}
+          <SignalCard tone="warn" title="Identity Gap">
+            SAML SSO and MFA are not implemented. Saved policy or provider settings are planning metadata, not authentication controls.
           </SignalCard>
           <SignalCard tone={complianceForm.third_party_app_approval_required ? "info" : "warn"} title="App Governance">
             {complianceForm.third_party_app_approval_required
@@ -822,7 +773,7 @@ export default function Enterprise() {
           }
         >
           <div className="enterprise-metric-grid">
-            <MetricCard label="Residency" value={formatLabel(complianceForm.data_residency_region)} helper="Selected data region." />
+            <MetricCard label="Residency request" value={formatLabel(complianceForm.data_residency_region)} helper="Planning metadata; the deployment remains single-region." />
             <MetricCard label="Retention" value={`${complianceForm.retention_days}d`} helper="Current retention horizon." />
             <MetricCard label="Audit Exports" value={complianceForm.audit_export_enabled ? "Enabled" : "Off"} helper="Data portability posture." />
           </div>
@@ -830,98 +781,37 @@ export default function Enterprise() {
           <div className="enterprise-card">
             <div className="enterprise-card-header">
               <div>
-                <h3>SSO posture</h3>
-                <p>
-                  {ssoConfig?.enabled
-                    ? `${formatLabel(ssoConfig.provider)} is active. Auto-provisioning is ${ssoConfig.auto_provision_users ? "enabled" : "disabled"}.`
-                    : "SSO is not configured yet. Keep using manual sign-in or move into a managed identity flow."}
-                </p>
+                <h3>SSO availability</h3>
+                <p>SAML SSO is not implemented. Any provider details already saved here are retained as a configuration draft only; they do not change sign-in behavior.</p>
               </div>
-              <StatusPill status={ssoConfig?.enabled ? "installed" : "requested"} />
+              <StatusPill status="requested" />
             </div>
             <div className="enterprise-info-grid">
               <div className="enterprise-info-cell">
-                <span>Provider</span>
-                <strong>{formatLabel(ssoConfig?.provider || "manual")}</strong>
+                <span>Draft provider</span>
+                <strong>{ssoConfig?.id ? formatLabel(ssoConfig.provider) : "None"}</strong>
               </div>
               <div className="enterprise-info-cell">
-                <span>Default Role</span>
-                <strong>{formatLabel(ssoConfig?.default_role || "contributor")}</strong>
+                <span>Login enforcement</span>
+                <strong>Not implemented</strong>
               </div>
               <div className="enterprise-info-cell enterprise-info-cell-wide">
-                <span>Entity ID</span>
-                <strong>{ssoConfig?.entity_id || "Not configured"}</strong>
+                <span>Draft entity ID</span>
+                <strong>{ssoConfig?.entity_id || "None"}</strong>
               </div>
             </div>
-            {showSsoEditor ? (
-              <form onSubmit={submitSso} className="enterprise-form-stack">
-                <div className="enterprise-form-grid">
-                  <label className="enterprise-field">
-                    <span>Provider</span>
-                    <select value={ssoForm.provider} onChange={(event) => setSsoForm((current) => ({ ...current, provider: event.target.value }))} style={selectStyle}>
-                      {PROVIDER_OPTIONS.map(([value, label]) => (
-                        <option key={value} value={value}>
-                          {label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="enterprise-field">
-                    <span>Default role</span>
-                    <select value={ssoForm.default_role} onChange={(event) => setSsoForm((current) => ({ ...current, default_role: event.target.value }))} style={selectStyle}>
-                      {ROLE_OPTIONS.map((role) => (
-                        <option key={role} value={role}>
-                          {formatLabel(role)}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                </div>
-                <div className="enterprise-form-grid">
-                  <label className="enterprise-field">
-                    <span>Entity ID</span>
-                    <input type="text" value={ssoForm.entity_id} onChange={(event) => setSsoForm((current) => ({ ...current, entity_id: event.target.value }))} style={inputStyle} />
-                  </label>
-                  <label className="enterprise-field">
-                    <span>SSO URL</span>
-                    <input type="url" value={ssoForm.sso_url} onChange={(event) => setSsoForm((current) => ({ ...current, sso_url: event.target.value }))} style={inputStyle} />
-                  </label>
-                </div>
-                <label className="enterprise-field">
-                  <span>X.509 certificate</span>
-                  <textarea rows="4" value={ssoForm.x509_cert} onChange={(event) => setSsoForm((current) => ({ ...current, x509_cert: event.target.value }))} style={textareaStyle} />
-                </label>
-                <label className="enterprise-check">
-                  <input type="checkbox" checked={ssoForm.enabled} onChange={(event) => setSsoForm((current) => ({ ...current, enabled: event.target.checked }))} />
-                  <span>Enable SSO for the workspace</span>
-                </label>
-                <label className="enterprise-check">
-                  <input type="checkbox" checked={ssoForm.auto_provision_users} onChange={(event) => setSsoForm((current) => ({ ...current, auto_provision_users: event.target.checked }))} />
-                  <span>Auto-provision users after successful sign-in</span>
-                </label>
-                <div className="enterprise-inline-actions">
-                  <button className="ui-btn-polish ui-focus-ring" type="submit" disabled={busyKey === "sso"} style={{ ...ui.primaryButton, opacity: busyKey === "sso" ? 0.7 : 1 }}>
-                    {busyKey === "sso" ? <ArrowPathIcon style={{ width: 14, height: 14, animation: "spin 1s linear infinite" }} /> : null}
-                    Save SSO Configuration
-                  </button>
-                  <button className="ui-btn-polish ui-focus-ring" type="button" onClick={() => setShowSsoEditor(false)} style={ui.secondaryButton}>
-                    Close
-                  </button>
-                </div>
-              </form>
-            ) : null}
           </div>
           <form onSubmit={submitCompliance} className="enterprise-card enterprise-form-stack">
             <div className="enterprise-card-header">
               <div>
                 <h3>Governance policy</h3>
-                <p>Retention, SSO, MFA, allowlists, and integration approval live in one policy layer.</p>
+                <p>Record governance requirements here. SSO, MFA, IP allowlists, and data residency are not enforced by the current application.</p>
               </div>
               <span className="enterprise-meta-text">Updated {formatDateTime(compliance?.updated_at)}</span>
             </div>
             <div className="enterprise-form-grid">
               <label className="enterprise-field">
-                <span>Data residency</span>
+                <span>Requested data residency (planning only)</span>
                 <select value={complianceForm.data_residency_region} onChange={(event) => setComplianceForm((current) => ({ ...current, data_residency_region: event.target.value }))} style={selectStyle}>
                   {REGION_OPTIONS.map(([value, label]) => (
                     <option key={value} value={value}>
@@ -936,7 +826,7 @@ export default function Enterprise() {
               </label>
             </div>
             <label className="enterprise-field">
-              <span>IP allowlist</span>
+              <span>IP allowlist requirement (not enforced)</span>
               <input type="text" value={complianceForm.ip_allowlist} onChange={(event) => setComplianceForm((current) => ({ ...current, ip_allowlist: event.target.value }))} style={inputStyle} placeholder="203.0.113.10, 198.51.100.24" />
             </label>
             <label className="enterprise-field">
@@ -945,11 +835,11 @@ export default function Enterprise() {
             </label>
             <label className="enterprise-check">
               <input type="checkbox" checked={complianceForm.require_sso} onChange={(event) => setComplianceForm((current) => ({ ...current, require_sso: event.target.checked }))} />
-              <span>Require SSO</span>
+              <span>Record SSO as a requirement (not enforced)</span>
             </label>
             <label className="enterprise-check">
               <input type="checkbox" checked={complianceForm.require_mfa} onChange={(event) => setComplianceForm((current) => ({ ...current, require_mfa: event.target.checked }))} />
-              <span>Require MFA</span>
+              <span>Record MFA as a requirement (not enforced)</span>
             </label>
             <label className="enterprise-check">
               <input type="checkbox" checked={complianceForm.audit_export_enabled} onChange={(event) => setComplianceForm((current) => ({ ...current, audit_export_enabled: event.target.checked }))} />
@@ -961,7 +851,7 @@ export default function Enterprise() {
             </label>
             <button className="ui-btn-polish ui-focus-ring" type="submit" disabled={busyKey === "compliance"} style={{ ...ui.primaryButton, justifyContent: "center", opacity: busyKey === "compliance" ? 0.7 : 1 }}>
               {busyKey === "compliance" ? <ArrowPathIcon style={{ width: 14, height: 14, animation: "spin 1s linear infinite" }} /> : null}
-              Save Governance Policy
+              Save Governance Requirements
             </button>
           </form>
         </WorkspacePanel>

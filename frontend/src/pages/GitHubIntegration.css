@@ -31,7 +31,7 @@
 }
 .gh-eyebrow {
   margin: 0;
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -39,15 +39,15 @@
 }
 .gh-account {
   margin: 4px 0 2px;
-  font-size: 20px;
+  font-size: 24px;
   font-weight: 700;
   letter-spacing: -0.014em;
   color: var(--app-text);
 }
-.gh-sub { margin: 0; font-size: 13px; color: var(--app-muted); }
+.gh-sub { margin: 0; font-size: 16px; color: var(--app-muted); }
 .gh-warning {
   margin: 8px 0 0;
-  font-size: 12.5px;
+  font-size: 15.5px;
   color: #fbbf24;
   display: inline-flex;
   align-items: center;
@@ -79,14 +79,14 @@
 }
 .gh-card-title {
   margin: 0;
-  font-size: 15px;
+  font-size: 18px;
   font-weight: 650;
   letter-spacing: -0.01em;
   color: var(--app-text);
 }
 .gh-card-sub {
   margin: 4px 0 0;
-  font-size: 12.5px;
+  font-size: 15.5px;
   color: var(--app-muted);
   max-width: 580px;
 }
@@ -100,7 +100,7 @@
   background: var(--app-surface-alt);
   color: var(--app-text);
   font: inherit;
-  font-size: 13px;
+  font-size: 16px;
   outline: none;
 }
 .gh-search:focus { border-color: #b095ff; }
@@ -128,7 +128,7 @@
 .gh-repo:hover { background: var(--app-surface); }
 .gh-repo-id { display: flex; flex-direction: column; min-width: 0; gap: 4px; }
 .gh-repo-name {
-  font-size: 13.5px;
+  font-size: 16.5px;
   font-weight: 600;
   color: var(--app-text);
   font-family: var(--font-mono, ui-monospace, SFMono-Regular, monospace);
@@ -140,7 +140,7 @@
   align-items: center;
 }
 .gh-chip {
-  font-size: 10px;
+  font-size: 14px;
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -153,10 +153,10 @@
 .gh-chip.is-archived { background: rgba(245, 158, 11, 0.16); color: #fbbf24; }
 .gh-branch {
   font-family: var(--font-mono, ui-monospace, SFMono-Regular, monospace);
-  font-size: 11px;
+  font-size: 14px;
   color: var(--app-muted);
 }
-.gh-relative { font-size: 11.5px; color: var(--app-muted); }
+.gh-relative { font-size: 14.5px; color: var(--app-muted); }
 
 /* Toggle switch */
 .gh-toggle {
@@ -204,8 +204,8 @@
   border: 1px dashed var(--app-border);
   color: var(--app-muted);
 }
-.gh-empty p { margin: 0 0 6px; font-size: 14px; color: var(--app-text-subtle, var(--app-text)); }
-.gh-empty-sub { font-size: 12.5px; color: var(--app-muted); }
+.gh-empty p { margin: 0 0 6px; font-size: 17px; color: var(--app-text-subtle, var(--app-text)); }
+.gh-empty-sub { font-size: 15.5px; color: var(--app-muted); }
 .gh-empty a { color: #93b6ff; }
 
 .gh-bullets {
@@ -220,7 +220,7 @@
   display: flex;
   align-items: flex-start;
   gap: 10px;
-  font-size: 13.5px;
+  font-size: 16.5px;
   line-height: 1.55;
   color: var(--app-text-subtle, var(--app-text));
 }
@@ -234,7 +234,160 @@
 
 .gh-foot {
   margin: 6px 0 0;
-  font-size: 12.5px;
+  font-size: 15.5px;
   color: var(--app-muted);
 }
 .gh-foot a { color: #93b6ff; }
+
+/* Move a repository to another workspace.
+   Only rendered when the user belongs to more than one, so most people never
+   see it. GitHub allows a single installation per account; this is how one
+   account's repos get split across the workspaces that should own them. */
+.gh-move {
+  flex-shrink: 0;
+  height: 30px;
+  max-width: 160px;
+  padding: 0 8px;
+  border-radius: 8px;
+  border: 1px solid var(--app-border);
+  background: var(--app-surface);
+  color: var(--app-text-subtle, var(--app-text));
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+.gh-move:hover { border-color: var(--app-border-strong); color: var(--app-text); }
+
+@media (max-width: 640px) {
+  .gh-repo { flex-wrap: wrap; }
+  .gh-move { max-width: none; flex: 1; }
+}
+
+/* Which project this repository is the code for.
+   Sits beside the workspace picker and reads the same way — one repo, one
+   project, so the decisions reached through it land under the right heading
+   rather than in one pool covering unrelated work. */
+.gh-project {
+  flex-shrink: 0;
+  height: 30px;
+  max-width: 170px;
+  padding: 0 8px;
+  border-radius: 8px;
+  border: 1px solid var(--app-border);
+  background: var(--app-surface);
+  color: var(--app-text-subtle, var(--app-text));
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+.gh-project:hover { border-color: var(--app-border-strong); color: var(--app-text); }
+/* Unassigned reads as a gap to fill, not as a neutral choice. */
+.gh-project[value=""] { color: var(--app-text-disabled, var(--app-muted)); }
+
+@media (max-width: 640px) {
+  .gh-project { max-width: none; flex: 1; }
+}
+
+/* Creating the project inline, from the dropdown that needed one.
+   The only field is a name. Knoledgr is not a tracker: a project here is the
+   namespace that keeps one repo's decisions from blurring into another's, and
+   asking for a key, a lead and a description to record that would teach the
+   wrong mental model at the moment of first contact. */
+.gh-project-new {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.gh-project-input {
+  height: 30px;
+  width: 190px;
+  max-width: 190px;
+  padding: 0 8px;
+  border-radius: 8px;
+  border: 1px solid var(--app-border-strong, var(--app-border));
+  background: var(--app-surface);
+  color: var(--app-text);
+  font: inherit;
+  font-size: 14px;
+}
+
+.gh-project-input:focus {
+  outline: none;
+  border-color: var(--app-accent, var(--app-border-strong));
+}
+
+.gh-mini {
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid var(--app-border);
+  background: var(--app-surface);
+  color: var(--app-text);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.gh-mini:hover:not(:disabled) { border-color: var(--app-border-strong); }
+.gh-mini:disabled { opacity: 0.5; cursor: default; }
+.gh-mini-quiet { color: var(--app-text-subtle, var(--app-text)); border-color: transparent; }
+
+@media (max-width: 640px) {
+  .gh-project-new { flex: 1; }
+  .gh-project-input { width: auto; max-width: none; flex: 1; }
+}
+
+/* The one-off import of a repository's already-merged pull requests.
+   Full width on its own line under the repo row, because it carries a
+   sentence rather than a control. */
+.gh-import {
+  flex-basis: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--app-border);
+  border-radius: 10px;
+  background: var(--app-surface-subtle, var(--app-surface));
+}
+
+.gh-import-text {
+  flex: 1;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--app-text-subtle, var(--app-text));
+}
+
+.gh-import .gh-mini { flex-shrink: 0; }
+
+.gh-import.is-done { border-color: var(--app-good-border, var(--app-border)); }
+.gh-import.is-failed { border-color: var(--app-danger-border, var(--app-border)); }
+.gh-import.is-failed .gh-import-text { color: var(--app-danger, #bf2600); }
+.gh-import.is-quiet { border-style: dashed; }
+
+/* Progress. Indeterminate until GitHub tells us how many there are, because a
+   bar that sits at 0% reads as stuck. */
+.gh-import-bar {
+  flex-shrink: 0;
+  width: 140px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--app-border);
+  overflow: hidden;
+}
+
+.gh-import-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--app-accent, #4f46e5);
+  transition: width 240ms ease;
+}
+
+@media (max-width: 640px) {
+  .gh-import { flex-wrap: wrap; }
+  .gh-import-bar { width: 100%; }
+}

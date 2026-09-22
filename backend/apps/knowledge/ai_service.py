@@ -85,8 +85,9 @@ class AIService:
         return "\n".join(lines)
 
     def _clean_preview(self, text):
-        cleaned = unescape(strip_tags(str(text or "").replace("<br>", "\n").replace("<br/>", "\n").replace("<br />", "\n")))
-        return " ".join(cleaned.split())
+        from apps.knowledge.text_utils import to_plain_text
+
+        return to_plain_text(text)
 
     def _build_workspace_context(self, search_data, plan, evidence_contract, recommended_interventions, query_mode):
         sections = [

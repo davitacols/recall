@@ -5,13 +5,23 @@
 *.bak
 *.backup
 *.txt
+# requirements.txt survived only because someone force-added it; the dev file
+# did not, so `pip install -r requirements-dev.txt` -- printed by the skip
+# guard in tests_integration.py -- referred to a file no clone of this repo
+# contained. Dependency manifests are not scratch files.
+!requirements*.txt
 *.xml
 *_v2.py
 *_v3.py
 *_new.py
 *_old.py
 *_backup.py
+# Blanket rule for scratch files, but the Django test harness itself must be
+# version controlled — without these two the suite cannot run from a clean
+# checkout, which silently rules out CI.
 *_test.py
+!backend/config/settings_test.py
+!backend/config/urls_test.py
 *_guard.js
 *_guards.js
 *_fetchData.js
@@ -44,6 +54,11 @@ staticfiles/
 .env.production
 .env.local
 *.pot
+
+# VPS deploy — real production secrets. The .example template IS tracked.
+deploy/.env.prod
+# Deploy docs are exempt from the blanket *.md rule above.
+!deploy/*.md
 
 # Security - Never commit these
 *.pem

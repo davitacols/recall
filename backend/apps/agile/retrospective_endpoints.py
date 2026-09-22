@@ -2,7 +2,10 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.utils import timezone
-from django.db.models import Count, Q, Avg
+from datetime import timedelta
+
+from django.db.models import Count, Q, Avg, F, DurationField
+from django.db.models.functions import Coalesce, Now
 from apps.agile.models import Sprint, Issue, Blocker, Retrospective
 from apps.conversations.models import Conversation
 
@@ -248,9 +251,19 @@ def rca_recurring_analysis(request):
             if retro.created_at > bucket['latest_seen']:
                 bucket['latest_seen'] = retro.created_at
 
+    # `days_open` is not a column — elsewhere it is computed in Python as
+    # (today - created_at).days. Annotating on it raised FieldError and took
+    # this endpoint to a 500. Derive the same value in SQL instead: time from
+    # creation to resolution, or to now while a blocker is still open.
     blocker_type_rows = list(
         blockers.values('blocker_type')
-        .annotate(total=Count('id'), avg_days=Avg('days_open'))
+        .annotate(
+            total=Count('id'),
+            avg_days=Avg(
+                (Coalesce('resolved_at', Now()) - F('created_at')),
+                output_field=DurationField(),
+            ),
+        )
         .order_by('-total')[:10]
     )
 
@@ -268,11 +281,20 @@ def rca_recurring_analysis(request):
         })
     causes.sort(key=lambda item: (item['risk_score'], item['mentions']), reverse=True)
 
+    def _as_days(value):
+        # Avg() over a DurationField yields a timedelta, so convert rather than
+        # float() it. Some backends hand back a raw numeric instead.
+        if not value:
+            return 0.0
+        if isinstance(value, timedelta):
+            return round(value.total_seconds() / 86400, 1)
+        return round(float(value), 1)
+
     blocker_patterns = [
         {
             'blocker_type': item['blocker_type'],
             'count': item['total'],
-            'avg_days_open': round(float(item['avg_days'] or 0), 1),
+            'avg_days_open': _as_days(item['avg_days']),
         }
         for item in blocker_type_rows
     ]

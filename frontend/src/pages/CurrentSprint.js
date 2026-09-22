@@ -94,7 +94,7 @@ export default function CurrentSprint() {
 
   if (!sprint) {
     return (
-      <div style={{ padding: "0 32px 32px" }}>
+      <div style={{ padding: "0 var(--page-x) 32px" }}>
         <PageHeader
           breadcrumb={[{ label: "Knoledgr", to: "/" }, { label: "Current sprint" }]}
           title="Current sprint"
@@ -118,7 +118,7 @@ export default function CurrentSprint() {
   const percent = issues.length ? Math.round((done / issues.length) * 100) : 0;
 
   return (
-    <div style={{ padding: "0 32px 32px" }}>
+    <div style={{ padding: "0 var(--page-x) 32px" }}>
       <PageHeader
         breadcrumb={[{ label: "Knoledgr", to: "/" }, { label: "Sprints", to: "/sprint" }, { label: sprint.name || "Current" }]}
         title={

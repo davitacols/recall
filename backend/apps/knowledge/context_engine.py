@@ -1,5 +1,12 @@
 import logging
 import re
+from html import unescape
+
+from django.utils.html import strip_tags
+
+# Closing block tags carry a sentence break; stripping them with nothing in
+# their place fuses the words on either side.
+_BLOCK_END_RE = re.compile(r'</(p|div|li|h[1-6]|blockquote|tr|td|section|article)>', re.I)
 
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Count, Q
@@ -557,6 +564,15 @@ class ContextEngine:
             'why_this_matters',
         ):
             value = (getattr(content_object, attribute, '') or '').strip()
+            if not value:
+                continue
+            # These fields hold editor HTML or captured markup, and this
+            # preview is displayed as plain text — slicing it raw put tags on
+            # screen and cut them mid-attribute. Block boundaries become a
+            # space so the last word of a paragraph does not fuse to the first
+            # word of the next.
+            value = _BLOCK_END_RE.sub(' ', value)
+            value = ' '.join(unescape(strip_tags(value)).split())
             if not value:
                 continue
             return f"{value[:157]}..." if len(value) > 160 else value

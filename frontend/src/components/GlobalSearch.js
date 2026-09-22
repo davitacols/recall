@@ -109,7 +109,7 @@ export const GlobalSearch = ({ isOpen, onClose }) => {
               setQuery(e.target.value);
               setSelected(0);
             }}
-            placeholder="Search conversations, decisions, projects..."
+            placeholder="Search decisions, discussions, and evidence..."
             style={{ ...input, color: palette.text }}
           />
         </div>

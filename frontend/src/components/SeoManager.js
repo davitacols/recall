@@ -11,7 +11,7 @@ const OG_IMAGE_WIDTH = "1366";
 const OG_IMAGE_HEIGHT = "637";
 const OG_IMAGE_ALT = "Knoledgr — decision memory for teams";
 const DEFAULT_DESCRIPTION =
-  "Knoledgr connects conversations, decisions, projects, and documents so teams keep context and move faster.";
+  "Knoledgr connects decisions to the pull requests, discussions, and evidence behind them so teams keep the why with the code.";
 
 function webPageSchema(title, description, pathname) {
   return {
@@ -36,9 +36,9 @@ function docsSlugFromPathname(pathname) {
 function resolveMeta(pathname) {
   if (pathname === "/") {
     return {
-      title: `${BRAND} | Decision Memory for Teams`,
+      title: `${BRAND} | Decision Memory for Engineering Teams`,
       description:
-        "Knoledgr helps teams capture decisions, documents, and conversations in one knowledge-first workspace that keeps context searchable and reusable.",
+        "Knoledgr captures why engineering decisions were made, links them to GitHub, and brings the context back when the same tradeoff appears again.",
       robots: "index,follow",
       canonicalPath: "/",
       ogType: "website",
@@ -56,7 +56,7 @@ function resolveMeta(pathname) {
           name: BRAND,
           url: SITE_URL,
           description:
-            "Decision memory and knowledge-first collaboration for teams.",
+            "Decision memory connected to GitHub.",
         },
         {
           "@context": "https://schema.org",
@@ -66,7 +66,7 @@ function resolveMeta(pathname) {
           operatingSystem: "Web",
           url: SITE_URL,
           description:
-            "A knowledge-first collaboration platform for decisions, conversations, projects, and documents.",
+            "A decision-memory platform that keeps engineering reasoning connected to the code it shaped.",
         },
       ],
     };

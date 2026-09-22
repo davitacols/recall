@@ -381,9 +381,20 @@ class AGICopilotContractTests(TestCase):
             "counts": {"unresolved_decisions": 1, "active_blockers": 0, "high_priority_unassigned_tasks": 3},
         }
 
+        # The original query was "...should we reassign now?". That worked only
+        # because "reassign now" is an operational phrase in
+        # _detect_copilot_query_mode, which routed it to the diagnosis builder.
+        # "reassign" is now ALSO a rebalance signal in
+        # _detect_team_workload_question, which runs first and intercepts it —
+        # two features that legitimately want the same word, and workload
+        # rebalancing is the better owner of "reassign".
+        #
+        # This query keeps the intent (unassigned task ownership) while staying
+        # out of the workload handler: "blocking delivery" is an operational
+        # phrase, so it still reaches the diagnosis path this test covers.
         response = self.client.post(
             "/api/knowledge/ai/copilot/",
-            {"query": "Which high-priority tasks should we reassign now?"},
+            {"query": "Which unassigned tasks are blocking delivery?"},
             format="json",
         )
         self.assertEqual(response.status_code, 200)

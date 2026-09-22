@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+import RichText, { toPlainExcerpt } from "../components/RichText";
 import {
   ArrowLeftIcon,
   ArrowRightIcon,
@@ -72,7 +71,6 @@ const DRIFT_BAND_META = {
   mixed: { label: "Mixed", tone: "moved", color: "#FF8B00" },
 };
 
-const MARKDOWN_PLUGINS = [remarkGfm];
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -131,6 +129,129 @@ export default function DecisionDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [tab, setTab] = useState("overview");
+
+  // Recording the why, in place. Decisions had no edit surface at all, so a
+  // missing rationale could be pointed at and never fixed.
+  const [editingWhy, setEditingWhy] = useState(false);
+  const [whyDraft, setWhyDraft] = useState("");
+  const [savingWhy, setSavingWhy] = useState(false);
+  const [whyError, setWhyError] = useState("");
+
+  const hasWhy = Boolean(String(decision?.rationale || "").trim());
+
+  const startEditWhy = () => {
+    setWhyDraft(decision?.rationale || "");
+    setWhyError("");
+    setEditingWhy(true);
+  };
+
+  const cancelEditWhy = () => {
+    setEditingWhy(false);
+    setWhyError("");
+  };
+
+  const saveWhy = async () => {
+    setSavingWhy(true);
+    setWhyError("");
+    try {
+      const { data } = await api.patch(`/api/decisions/${id}/rationale/`, {
+        rationale: whyDraft,
+      });
+      setDecision((prev) => (prev ? { ...prev, rationale: data.rationale } : prev));
+      setEditingWhy(false);
+    } catch (err) {
+      setWhyError(
+        err?.response?.data?.error || err?.message || "Could not save the why"
+      );
+    } finally {
+      setSavingWhy(false);
+    }
+  };
+
+  // Conversations converted by mistake stayed in the count forever - there was
+  // no way to remove a decision at all. The confirmation names what else goes,
+  // because predictions and retrospectives cascade and a bare "are you sure"
+  // does not convey that.
+  const handleDelete = async () => {
+    const extras = [];
+    if (predictions.length) extras.push(`${predictions.length} prediction(s)`);
+    if (retros.length) extras.push(`${retros.length} retrospective(s)`);
+    const tail = extras.length ? `
+
+This also removes ${extras.join(" and ")}.` : "";
+    if (!window.confirm(`Delete "${decision?.title}"?${tail}
+
+This cannot be undone.`)) {
+      return;
+    }
+    try {
+      await api.delete(`/api/decisions/${id}/`);
+      navigate("/decisions");
+    } catch (err) {
+      // A 409 means pull requests are linked, and the message explains that.
+      setError(
+        err?.response?.data?.error || err?.message || "Could not delete this decision"
+      );
+    }
+  };
+
+  // Description had no edit path either, so text pasted as one flat block
+  // could never be broken up — on the page someone reads to understand the
+  // decision.
+  const [editingDesc, setEditingDesc] = useState(false);
+  const [descDraft, setDescDraft] = useState("");
+  const [savingDesc, setSavingDesc] = useState(false);
+  const [descError, setDescError] = useState("");
+
+  const startEditDesc = () => {
+    setDescDraft(decision?.description || "");
+    setDescError("");
+    setEditingDesc(true);
+  };
+
+  const cancelEditDesc = () => {
+    setEditingDesc(false);
+    setDescError("");
+  };
+
+  const saveDesc = async () => {
+    setSavingDesc(true);
+    setDescError("");
+    try {
+      const { data } = await api.patch(`/api/decisions/${id}/`, {
+        description: descDraft,
+      });
+      setDecision((prev) => (prev ? { ...prev, description: data.description } : prev));
+      setEditingDesc(false);
+    } catch (err) {
+      setDescError(
+        err?.response?.data?.error || err?.message || "Could not save the description"
+      );
+    } finally {
+      setSavingDesc(false);
+    }
+  };
+
+  const description = {
+    editingDesc, descDraft, setDescDraft, savingDesc, descError,
+    startEditDesc, cancelEditDesc, saveDesc,
+  };
+
+  const why = {
+    hasWhy, editingWhy, whyDraft, setWhyDraft, savingWhy, whyError,
+    startEditWhy, cancelEditWhy, saveWhy,
+  };
+
+  // Arriving from the list's "Add why" button opens the editor directly.
+  useEffect(() => {
+    if (!decision) return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("focus") === "rationale" && !hasWhy && !editingWhy) {
+      startEditWhy();
+      document.getElementById("why")?.scrollIntoView({ block: "center" });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [decision]);
 
   // Intelligence state
   const [predictions, setPredictions] = useState([]);
@@ -341,7 +462,7 @@ export default function DecisionDetail() {
         />
       </div>
 
-      <div style={{ padding: "0 32px" }}>
+      <div style={{ padding: "0 var(--page-x)" }}>
         <PageHeader
           title={
             <span style={{ display: "inline-flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
@@ -350,7 +471,7 @@ export default function DecisionDetail() {
               {decision.impact_level ? <Lozenge variant={impactVariant(decision.impact_level)}>{decision.impact_level} impact</Lozenge> : null}
             </span>
           }
-          subtitle={decision.description ? decision.description.slice(0, 220) : ""}
+          subtitle={toPlainExcerpt(decision.description, 220)}
           actions={
             <>
               <Button
@@ -362,6 +483,13 @@ export default function DecisionDetail() {
                 Ask Agent
               </Button>
               <StatusSelect status={decision.status} onChange={handleStatusChange} />
+              <Button
+                appearance="subtle"
+                onClick={handleDelete}
+                title="Remove this decision"
+              >
+                Delete
+              </Button>
             </>
           }
           tabs={<Tabs tabs={tabs} value={tab} onChange={setTab} />}
@@ -389,7 +517,7 @@ export default function DecisionDetail() {
       <div className="di-grid" style={{ padding: "16px 32px 32px" }}>
         <section style={{ minWidth: 0 }}>
           {tab === "overview" ? (
-            <OverviewTab decision={decision} predictions={predictions} retros={retros} />
+            <OverviewTab decision={decision} predictions={predictions} retros={retros} why={why} description={description} />
           ) : null}
           {tab === "predictions" ? (
             <PredictionsTab
@@ -541,7 +669,15 @@ function DriftHeadline({ band, drift }) {
 
 // ─── overview tab ───────────────────────────────────────────────────────────
 
-function OverviewTab({ decision, predictions, retros }) {
+function OverviewTab({ decision, predictions, retros, why, description }) {
+  const {
+    hasWhy, editingWhy, whyDraft, setWhyDraft, savingWhy, whyError,
+    startEditWhy, cancelEditWhy, saveWhy,
+  } = why;
+  const {
+    editingDesc, descDraft, setDescDraft, savingDesc, descError,
+    startEditDesc, cancelEditDesc, saveDesc,
+  } = description;
   const latestLesson = retros[0];
   const informedBy = Array.isArray(decision.informed_by_decisions) ? decision.informed_by_decisions : [];
   return (
@@ -562,24 +698,115 @@ function OverviewTab({ decision, predictions, retros }) {
           </div>
         </PanelCard>
       ) : null}
-      {decision.description ? (
-        <PanelCard title="Description">
-          <div className="di-md">
-            <ReactMarkdown remarkPlugins={MARKDOWN_PLUGINS}>{decision.description}</ReactMarkdown>
+      {/* Why comes first, and appears even when it is missing. Description
+          used to lead, and an absent rationale rendered nothing at all - so
+          the field the product exists to hold was the one thing a reader
+          could not tell was missing. */}
+      <PanelCard
+        title="Why"
+        id="why"
+        actions={
+          hasWhy && !editingWhy ? (
+            <button type="button" className="di-why-edit" onClick={startEditWhy}>
+              Edit
+            </button>
+          ) : null
+        }
+      >
+        {editingWhy ? (
+          <div className="di-why-editor">
+            <textarea
+              className="di-why-input"
+              value={whyDraft}
+              autoFocus
+              rows={5}
+              placeholder="Why was this chosen? The goal it serves, what it was weighed against, or the constraint that forced it."
+              onChange={(e) => setWhyDraft(e.target.value)}
+            />
+            <div className="di-why-actions">
+              <button
+                type="button"
+                className="di-why-save"
+                disabled={savingWhy}
+                onClick={saveWhy}
+              >
+                {savingWhy ? "Saving…" : "Save"}
+              </button>
+              <button type="button" className="di-why-cancel" onClick={cancelEditWhy}>
+                Cancel
+              </button>
+            </div>
+            {whyError ? <p className="di-why-error">{whyError}</p> : null}
           </div>
-        </PanelCard>
-      ) : null}
-      {decision.rationale ? (
-        <PanelCard title="Rationale">
+        ) : hasWhy ? (
           <div className="di-md">
-            <ReactMarkdown remarkPlugins={MARKDOWN_PLUGINS}>{decision.rationale}</ReactMarkdown>
+            <RichText content={decision.rationale} />
           </div>
-        </PanelCard>
-      ) : null}
+        ) : (
+          <div className="di-why-missing">
+            <p>
+              No why recorded. This decision cannot answer a question about
+              itself later, which is the one thing it is here to do.
+            </p>
+            <button type="button" className="di-why-save" onClick={startEditWhy}>
+              Add why
+            </button>
+          </div>
+        )}
+      </PanelCard>
+      <PanelCard
+        title="Description"
+        actions={
+          !editingDesc ? (
+            <button type="button" className="di-why-edit" onClick={startEditDesc}>
+              Edit
+            </button>
+          ) : null
+        }
+      >
+        {editingDesc ? (
+          <div className="di-why-editor">
+            <textarea
+              className="di-why-input"
+              value={descDraft}
+              autoFocus
+              rows={12}
+              placeholder="What was decided, and anything a reader needs to follow it."
+              onChange={(e) => setDescDraft(e.target.value)}
+            />
+            {/* Said where someone is about to hit the problem, not in a help
+                page they will never open. */}
+            <p className="di-editor-note">
+              Line breaks are kept. Leave a blank line between paragraphs, and
+              start a line with - for a bullet.
+            </p>
+            <div className="di-why-actions">
+              <button
+                type="button"
+                className="di-why-save"
+                disabled={savingDesc}
+                onClick={saveDesc}
+              >
+                {savingDesc ? "Saving…" : "Save"}
+              </button>
+              <button type="button" className="di-why-cancel" onClick={cancelEditDesc}>
+                Cancel
+              </button>
+            </div>
+            {descError ? <p className="di-why-error">{descError}</p> : null}
+          </div>
+        ) : decision.description ? (
+          <div className="di-md">
+            <RichText content={decision.description} />
+          </div>
+        ) : (
+          <p className="di-empty-note">Nothing recorded.</p>
+        )}
+      </PanelCard>
       {decision.if_this_fails ? (
         <PanelCard title="If this fails…">
           <div className="di-md">
-            <ReactMarkdown remarkPlugins={MARKDOWN_PLUGINS}>{decision.if_this_fails}</ReactMarkdown>
+            <RichText content={decision.if_this_fails} />
           </div>
         </PanelCard>
       ) : null}
@@ -620,10 +847,13 @@ function OverviewTab({ decision, predictions, retros }) {
   );
 }
 
-function PanelCard({ title, children, accent }) {
+function PanelCard({ title, children, accent, id, actions }) {
   return (
-    <div className={`di-panel ${accent ? `di-panel--${accent}` : ""}`}>
-      <p className="di-panel-title">{title}</p>
+    <div id={id} className={`di-panel ${accent ? `di-panel--${accent}` : ""}`}>
+      <div className="di-panel-head">
+        <p className="di-panel-title">{title}</p>
+        {actions ? <div className="di-panel-actions">{actions}</div> : null}
+      </div>
       <div>{children}</div>
     </div>
   );
@@ -978,7 +1208,7 @@ function TwinCard({ twin }) {
         <div className="di-twin-detail">
           {data.analysis ? (
             <div className="di-md">
-              <ReactMarkdown remarkPlugins={MARKDOWN_PLUGINS}>{data.analysis}</ReactMarkdown>
+              <RichText content={data.analysis} />
             </div>
           ) : data.status === "running" || data.status === "queued" ? (
             <p style={{ color: "var(--app-muted)", margin: 0 }}>The agent is still working…</p>
@@ -1041,19 +1271,19 @@ function RetroCard({ retro }) {
       {retro.summary ? (
         <div className="di-md di-retro-section">
           <p className="di-retro-label">Summary</p>
-          <ReactMarkdown remarkPlugins={MARKDOWN_PLUGINS}>{retro.summary}</ReactMarkdown>
+          <RichText content={retro.summary} />
         </div>
       ) : null}
       {retro.root_cause ? (
         <div className="di-md di-retro-section">
           <p className="di-retro-label">Root cause</p>
-          <ReactMarkdown remarkPlugins={MARKDOWN_PLUGINS}>{retro.root_cause}</ReactMarkdown>
+          <RichText content={retro.root_cause} />
         </div>
       ) : null}
       {retro.lesson ? (
         <div className="di-md di-retro-section di-retro-lesson">
           <p className="di-retro-label">Lesson</p>
-          <ReactMarkdown remarkPlugins={MARKDOWN_PLUGINS}>{retro.lesson}</ReactMarkdown>
+          <RichText content={retro.lesson} />
         </div>
       ) : null}
       {retro.tags?.length ? (

@@ -96,6 +96,12 @@ def conversations(request):
                 'owner_id': conv.owner_id,
                 'created_at': conv.created_at,
                 'updated_at': conv.updated_at,
+                # Where the record came from. A reader cannot trust a memory
+                # whose origin is invisible, and a conversation collected from
+                # a merged PR reads very differently from one a colleague sat
+                # down and wrote.
+                'source': conv.source,
+                'source_url': conv.source_url,
                 'reply_count': conv.reply_count,
                 'view_count': conv.view_count,
                 'ai_summary': conv.ai_summary,
@@ -306,6 +312,8 @@ def conversation_detail(request, conversation_id):
                 'context_reason': conversation.context_reason,
                 'key_takeaway': conversation.key_takeaway,
                 'emotional_context': conversation.emotional_context,
+                'source': conversation.source,
+                'source_url': conversation.source_url,
                 'memory_health_score': conversation.memory_health_score
             })
         

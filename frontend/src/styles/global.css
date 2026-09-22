@@ -69,7 +69,7 @@ html, body, #root {
   -moz-osx-font-smoothing: grayscale;
   background: #0c0a09 !important;
   color: var(--app-text) !important;
-  font-size: 15px;
+  font-size: 18px;
   line-height: 1.6;
   letter-spacing: -0.01em;
 }
@@ -83,12 +83,12 @@ h1, h2, h3, h4, h5, h6 {
   letter-spacing: -0.025em;
 }
 
-h1 { font-size: 36px; font-weight: 700; }
-h2 { font-size: 30px; }
-h3 { font-size: 24px; }
-h4 { font-size: 20px; }
-h5 { font-size: 16px; }
-h6 { font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+h1 { font-size: 41px; font-weight: 700; }
+h2 { font-size: 34px; }
+h3 { font-size: 27px; }
+h4 { font-size: 24px; }
+h5 { font-size: 19px; }
+h6 { font-size: 17px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
 
 p {
   color: var(--app-muted) !important;
@@ -118,7 +118,7 @@ button, .btn {
   font-weight: 500;
   border-radius: 0 !important;
   padding: 10px 20px;
-  font-size: 14px;
+  font-size: 17px;
   border: none;
   cursor: pointer;
   transition: all var(--transition-normal);
@@ -169,7 +169,7 @@ input, textarea, select {
   border: 1.5px solid var(--border-color);
   border-radius: 0 !important;
   padding: 10px 14px;
-  font-size: 14px;
+  font-size: 17px;
   color: var(--text-primary);
   transition: all var(--transition-normal);
   width: 100%;
@@ -226,7 +226,7 @@ thead th {
   padding: 16px;
   text-align: left;
   font-weight: 600;
-  font-size: 12px;
+  font-size: 15px;
   text-transform: uppercase;
   color: var(--text-secondary);
   letter-spacing: 0.05em;
@@ -252,7 +252,7 @@ tbody tr:hover {
   align-items: center;
   padding: 4px 12px;
   border-radius: 20px;
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;

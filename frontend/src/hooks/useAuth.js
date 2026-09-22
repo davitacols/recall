@@ -157,7 +157,32 @@ export function AuthProvider({ children }) {
         turnstile_token: userData.turnstile_token || '',
       };
       const response = await api.post('/api/auth/register/', payload);
-      return { success: true, message: response.data.message };
+
+      // Registration now returns the same auth payload as login, so establish
+      // the session here rather than bouncing the user back to a sign-in form
+      // for the password they just chose. Falls back to the old behaviour if
+      // the tokens are absent, so an older backend still works.
+      const data = response.data?.data || response.data || {};
+      const { access_token, refresh_token, user: userData } = data;
+      if (access_token && userData) {
+        localStorage.setItem(ACCESS_TOKEN_KEY, access_token);
+        if (refresh_token) {
+          localStorage.setItem(REFRESH_TOKEN_KEY, refresh_token);
+        }
+        localStorage.setItem(LEGACY_TOKEN_KEY, access_token);
+        localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(userData));
+        if (userData?.organization_slug) {
+          localStorage.setItem(LAST_WORKSPACE_SLUG_KEY, userData.organization_slug);
+        }
+        if (userData?.experience_mode) {
+          localStorage.setItem('ui_experience_mode', userData.experience_mode);
+        }
+        api.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
+        setUser(userData);
+        return { success: true, message: data.message, signedIn: true };
+      }
+
+      return { success: true, message: data.message, signedIn: false };
     } catch (error) {
       return { 
         success: false, 

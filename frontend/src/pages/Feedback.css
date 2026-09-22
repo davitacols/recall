@@ -86,7 +86,7 @@
   border: 1px solid rgba(24, 34, 53, 0.12);
   background: rgba(255, 255, 255, 0.72);
   color: #182235;
-  font-size: 14px;
+  font-size: 17px;
   font-weight: 700;
   text-decoration: none;
   transition: transform 160ms ease, background 160ms ease, border-color 160ms ease;
@@ -128,7 +128,7 @@
 .feedback-section-copy > p,
 .feedback-kicker {
   margin: 0 0 12px;
-  font-size: 12px;
+  font-size: 15px;
   font-weight: 800;
   letter-spacing: 0.18em;
   text-transform: uppercase;
@@ -205,7 +205,7 @@
 
 .feedback-stat-label {
   margin: 10px 0 0;
-  font-size: 13px;
+  font-size: 16px;
   color: #667184;
 }
 
@@ -234,7 +234,7 @@
   border-radius: 999px;
   background: rgba(24, 34, 53, 0.08);
   color: #182235;
-  font-size: 12px;
+  font-size: 15px;
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -309,7 +309,7 @@
 }
 
 .feedback-field span {
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 700;
   color: #273246;
 }
@@ -323,7 +323,7 @@
   background: rgba(255, 255, 255, 0.86);
   color: #182235;
   padding: 13px 14px;
-  font-size: 14px;
+  font-size: 17px;
   line-height: 1.5;
   outline: none;
 }
@@ -351,7 +351,7 @@
 
 .feedback-checkbox span,
 .feedback-form-helper {
-  font-size: 13px;
+  font-size: 16px;
   line-height: 1.7;
   color: #667184;
 }
@@ -376,7 +376,7 @@
 .feedback-form-status {
   padding: 14px 16px;
   border-radius: 16px;
-  font-size: 14px;
+  font-size: 17px;
   line-height: 1.6;
 }
 
@@ -402,7 +402,7 @@
 
 .feedback-cta-panel p {
   margin: 0 0 10px;
-  font-size: 14px;
+  font-size: 17px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -418,7 +418,7 @@
 .feedback-footer-links {
   justify-content: center;
   margin-top: 20px;
-  font-size: 14px;
+  font-size: 17px;
 }
 
 @media (max-width: 960px) {

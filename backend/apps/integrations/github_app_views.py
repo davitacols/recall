@@ -19,8 +19,10 @@ import hashlib
 import json
 import logging
 import secrets
+from datetime import timedelta
 from typing import Optional
 
+from django.core.cache import cache
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework.decorators import api_view, permission_classes
@@ -37,6 +39,7 @@ from apps.integrations.github_app import (
 from apps.integrations.github_app_models import (
     DecisionPullRequest,
     GitHubAppDelivery,
+    GitHubAppDriftCheck,
     GitHubAppInstallation,
     GitHubRepo,
 )
@@ -57,6 +60,24 @@ logger = logging.getLogger(__name__)
 def _serialize_installation(installation: Optional[GitHubAppInstallation]) -> dict:
     if not installation:
         return {"connected": False}
+
+    latest_check = GitHubAppDriftCheck.objects.first()
+    if latest_check is None:
+        verification_status = "unchecked"
+        last_verified_at = None
+    else:
+        last_verified_at = latest_check.checked_at.isoformat()
+        if installation.installation_id in (latest_check.missing_on_github or []):
+            verification_status = "missing_on_github"
+        elif latest_check.checked_at < timezone.now() - timedelta(hours=36):
+            verification_status = "check_stale"
+        elif latest_check.status == GitHubAppDriftCheck.STATUS_ERROR:
+            verification_status = "check_failed"
+        elif latest_check.status == GitHubAppDriftCheck.STATUS_NOT_CONFIGURED:
+            verification_status = "not_configured"
+        else:
+            verification_status = "verified"
+
     return {
         "connected": True,
         "installation_id": installation.installation_id,
@@ -69,6 +90,8 @@ def _serialize_installation(installation: Optional[GitHubAppInstallation]) -> di
         "suspended_at": installation.suspended_at.isoformat() if installation.suspended_at else None,
         "revoked_at": installation.revoked_at.isoformat() if installation.revoked_at else None,
         "created_at": installation.created_at.isoformat() if installation.created_at else None,
+        "verification_status": verification_status,
+        "last_verified_at": last_verified_at,
         "installed_by": (
             installation.installed_by.get_full_name() if installation.installed_by else None
         ),
@@ -89,6 +112,8 @@ def _serialize_repo(repo: GitHubRepo) -> dict:
         "html_url": repo.html_url,
         "is_enabled_for_decisions": repo.is_enabled_for_decisions,
         "last_synced_at": repo.last_synced_at.isoformat() if repo.last_synced_at else None,
+        "project_id": repo.project_id,
+        "project_name": repo.project.name if repo.project_id else None,
     }
 
 
@@ -103,52 +128,125 @@ def _sync_installation_repos(installation: GitHubAppInstallation) -> int:
     for r in repos:
         repo_id = int(r["id"])
         seen_repo_ids.add(repo_id)
-        GitHubRepo.objects.update_or_create(
-            organization=installation.organization,
-            repo_id=repo_id,
-            defaults={
-                "installation": installation,
-                "full_name": r.get("full_name", ""),
-                "owner_login": (r.get("owner") or {}).get("login", ""),
-                "name": r.get("name", ""),
-                "default_branch": r.get("default_branch", ""),
-                "private": bool(r.get("private")),
-                "archived": bool(r.get("archived")),
-                "html_url": r.get("html_url", ""),
-                "last_synced_at": now,
-            },
-        )
+        metadata = {
+            "full_name": r.get("full_name", ""),
+            "owner_login": (r.get("owner") or {}).get("login", ""),
+            "name": r.get("name", ""),
+            "default_branch": r.get("default_branch", ""),
+            "private": bool(r.get("private")),
+            "archived": bool(r.get("archived")),
+            "html_url": r.get("html_url", ""),
+            "last_synced_at": now,
+        }
+        existing = GitHubRepo.objects.filter(
+            installation=installation, repo_id=repo_id
+        ).first()
+        if existing is None:
+            # New to us: it starts in the workspace that owns the installation.
+            # That is a default, not a rule — it can be reassigned afterwards.
+            GitHubRepo.objects.create(
+                organization=installation.organization,
+                installation=installation,
+                repo_id=repo_id,
+                **metadata,
+            )
+        else:
+            # Metadata only. organization is deliberately excluded: this runs
+            # on every webhook and every manual resync, and including it would
+            # drag a repo assigned to another workspace back to the installing
+            # one, silently, on a schedule.
+            for field, value in metadata.items():
+                setattr(existing, field, value)
+            existing.save(update_fields=list(metadata.keys()) + ["updated_at"])
+
     # Repos the install no longer has access to should be detached. We
     # disable rather than delete so historical delivery rows still resolve.
-    stale = GitHubRepo.objects.filter(
-        organization=installation.organization, installation=installation
-    ).exclude(repo_id__in=seen_repo_ids)
+    # Keyed on the installation rather than the organization so repos handed
+    # to other workspaces are still covered.
+    stale = GitHubRepo.objects.filter(installation=installation).exclude(
+        repo_id__in=seen_repo_ids
+    )
     stale.update(is_enabled_for_decisions=False)
     return GitHubRepo.objects.filter(
-        organization=installation.organization, is_enabled_for_decisions=True
+        installation=installation, is_enabled_for_decisions=True
     ).count()
 
 
-# Per-user install_url state cache. Memory-only is fine for a CSRF token
-# that lives for one minute and can fall back to "missing state" message.
-_install_states: dict[str, dict] = {}
+def _create_project(organization, name: str):
+    """Create a project from a name alone. Returns None if no key is free.
+
+    Knoledgr never asks anyone for a project key. It exists because the column
+    is NOT NULL and globally unique — a tenancy wart inherited from the agile
+    app, where one workspace's choice of key constrains every other
+    workspace's. Deriving it keeps that entirely out of the user's way.
+
+    The retry is not paranoia: two people connecting repos at the same moment
+    can derive the same key, and the loser gets an IntegrityError rather than
+    a project.
+    """
+    import re
+
+    from django.db import IntegrityError
+
+    from apps.agile.models import Project
+
+    token = re.sub(r"[^A-Z0-9]", "", (name or "").upper())[:6] or "PRJ"
+
+    for attempt in range(6):
+        if attempt == 0:
+            key = token
+        elif attempt < 5:
+            suffix = str(attempt + 1)
+            key = f"{token[: 10 - len(suffix)]}{suffix}"
+        else:
+            key = secrets.token_hex(5).upper()[:10]
+
+        if Project.objects.filter(key=key).exists():
+            continue
+        try:
+            return Project.objects.create(
+                organization=organization, name=name, key=key
+            )
+        except IntegrityError:
+            continue
+    return None
+
+
+# Per-user install_url state, held in the shared cache.
+#
+# This was a module-level dict, on the reasoning that a CSRF token living for
+# one minute does not need durable storage. That is true, but it does need to
+# be *shared*: production runs gunicorn with 3 workers, so install-url/ and
+# callback/ are almost never served by the same process. The state was written
+# into one worker's memory and looked up in another's, so a legitimate install
+# failed with "Install state did not match" about two times in three, and
+# retrying only re-rolled the dice. Restarting the backend wiped any in flight.
+#
+# The cache is Redis (see CACHES in settings), which every worker shares, and
+# the TTL replaces the manual sweep the dict needed.
+_STATE_PREFIX = "ghapp:install-state:"
+_STATE_TTL_SECONDS = 600
+
+
+def _state_key(token: str) -> str:
+    return f"{_STATE_PREFIX}{token}"
 
 
 def _put_state(token: str, user_id: int, org_id: int) -> None:
-    _install_states[token] = {
-        "user_id": user_id,
-        "org_id": org_id,
-        "created_at": timezone.now().timestamp(),
-    }
-    # Sweep stale states older than 10 minutes
-    now = timezone.now().timestamp()
-    for k in list(_install_states.keys()):
-        if now - _install_states[k]["created_at"] > 600:
-            _install_states.pop(k, None)
+    cache.set(
+        _state_key(token),
+        {"user_id": user_id, "org_id": org_id},
+        timeout=_STATE_TTL_SECONDS,
+    )
 
 
 def _pop_state(token: str) -> Optional[dict]:
-    return _install_states.pop(token, None)
+    """Read a state once. Single-use: a replayed token must not validate."""
+    key = _state_key(token)
+    record = cache.get(key)
+    if record is not None:
+        cache.delete(key)
+    return record
 
 
 # ---------------------------------------------------------------------------
@@ -202,14 +300,43 @@ def github_app_install_callback(request):
     except (TypeError, ValueError):
         return Response({"error": "installation_id must be numeric"}, status=400)
 
-    # CSRF: state must match the one we issued for this user. We don't fail
-    # hard if state is missing (the frontend can also accept a callback
-    # without state for users who opened a stale install URL), but if state
-    # is present we enforce it.
-    if state:
-        record = _pop_state(state)
-        if not record or record["user_id"] != request.user.id:
-            return Response({"error": "Install state did not match. Try connecting again."}, status=400)
+    # State is mandatory. It used to be enforced only when present, so a
+    # request with no state skipped the check entirely — and since the binding
+    # below trusts request.user.organization, an authenticated user in any
+    # workspace could POST another workspace's installation_id (a small,
+    # enumerable integer) and take over its GitHub connection, inheriting its
+    # repository list and webhook events. Anyone with a stale install URL can
+    # simply reconnect; that is a far better outcome than leaving the hole.
+    if not state:
+        return Response(
+            {"error": "Missing install state. Start the connection again from Integrations."},
+            status=400,
+        )
+    record = _pop_state(state)
+    if not record or record["user_id"] != request.user.id:
+        return Response({"error": "Install state did not match. Try connecting again."}, status=400)
+
+    # An installation belongs to exactly one workspace. Without this, completing
+    # the callback from a different workspace silently moved it — the previous
+    # owner lost GitHub linking with no notice, and its repo rows were left
+    # behind pointing at an installation it no longer held.
+    existing = GitHubAppInstallation.objects.filter(installation_id=installation_id).first()
+    if existing and existing.organization_id != request.user.organization_id:
+        logger.warning(
+            "Refused to rebind GitHub installation %s from org %s to org %s (user %s)",
+            installation_id, existing.organization_id,
+            request.user.organization_id, request.user.id,
+        )
+        return Response(
+            {
+                "error": (
+                    "This GitHub installation is already connected to another "
+                    "workspace. Uninstall the Knoledgr app from that account "
+                    "first, or install it on a different account."
+                )
+            },
+            status=409,
+        )
 
     # Fetch the install record from GitHub to confirm it actually exists
     # and the App has access. This also gives us account_login + permissions.
@@ -284,18 +411,59 @@ def github_app_installation(request):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def github_app_repos(request):
-    """List the workspace's connected repos with their enable/disable state."""
-    installation = GitHubAppInstallation.objects.filter(
-        organization=request.user.organization
-    ).first()
-    if not installation:
+    """List the workspace's connected repos with their enable/disable state.
+
+    Repos are found by workspace, not by who owns the installation. A
+    workspace can be served by an installation another workspace administers —
+    that is the point of allowing one GitHub account to feed several — and
+    looking the installation up first would show such a workspace nothing.
+    """
+    org = request.user.organization
+    repos = list(GitHubRepo.objects.filter(organization=org).order_by("full_name"))
+
+    installation = GitHubAppInstallation.objects.filter(organization=org).first()
+    if installation is None and repos:
+        installation = repos[0].installation
+
+    if installation is None:
         return Response({"results": [], "github_app": _serialize_installation(None)})
 
-    repos = GitHubRepo.objects.filter(organization=request.user.organization).order_by("full_name")
     return Response({
         "results": [_serialize_repo(r) for r in repos],
         "github_app": _serialize_installation(installation),
+        # Where else this user could send a repo. Empty for the common case of
+        # someone who only belongs to one workspace.
+        "available_workspaces": _sibling_workspaces(request.user),
+        # Which projects a repo in this workspace can be the code for.
+        "available_projects": _workspace_projects(org),
     })
+
+
+def _workspace_projects(org) -> list[dict]:
+    from apps.agile.models import Project
+
+    return [
+        {"id": p.id, "name": p.name, "key": p.key}
+        for p in Project.objects.filter(organization=org).order_by("name")
+    ]
+
+
+def _sibling_workspaces(user) -> list[dict]:
+    """Workspaces this user belongs to, other than their current one.
+
+    Membership is one User row per workspace, keyed by email — the same rule
+    the workspace switcher uses. Reassignment is checked against this so a
+    repo can never be handed to a workspace the requester cannot already see.
+    """
+    from apps.organizations.models import User
+
+    return [
+        {"org_id": u.organization_id, "org_name": u.organization.name}
+        for u in User.objects.filter(email__iexact=user.email, is_active=True)
+        .exclude(organization_id=user.organization_id)
+        .select_related("organization")
+        .order_by("organization__name")
+    ]
 
 
 @api_view(["PATCH"])
@@ -316,6 +484,180 @@ def github_app_repo_toggle(request, repo_pk: int):
         return Response({"error": "is_enabled_for_decisions is required"}, status=400)
     repo.is_enabled_for_decisions = bool(is_enabled)
     repo.save(update_fields=["is_enabled_for_decisions", "updated_at"])
+    return Response(_serialize_repo(repo))
+
+
+@api_view(["PATCH"])
+@permission_classes([IsAuthenticated])
+def github_app_repo_project(request, repo_pk: int):
+    """Say which project a repository is the code for.
+
+    One repo, one project. GitHub holds the code; Knoledgr holds what the team
+    decided and why — and in a workspace with several projects those two have
+    to line up, or the record becomes one pool covering unrelated work and
+    "why is this like this?" gets answered from the wrong project.
+
+    The link is what makes attribution automatic afterwards: a decision reached
+    through this repository inherits its project without anyone remembering to
+    say so.
+
+    Pass a null org_id to clear it. The project must live in the same workspace
+    as the repo — a project from elsewhere would put this workspace's decisions
+    under another workspace's heading.
+    """
+    from apps.agile.models import Project
+
+    if not check_rate_limit(f"github_app_project:{request.user.id}", limit=60, window=3600):
+        return Response({"error": "Too many requests"}, status=429)
+
+    repo = GitHubRepo.objects.filter(
+        organization=request.user.organization, pk=repo_pk
+    ).first()
+    if not repo:
+        return Response({"error": "Repo not found"}, status=404)
+
+    # Two ways in. project_id selects something that already exists;
+    # project_name creates it in the same breath as assigning it.
+    #
+    # The second exists because the only route to a new project was the agile
+    # Projects page: a Jira-shaped form asking for a key, a lead and a
+    # description, sitting on a page that counts issues and sprints. Knoledgr
+    # is not a tracker. A project here is only the namespace that keeps one
+    # repo's decisions from blurring into another's, and asking someone to
+    # fill in a sprint board's worth of fields to record that teaches exactly
+    # the wrong mental model at the moment of first contact.
+    #
+    # So: a name, and nothing else. The key is derived because the column
+    # demands one, not because anyone should have to think of it.
+    project_name = (request.data.get("project_name") or "").strip()
+    raw = request.data.get("project_id", "__missing__")
+
+    if project_name:
+        if len(project_name) > 255:
+            return Response({"error": "That project name is too long"}, status=400)
+        # Reuse rather than duplicate. Typing a name that already exists here
+        # means "that one" — two projects with the same name are
+        # indistinguishable in the dropdown that has to show them.
+        project = Project.objects.filter(
+            organization=request.user.organization, name__iexact=project_name
+        ).first()
+        if not project:
+            project = _create_project(request.user.organization, project_name)
+            if project is None:
+                return Response(
+                    {"error": "Could not allocate a project key. Try a different name."},
+                    status=409,
+                )
+            logger.info(
+                "Created project %s (%s) in workspace %s",
+                project.name, project.key, request.user.organization_id,
+            )
+    elif raw == "__missing__":
+        return Response(
+            {"error": "project_id or project_name is required (project_id null to clear)"},
+            status=400,
+        )
+    elif raw in (None, "", "null"):
+        repo.project = None
+        repo.save(update_fields=["project", "updated_at"])
+        return Response(_serialize_repo(repo))
+    else:
+        try:
+            project_id = int(raw)
+        except (TypeError, ValueError):
+            return Response({"error": "project_id must be numeric or null"}, status=400)
+
+        project = Project.objects.filter(
+            id=project_id, organization=request.user.organization
+        ).first()
+        if not project:
+            return Response({"error": "Project not found in this workspace"}, status=404)
+
+    # OneToOne means the database would reject this anyway; catching it here
+    # turns a 500 into an explanation of the rule.
+    taken = GitHubRepo.objects.filter(project=project).exclude(pk=repo.pk).first()
+    if taken:
+        return Response(
+            {"error": f"{project.name} is already the project for {taken.full_name}."},
+            status=409,
+        )
+
+    repo.project = project
+    repo.save(update_fields=["project", "updated_at"])
+    logger.info("Repo %s is now the code for project %s", repo.full_name, project.id)
+    return Response(_serialize_repo(repo))
+
+
+@api_view(["PATCH"])
+@permission_classes([IsAuthenticated])
+def github_app_repo_workspace(request, repo_pk: int):
+    """Move a repo to another workspace this user belongs to.
+
+    GitHub allows one installation per account, so a developer with two
+    projects under one login used to be able to connect only one workspace —
+    connecting the second silently revoked the first. Which workspace a repo
+    feeds is now a property of the repo, and this is how it gets set.
+
+    Two checks, and both matter. The requester must be able to see the repo
+    where it is, and must already belong to where it is going: without the
+    second, an authenticated user could push a repo into any workspace by id
+    and start streaming its pull requests, decisions and review discussion
+    into a workspace they have no access to — the same shape of hole as the
+    installation rebinding fixed earlier, arriving by a different door.
+    """
+    from apps.organizations.models import Organization, User
+
+    if not check_rate_limit(f"github_app_move:{request.user.id}", limit=60, window=3600):
+        return Response({"error": "Too many requests"}, status=429)
+
+    repo = GitHubRepo.objects.filter(
+        organization=request.user.organization, pk=repo_pk
+    ).first()
+    if not repo:
+        return Response({"error": "Repo not found"}, status=404)
+
+    target_id = request.data.get("org_id")
+    if not target_id:
+        return Response({"error": "org_id is required"}, status=400)
+    try:
+        target_id = int(target_id)
+    except (TypeError, ValueError):
+        return Response({"error": "org_id must be numeric"}, status=400)
+
+    if target_id == repo.organization_id:
+        return Response(_serialize_repo(repo))
+
+    member = User.objects.filter(
+        email__iexact=request.user.email, is_active=True, organization_id=target_id
+    ).first()
+    if not member:
+        logger.warning(
+            "Refused to move repo %s to org %s: user %s is not a member",
+            repo.full_name, target_id, request.user.id,
+        )
+        return Response(
+            {"error": "You do not have access to that workspace."}, status=403
+        )
+
+    target = Organization.objects.filter(id=target_id).first()
+    if not target:
+        return Response({"error": "Workspace not found"}, status=404)
+
+    previous = repo.organization_id
+    repo.organization = target
+    # A repo arriving in a new workspace starts disabled. Its decisions and
+    # links live in the workspace it came from, so leaving it on would have it
+    # commenting immediately against a record that has nothing to say.
+    repo.is_enabled_for_decisions = False
+    repo.save(update_fields=["organization", "is_enabled_for_decisions", "updated_at"])
+
+    logger.info(
+        "Moved repo %s from org %s to org %s (user %s)",
+        repo.full_name, previous, target_id, request.user.id,
+    )
+    # Existing links and file attributions deliberately stay behind: they point
+    # at decisions that live in the old workspace, and following the repo would
+    # orphan them.
     return Response(_serialize_repo(repo))
 
 
@@ -346,6 +688,15 @@ def github_app_resync(request):
             {"error": "Could not sync repos with GitHub. Please retry shortly."},
             status=502,
         )
+
+    # Repos are not the only thing that drifts. If the admin accepted a
+    # permission change while a deploy was rolling, the webhook carrying it is
+    # gone for good — this button is then the only way back to the truth.
+    try:
+        meta = fetch_installation_metadata(installation.installation_id)
+        _refresh_permissions(installation, {"installation": meta})
+    except Exception as exc:
+        logger.warning("Permission refresh during manual resync failed: %s", exc)
 
     return Response({
         "message": f"Synced repos with GitHub. {enabled_count} enabled for decisions.",
@@ -416,15 +767,18 @@ def github_app_webhook(request):
     repo_payload = payload.get("repository") or {}
     repo = None
     if repo_payload.get("id"):
+        # Keyed on the installation, not its owning workspace. A repo assigned
+        # to a different workspace still belongs to this installation, and
+        # filtering by organization here would silently drop every event for it.
         repo = GitHubRepo.objects.filter(
-            organization=installation.organization,
+            installation=installation,
             repo_id=int(repo_payload["id"]),
         ).first()
 
     action = (payload.get("action") or "")[:64]
 
     GitHubAppDelivery.objects.create(
-        organization=installation.organization,
+        organization=(repo.organization if repo else installation.organization),
         installation=installation,
         repo=repo,
         event=(event or "")[:64],
@@ -463,6 +817,31 @@ def _summarize(event: str, action: str, payload: dict) -> str:
     return f"{event}{('.' + action) if action else ''}: {repo}"
 
 
+def _refresh_permissions(installation: GitHubAppInstallation, payload: dict) -> bool:
+    """Sync the stored permission set from an installation webhook payload.
+
+    Returns True when the stored set actually changed. Logs the transition,
+    because "the permission is granted but the feature is still off" is
+    otherwise invisible, and the grant happens on GitHub where we have no
+    other signal.
+    """
+    incoming = (payload.get("installation") or {}).get("permissions")
+    if not isinstance(incoming, dict) or not incoming:
+        return False
+
+    current = installation.permissions or {}
+    if incoming == current:
+        return False
+
+    installation.permissions = incoming
+    installation.save(update_fields=["permissions", "updated_at"])
+    logger.info(
+        "Installation %s permissions updated: %s -> %s",
+        installation.installation_id, current, incoming,
+    )
+    return True
+
+
 def _dispatch_event(event: str, action: str, payload: dict, installation: GitHubAppInstallation, repo):
     """Route an event to the right handler.
 
@@ -473,6 +852,13 @@ def _dispatch_event(event: str, action: str, payload: dict, installation: GitHub
       rows so the decision detail page stays accurate.
     """
     if event == "installation":
+        # Every installation event carries the current permission set, and it is
+        # the only thing that does. Without this the row keeps whatever was
+        # captured at install time forever: an admin can grant pull_requests:
+        # write, accept it on GitHub, see it granted there — and the feature
+        # stays dormant here with nothing anywhere saying why.
+        _refresh_permissions(installation, payload)
+
         if action in ("suspend", "suspended"):
             installation.suspended_at = timezone.now()
             installation.save(update_fields=["suspended_at", "updated_at"])

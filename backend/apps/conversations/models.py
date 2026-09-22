@@ -104,7 +104,20 @@ class Conversation(models.Model):
     
     mentioned_users = models.ManyToManyField(User, related_name='mentioned_in', blank=True)
     tags = models.ManyToManyField(Tag, related_name='conversations', blank=True)
-    
+
+    # Where this came from, when it was not typed in by hand.
+    #
+    # Until now every conversation had exactly one origin — a person writing it
+    # into Knoledgr — so provenance was not worth recording. Once discussions
+    # are captured from elsewhere it becomes load-bearing: it is what makes
+    # capture idempotent (the same PR must not produce a second copy on a
+    # re-delivered webhook) and what lets a reader see that a record was
+    # collected rather than authored.
+    SOURCE_GITHUB_PR = 'github_pr'
+    source = models.CharField(max_length=32, blank=True, db_index=True)
+    source_url = models.URLField(max_length=512, blank=True)
+    external_id = models.CharField(max_length=128, blank=True, db_index=True)
+
     class Meta:
         db_table = 'conversations'
         ordering = ['-is_pinned', '-created_at']
@@ -113,6 +126,17 @@ class Conversation(models.Model):
             models.Index(fields=['organization', 'author', '-created_at']),
             models.Index(fields=['organization', 'ai_processed']),
             models.Index(fields=['organization', 'is_archived', '-created_at']),
+            models.Index(fields=['organization', 'source', '-created_at']),
+        ]
+        constraints = [
+            # Enforced in the database rather than by a check-then-create, which
+            # races against GitHub delivering the same event twice. Hand-written
+            # conversations carry no external_id and are excluded.
+            models.UniqueConstraint(
+                fields=['organization', 'source', 'external_id'],
+                condition=~models.Q(external_id=''),
+                name='uniq_conversation_external_ref',
+            ),
         ]
     
     def __str__(self):

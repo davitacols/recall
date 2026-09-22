@@ -10,7 +10,6 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      SECRET_KEY: ci-secret-key
       DEBUG: "False"
       FRONTEND_URL: "https://knoledgr.com"
       ALLOWED_HOSTS: "knoledgr.com,www.knoledgr.com,.vercel.app,localhost,127.0.0.1"
@@ -30,6 +29,12 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
+    # Generated per run rather than committed. The old literal "ci-secret-key"
+    # failed `check --deploy` on security.W009 for being short and low-entropy,
+    # and a committed replacement would be indistinguishable from a real leaked
+    # credential to a secret scanner. Nothing here needs it to be stable.
+    - name: Generate a CI secret key
+      run: python -c "import secrets; print(f'SECRET_KEY={secrets.token_urlsafe(64)}')" >> "$GITHUB_ENV"
     - name: Run Tests
       working-directory: backend
       run: python manage.py test

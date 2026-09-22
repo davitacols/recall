@@ -12,7 +12,6 @@ from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes, force_str
 from django.contrib.auth.tokens import default_token_generator
 import logging
-import boto3
 import secrets
 import hashlib
 from django.conf import settings
@@ -98,7 +97,29 @@ def _normalize_user_role(role):
     return role
 
 
-def _build_auth_payload(user):
+def _user_avatar_url(user, request=None):
+    """Return the uploaded avatar first, then the identity-provider avatar."""
+    avatar = getattr(user, 'avatar', None)
+    if avatar:
+        try:
+            if hasattr(avatar, 'storage') and not avatar.storage.exists(avatar.name):
+                raise ValueError('Avatar file is missing from storage')
+            avatar_url = avatar.url
+        except (AttributeError, ValueError):
+            avatar_url = ''
+
+        if avatar_url:
+            if avatar_url.startswith('//'):
+                scheme = request.scheme if request else 'https'
+                return f'{scheme}:{avatar_url}'
+            if request and not avatar_url.startswith(('http://', 'https://')):
+                return request.build_absolute_uri(avatar_url)
+            return avatar_url
+
+    return (getattr(user, 'avatar_url', '') or '').strip() or None
+
+
+def _build_auth_payload(user, request=None):
     from rest_framework_simplejwt.tokens import RefreshToken
 
     refresh = RefreshToken.for_user(user)
@@ -117,6 +138,7 @@ def _build_auth_payload(user):
             'role': user.role,
             'is_staff': bool(user.is_staff),
             'is_superuser': bool(user.is_superuser),
+            'avatar': _user_avatar_url(user, request),
             'organization_name': user.organization.name,
             'organization_slug': user.organization.slug,
             'experience_mode': getattr(user, 'experience_mode', 'standard'),
@@ -377,7 +399,7 @@ def login(request):
             },
             request=request,
         )
-        return Response(_build_auth_payload(user))
+        return Response(_build_auth_payload(user, request))
     
     logger.warning(f"Failed login attempt for: {username}")
     if '@' in username:
@@ -501,6 +523,11 @@ def google_login(request):
         except Exception:
             logger.exception("Failed to send welcome email to Google user %s", email)
 
+    google_avatar_url = (id_info.get('picture') or '').strip()
+    if google_avatar_url and user.avatar_url != google_avatar_url:
+        user.avatar_url = google_avatar_url
+        user.save(update_fields=['avatar_url'])
+
     _log_auth_audit(
         organization=user.organization,
         user=user,
@@ -514,7 +541,7 @@ def google_login(request):
         request=request,
         action='create' if created_workspace else 'login',
     )
-    payload = _build_auth_payload(user)
+    payload = _build_auth_payload(user, request)
     payload['created_workspace'] = created_workspace
     if created_workspace:
         payload['message'] = 'Organization created successfully'
@@ -739,7 +766,7 @@ def switch_workspace(request):
         },
         request=request,
     )
-    return Response(_build_auth_payload(authenticated))
+    return Response(_build_auth_payload(authenticated, request))
 
 
 @api_view(['POST'])
@@ -798,9 +825,7 @@ def logout_all(request):
 def profile(request):
     user = request.user
     
-    avatar_url = None
-    if user.avatar:
-        avatar_url = user.avatar.url if not settings.DEBUG else request.build_absolute_uri(user.avatar.url)
+    avatar_url = _user_avatar_url(user, request)
     
     org_logo_url = None
     if user.organization.logo:
@@ -899,9 +924,14 @@ def register(request):
             except Exception:
                 logger.exception("Failed to send welcome email to %s", email)
             
+            # Return the same auth payload login does, so the client can sign
+            # the user straight in. Making someone re-enter the password they
+            # chose ten seconds earlier is pure drop-off: they have already
+            # proven the credential by creating the account with it.
             return Response({
                 'message': 'Organization created successfully',
-                'username': user.username
+                'username': user.username,
+                **_build_auth_payload(user, request),
             }, status=status.HTTP_201_CREATED)
             
         except Exception as e:

@@ -122,29 +122,47 @@ export default function AtlasTopNav({
 
         {/* Right: actions + profile */}
         <div className="tn-right">
+          {/* Was "Create" → /projects?new=1. Projects left the navigation when
+              the agile surfaces were removed, so the most prominent action in
+              the product opened a page you could not otherwise reach. A global
+              create button should offer the thing the product is for, and say
+              which thing that is rather than hiding it behind a generic verb. */}
           <button
             type="button"
             className="tn-create"
-            onClick={() => navigate("/projects?new=1")}
+            onClick={() => navigate("/decisions/new")}
+            title="Record a decision"
           >
             <PlusIcon />
-            Create
+            {/* Wrapped, because the narrow-screen rule hides `.tn-create span`
+                and the label has always been a bare text node — so it never
+                matched and the label stayed on phones regardless. */}
+            <span>New decision</span>
           </button>
 
           <div className="tn-actions">
+            {/* Both are marked optional: on a phone Ask Recall is a tab in the
+                bottom bar and Docs is in the mobile menu under Resources, so
+                they cost width here without adding a route. Notifications
+                stays — nothing else surfaces it. */}
             <IconAction
               label="Ask Recall"
+              className="tn-icon--optional"
               onClick={() => navigate("/ask")}
             >
               <SparklesIcon />
             </IconAction>
             <NotificationBell />
-            <IconAction label="Help & docs" onClick={() => docsDrawer.toggle()}>
+            <IconAction
+              label="Help & docs"
+              className="tn-icon--optional"
+              onClick={() => docsDrawer.toggle()}
+            >
               <QuestionMarkCircleIcon />
             </IconAction>
-            <IconAction label="Settings" onClick={() => navigate("/settings")}>
-              <Cog6ToothIcon />
-            </IconAction>
+            {/* The settings cog was a third route to the same page — it is in
+                the profile menu below and in the sidebar footer. Two were
+                already one too many. */}
           </div>
 
           <div className="tn-profile-wrap" ref={profileRef}>
@@ -202,11 +220,11 @@ export default function AtlasTopNav({
   );
 }
 
-function IconAction({ children, label, onClick }) {
+function IconAction({ children, label, onClick, className = "" }) {
   return (
     <button
       type="button"
-      className="tn-icon"
+      className={`tn-icon ${className}`.trim()}
       onClick={onClick}
       aria-label={label}
       title={label}

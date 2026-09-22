@@ -3,11 +3,11 @@ import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-nati
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 
-import { BellIcon, ChatIcon, DecisionIcon, KnowledgeIcon, SprintIcon, UserIcon } from '../../components/Icons';
+import { BellIcon, ChatIcon, DecisionIcon, KnowledgeIcon, UserIcon } from '../../components/Icons';
 import MotionScreen from '../../components/MotionScreen';
 import { DashboardIllustration } from '../../components/TechnicalIllustrations';
 import { Brand } from '../../constants/brand';
-import { conversationService, decisionService, normalizeList, notificationService, sprintService } from '../../services/api';
+import { conversationService, decisionService, normalizeList, notificationService } from '../../services/api';
 import { useAuthStore } from '../../stores/authStore';
 
 type Stat = { label: string; value: number; delta: string };
@@ -22,7 +22,6 @@ type Action = {
 const actions: Action[] = [
   { key: 'conversations', label: 'Conversations', sub: 'Meetings, blockers, team signals', icon: ChatIcon, route: '/(tabs)/conversations' },
   { key: 'decisions', label: 'Decisions', sub: 'Rationale, confidence, ownership', icon: DecisionIcon, route: '/(tabs)/decisions' },
-  { key: 'sprints', label: 'Sprints', sub: 'Throughput and delivery pacing', icon: SprintIcon, route: '/(tabs)/sprints' },
   { key: 'knowledge', label: 'Knowledge', sub: 'Standards and memory layer', icon: KnowledgeIcon, route: '/(tabs)/explore' },
 ];
 
@@ -34,7 +33,6 @@ export default function DashboardScreen() {
   const [stats, setStats] = useState<Stat[]>([
     { label: 'Conversations', value: 0, delta: '+0' },
     { label: 'Decisions', value: 0, delta: '+0' },
-    { label: 'Sprints', value: 0, delta: '+0' },
   ]);
 
   const refreshUnread = useCallback(async () => {
@@ -48,18 +46,15 @@ export default function DashboardScreen() {
 
   const load = useCallback(async () => {
     try {
-      const [conv, dec, spr] = await Promise.all([
+      const [conv, dec] = await Promise.all([
         conversationService.list(),
         decisionService.list(),
-        sprintService.list(),
       ]);
       const convCount = normalizeList(conv.data).length;
       const decCount = normalizeList(dec.data).length;
-      const sprintCount = normalizeList(spr.data).length;
       setStats([
         { label: 'Conversations', value: convCount, delta: `+${Math.min(convCount, 7)}` },
         { label: 'Decisions', value: decCount, delta: `+${Math.min(decCount, 5)}` },
-        { label: 'Sprints', value: sprintCount, delta: `+${Math.min(sprintCount, 3)}` },
       ]);
       await refreshUnread();
     } catch (error) {
@@ -98,16 +93,16 @@ export default function DashboardScreen() {
             </View>
           </View>
 
-          <Text style={styles.heroTitle}>Execution Console</Text>
-          <Text style={styles.heroSub}>{user?.organization_name || 'Workspace'} | Live control panel</Text>
+          <Text style={styles.heroTitle}>Decision Memory</Text>
+          <Text style={styles.heroSub}>{user?.organization_name || 'Workspace'} | Context connected to the work</Text>
 
           <View style={styles.heroIdentity}>
             <Text style={styles.heroIdentityLabel}>ACTIVE USER</Text>
             <Text style={styles.heroIdentityValue}>{user?.full_name || 'Teammate'}</Text>
           </View>
 
-          <TouchableOpacity style={styles.primaryCta} onPress={() => router.push('/(tabs)/sprints')}>
-            <Text style={styles.primaryCtaText}>Resume Delivery</Text>
+          <TouchableOpacity style={styles.primaryCta} onPress={() => router.push('/(tabs)/decisions')}>
+            <Text style={styles.primaryCtaText}>Review Decisions</Text>
           </TouchableOpacity>
         </View>
 
@@ -253,4 +248,3 @@ const styles = StyleSheet.create({
   streamTitle: { fontSize: 17, fontWeight: '900', marginTop: 12, letterSpacing: -0.3 },
   streamSub: { fontSize: 12, marginTop: 2 },
 });
-

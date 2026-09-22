@@ -122,31 +122,19 @@ function fetchConfig() {
 })();
 
 function Skeleton() {
-  // Matches the rendered GSI pill: 44px tall, max ~400px wide.
   return (
-    <div
-      aria-hidden="true"
-      style={{
-        display: "flex",
-        justifyContent: "center",
-        minHeight: 44,
-      }}
-    >
-      <div
-        style={{
-          height: 44,
-          width: "100%",
-          maxWidth: 360,
-          borderRadius: 999,
-          background:
-            "linear-gradient(100deg, rgba(255,255,255,0.04) 30%, rgba(255,255,255,0.10) 50%, rgba(255,255,255,0.04) 70%)",
-          backgroundSize: "200% 100%",
-          animation: "gsi-shimmer 1.2s infinite linear",
-          border: "1px solid rgba(255,255,255,0.08)",
-        }}
-      />
+    <div className="gsi-skeleton" aria-label="Loading Google sign-in" role="status">
+      <span className="gsi-skeleton-mark" aria-hidden="true">G</span>
+      <span>Loading Google sign-in…</span>
       <style>{`@keyframes gsi-shimmer { to { background-position: -200% 0; } }`}</style>
     </div>
+  );
+}
+
+function Divider({ label }) {
+  if (!label) return null;
+  return (
+    <div className="gsi-divider" aria-hidden="true">{label}</div>
   );
 }
 
@@ -165,6 +153,7 @@ export default function GoogleSignInButton({
   // Seed from the session cache so repeat mounts skip the loading state.
   const [config, setConfig] = useState(getCachedConfig);
   const [failed, setFailed] = useState(false);
+  const [retryKey, setRetryKey] = useState(0);
 
   // Always re-fetch in the background, even if seeded — flags can change.
   useEffect(() => {
@@ -174,7 +163,7 @@ export default function GoogleSignInButton({
       setConfig(value === undefined ? null : value);
     });
     return () => { active = false; };
-  }, []);
+  }, [retryKey]);
 
   // Only re-render the official button when the relevant config changes,
   // not when parent callbacks get new references.
@@ -222,11 +211,27 @@ export default function GoogleSignInButton({
       });
 
     return () => { cancelled = true; };
-  }, [enabled, clientId, text]);
+  }, [enabled, clientId, text, retryKey]);
 
-  // Resolved as unavailable / failed — render nothing so the email form
-  // stands alone without phantom space.
-  if (config === null || failed) return null;
+  const retry = () => {
+    setFailed(false);
+    setConfig(undefined);
+    setRetryKey((value) => value + 1);
+  };
+
+  // A transient config or script failure used to return null here. That made
+  // the provider appear to vanish and gave the user no way to recover.
+  if (config === null || failed) {
+    return (
+      <>
+        <div className="gsi-retry" role="status">
+          <span>Google sign-in didn't load.</span>
+          <button type="button" onClick={retry}>Retry</button>
+        </div>
+        <Divider label={dividerLabel} />
+      </>
+    );
+  }
   // Cached config exists but says google is off → render nothing.
   if (config && !enabled) return null;
   // Still loading (no cache) → show a skeleton so the layout is stable.
@@ -234,20 +239,7 @@ export default function GoogleSignInButton({
     return (
       <>
         <Skeleton />
-        {dividerLabel ? (
-          <div
-            aria-hidden="true"
-            style={{
-              display: "flex", alignItems: "center", gap: 12,
-              margin: "20px 0 4px", color: "var(--muted, #6B7280)",
-              fontSize: 12, fontWeight: 500,
-            }}
-          >
-            <span style={{ flex: 1, height: 1, background: "var(--line, #ECEDF1)" }} />
-            {dividerLabel}
-            <span style={{ flex: 1, height: 1, background: "var(--line, #ECEDF1)" }} />
-          </div>
-        ) : null}
+        <Divider label={dividerLabel} />
       </>
     );
   }
@@ -256,23 +248,10 @@ export default function GoogleSignInButton({
     <>
       <div
         ref={holderRef}
-        style={{ display: "flex", justifyContent: "center", minHeight: 44 }}
+        className="gsi-button-slot"
         aria-label="Sign in with Google"
       />
-      {dividerLabel ? (
-        <div
-          aria-hidden="true"
-          style={{
-            display: "flex", alignItems: "center", gap: 12,
-            margin: "20px 0 4px", color: "var(--muted, #6B7280)",
-            fontSize: 12, fontWeight: 500,
-          }}
-        >
-          <span style={{ flex: 1, height: 1, background: "var(--line, #ECEDF1)" }} />
-          {dividerLabel}
-          <span style={{ flex: 1, height: 1, background: "var(--line, #ECEDF1)" }} />
-        </div>
-      ) : null}
+      <Divider label={dividerLabel} />
     </>
   );
 }

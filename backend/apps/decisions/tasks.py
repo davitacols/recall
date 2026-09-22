@@ -56,6 +56,7 @@ def decision_intelligence_sweep():
         DecisionPrediction,
         DecisionRetrospective,
     )
+    from apps.notifications.models import Notification
     from apps.notifications.utils import create_notification
 
     now = timezone.now()
@@ -77,21 +78,24 @@ def decision_intelligence_sweep():
         .select_related("decision", "decision__decision_maker", "organization")
     )
 
-    # Don't spam: only nudge once per overdue prediction per 7-day window.
+    # Don't spam: only nudge once per decision per 7-day window.
+    #
+    # This previously asked whether a DecisionOutcomeCheck existed for the
+    # prediction in the last 7 days — that is "did a human log an outcome?",
+    # not "did we already ask?". Worse, the queryset above already excludes
+    # predictions with an observation in the last 14 days, so the condition was
+    # False by construction and nothing was ever skipped. The sweep runs daily,
+    # so a decision nobody responded to was re-notified every morning: one of
+    # them had accumulated 24 identical copies, a third of all notifications in
+    # the workspace.
+    #
+    # A reminder nobody can act on twice is not more urgent for being repeated;
+    # it just teaches people that the bell is noise.
     nudged_recent_window_start = now - timedelta(days=7)
 
     for prediction in overdue_predictions.iterator():
         decision = prediction.decision
         if not decision:
-            continue
-
-        # Skip if we notified about this prediction in the last 7 days.
-        recently_nudged = (
-            DecisionOutcomeCheck.objects
-            .filter(prediction=prediction, observed_at__gte=nudged_recent_window_start)
-            .exists()
-        )
-        if recently_nudged:
             continue
 
         recipients = _drift_recipients(decision)
@@ -105,6 +109,18 @@ def decision_intelligence_sweep():
         )
         link = f"/decisions/{decision.id}"
         for user in recipients:
+            # Deduplicate on the notification itself — the only record that
+            # answers "have we already asked this person about this decision?".
+            # Keyed on the link rather than the title because the message
+            # embeds a days-overdue count that changes every morning, so any
+            # comparison involving it would never match.
+            if Notification.objects.filter(
+                user=user,
+                notification_type="reminder",
+                link=link,
+                created_at__gte=nudged_recent_window_start,
+            ).exists():
+                continue
             try:
                 create_notification(user=user, notification_type="reminder",
                                     title=title, message=message, link=link)

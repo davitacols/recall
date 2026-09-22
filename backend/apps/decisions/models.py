@@ -118,6 +118,29 @@ class Decision(models.Model):
     impact_review_notes = models.TextField(blank=True)
     lessons_learned = models.TextField(blank=True)
     
+    # What this decision is about.
+    #
+    # A workspace holds several projects, and until now the record did not know
+    # which one anything belonged to — nine decisions in one workspace spanning
+    # two unrelated projects, pooled together. That makes "why is this like
+    # this?" answerable only across work that has nothing to do with each other,
+    # which is the opposite of what a memory is for.
+    #
+    # Nullable on purpose. Not every decision is about code: pricing, hiring,
+    # which browsers to stop supporting. Requiring a project would push people
+    # to invent one, and an invented association is worse than none.
+    #
+    # Set automatically when the decision is derived from a repository whose
+    # project is known; otherwise chosen, or left alone.
+    project = models.ForeignKey(
+        'agile.Project',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='decisions',
+        db_index=True,
+    )
+
     sprint = models.ForeignKey(
         'agile.Sprint',
         on_delete=models.SET_NULL,

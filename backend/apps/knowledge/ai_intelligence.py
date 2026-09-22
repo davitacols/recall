@@ -1,3 +1,4 @@
+import re
 from html import unescape
 
 from rest_framework.decorators import api_view, permission_classes
@@ -278,12 +279,9 @@ def _human_join(parts):
 
 
 def _clean_preview_text(value):
-    text = str(value or '')
-    if not text.strip():
-        return ''
-    text = text.replace('<br>', '\n').replace('<br/>', '\n').replace('<br />', '\n')
-    text = unescape(strip_tags(text))
-    return ' '.join(text.split())
+    from apps.knowledge.text_utils import to_plain_text
+
+    return to_plain_text(value)
 
 
 def _iter_source_records(search_data, limit_per_bucket=20):

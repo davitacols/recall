@@ -1,5 +1,7 @@
 from datetime import date, timedelta
 
+from django.utils import timezone
+
 from django.test import TestCase
 from rest_framework.test import APIRequestFactory, force_authenticate
 
@@ -197,7 +199,9 @@ class AgilePhase2BehaviorTests(TestCase):
         self.assertEqual(response.data['summary']['completed'], 2)
 
     def test_rca_recurring_analysis_returns_ranked_causes(self):
-        Blocker.objects.create(
+        # days_open is not a column — it is derived from created_at/resolved_at.
+        # Set those instead, so the blocker genuinely reads as four days old.
+        blocker = Blocker.objects.create(
             organization=self.org,
             conversation=self.conversation,
             sprint=self.sprint,
@@ -205,8 +209,12 @@ class AgilePhase2BehaviorTests(TestCase):
             description='Dependency issue persisted',
             blocker_type='dependency',
             blocked_by=self.user,
-            status='active',
-            days_open=4,
+            status='resolved',
+        )
+        # created_at is auto_now_add, so it has to be rewritten after insert.
+        Blocker.objects.filter(pk=blocker.pk).update(
+            created_at=timezone.now() - timedelta(days=4),
+            resolved_at=timezone.now(),
         )
         auto_request = self.factory.post(f'/api/agile/sprints/{self.sprint.id}/auto-retrospective/')
         force_authenticate(auto_request, user=self.user)

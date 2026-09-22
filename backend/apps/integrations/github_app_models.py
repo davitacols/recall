@@ -21,12 +21,23 @@ from apps.organizations.models import Organization, User
 
 
 class GitHubAppInstallation(models.Model):
-    """One row per Knoledgr-organization × GitHub-account install.
+    """One row per GitHub App installation.
 
-    The OneToOneField on organization deliberately mirrors the legacy
-    GitHubIntegration model — a Knoledgr workspace can connect to exactly
-    one GitHub org install at a time. Switching workspaces between GitHub
-    orgs requires uninstalling first, which is the right safety boundary.
+    ``organization`` is the workspace that installed it — who administers the
+    connection and can disconnect it. It is *not* the only workspace the
+    installation can serve.
+
+    It used to be a OneToOneField, mirroring the legacy PAT integration, and
+    that turned out to be a real constraint rather than a safety boundary.
+    GitHub permits one installation per account, so a single developer with two
+    projects under one GitHub login could connect only one of their workspaces:
+    connecting the second silently revoked the first. Whichever project they
+    were not looking at stopped recording anything, and nothing said so.
+
+    Which workspace a repository feeds is a property of the repository, and
+    GitHubRepo has always carried its own organization. The binding lives
+    there now, so one installation can serve several workspaces with the repos
+    split between them.
     """
 
     SELECTION_ALL = "all"
@@ -43,10 +54,10 @@ class GitHubAppInstallation(models.Model):
         (ACCOUNT_ORG, "Organization"),
     ]
 
-    organization = models.OneToOneField(
+    organization = models.ForeignKey(
         Organization,
         on_delete=models.CASCADE,
-        related_name="github_app_installation",
+        related_name="github_app_installations_owned",
     )
 
     # GitHub side
@@ -93,6 +104,40 @@ class GitHubAppInstallation(models.Model):
         return self.suspended_at is None and self.revoked_at is None
 
 
+class GitHubAppDriftCheck(models.Model):
+    """Result of reconciling GitHub App installs with our database.
+
+    Webhooks cannot detect an installation row disappearing locally: once the
+    row is gone, otherwise-valid GitHub events are deliberately acknowledged
+    and ignored. A periodic App-level comparison supplies an independent
+    signal for that silent failure mode.
+    """
+
+    STATUS_HEALTHY = "healthy"
+    STATUS_DRIFT = "drift"
+    STATUS_ERROR = "error"
+    STATUS_NOT_CONFIGURED = "not_configured"
+    STATUS_CHOICES = [
+        (STATUS_HEALTHY, "Healthy"),
+        (STATUS_DRIFT, "Drift detected"),
+        (STATUS_ERROR, "Check failed"),
+        (STATUS_NOT_CONFIGURED, "GitHub App not configured"),
+    ]
+
+    status = models.CharField(max_length=24, choices=STATUS_CHOICES, db_index=True)
+    local_installation_count = models.PositiveIntegerField(default=0)
+    github_installation_count = models.PositiveIntegerField(default=0)
+    # IDs are retained for operator diagnosis. They are never returned by the
+    # unauthenticated health endpoint.
+    missing_locally = models.JSONField(default=list, blank=True)
+    missing_on_github = models.JSONField(default=list, blank=True)
+    checked_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        db_table = "github_app_drift_checks"
+        ordering = ["-checked_at"]
+
+
 class GitHubRepo(models.Model):
     """One row per repo Knoledgr has connected for a given installation.
 
@@ -119,6 +164,26 @@ class GitHubRepo(models.Model):
     archived = models.BooleanField(default=False)
     html_url = models.URLField(blank=True, max_length=512)
 
+    # Which project in the workspace this repository is the code for.
+    #
+    # One repo, one project. GitHub is the source of the code; Knoledgr is the
+    # ground truth for what the team decided and why — and a workspace with
+    # several projects needs those two to line up, or every decision lands in
+    # one undifferentiated pool and "why is this like this?" has to be answered
+    # across work that has nothing to do with each other.
+    #
+    # OneToOne enforces the rule: a repository cannot be the code for two
+    # projects. Nullable because a repo can be connected before anyone has
+    # decided which project it belongs to, and because a workspace may not use
+    # projects at all.
+    project = models.OneToOneField(
+        "agile.Project",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="repo",
+    )
+
     # Workspace-side toggles
     is_enabled_for_decisions = models.BooleanField(default=True, db_index=True)
 
@@ -128,7 +193,12 @@ class GitHubRepo(models.Model):
 
     class Meta:
         db_table = "github_repos"
-        unique_together = [("organization", "repo_id")]
+        # Keyed on the installation rather than the workspace. A repository is
+        # single-homed: it feeds exactly one workspace, and moving it changes
+        # which. Keyed on (organization, repo_id) instead, the same repository
+        # could exist once per workspace — two rows for one GitHub repo, both
+        # receiving its webhooks, each writing into a different record.
+        unique_together = [("installation", "repo_id")]
         ordering = ["full_name"]
         indexes = [
             models.Index(fields=["organization", "is_enabled_for_decisions"]),
@@ -208,11 +278,13 @@ class DecisionPullRequest(models.Model):
     LINK_SOURCE_BADGE = "badge"
     LINK_SOURCE_BRANCH = "branch"
     LINK_SOURCE_ACTION = "action"
+    LINK_SOURCE_AUTO = "auto"
     LINK_SOURCE_CHOICES = [
         (LINK_SOURCE_MANUAL, "Manual link from decision page"),
         (LINK_SOURCE_BADGE, "Inline knoledgr-decision marker in PR body"),
         (LINK_SOURCE_BRANCH, "Branch name match"),
         (LINK_SOURCE_ACTION, "knoledgr/link-decision GitHub Action"),
+        (LINK_SOURCE_AUTO, "Inferred automatically from PR text"),
     ]
 
     organization = models.ForeignKey(
@@ -260,6 +332,13 @@ class DecisionPullRequest(models.Model):
         related_name="github_pr_links",
     )
 
+    # Why an inferred link was made, kept so the inference can be audited
+    # later. A link created by a person needs no justification; one created
+    # by a heuristic does, and without recording the numbers there is no way
+    # to tell a well-tuned matcher from a lucky one.
+    match_score = models.IntegerField(null=True, blank=True)
+    match_runner_up_score = models.IntegerField(null=True, blank=True)
+
     linked_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -275,3 +354,56 @@ class DecisionPullRequest(models.Model):
 
     def __str__(self) -> str:
         return f"DecisionPullRequest(decision={self.decision_id}, {self.repo.full_name}#{self.pr_number})"
+
+
+class DecisionFile(models.Model):
+    """A file a decision was implemented in, derived from its linked PRs.
+
+    git blame answers who and when. Nothing answers why, and that is the
+    question someone reading unfamiliar code actually has. A decision knows
+    its pull request and a pull request knows its files, so the reasoning
+    behind a line of code is already reachable — it was simply never stored in
+    a shape you could query from the file end.
+
+    decision and repo are denormalised off the link deliberately. Every read
+    of this table goes file -> decisions, on a webhook, while a reviewer is
+    waiting; walking back through DecisionPullRequest for each row would turn
+    one indexed lookup into a join per candidate file.
+
+    Rows are derived data. They are rebuilt from GitHub rather than edited,
+    and deleting a link deletes them with it.
+    """
+
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name="decision_files", db_index=True
+    )
+    link = models.ForeignKey(
+        DecisionPullRequest, on_delete=models.CASCADE, related_name="files"
+    )
+    decision = models.ForeignKey(
+        Decision, on_delete=models.CASCADE, related_name="files", db_index=True
+    )
+    repo = models.ForeignKey(
+        GitHubRepo, on_delete=models.CASCADE, related_name="decision_files", db_index=True
+    )
+
+    # 512 rather than 255: deeply nested paths in a monorepo run long, and a
+    # truncated path silently stops matching the file it names.
+    path = models.CharField(max_length=512, db_index=True)
+    status = models.CharField(max_length=16, blank=True)  # added|modified|removed|renamed
+    changes = models.IntegerField(default=0)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "decision_files"
+        unique_together = [("link", "path")]
+        indexes = [
+            # The lookup this table exists for: which decisions govern this
+            # file, in this repo, in this workspace.
+            models.Index(fields=["organization", "repo", "path"]),
+            models.Index(fields=["decision"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"DecisionFile(decision={self.decision_id}, {self.path})"

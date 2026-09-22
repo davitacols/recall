@@ -1,17 +1,13 @@
-import { Suspense, lazy, useEffect, useMemo, useState } from "react";
-import { BrowserRouter as Router, Navigate, Outlet, Route, Routes, useLocation, useNavigate } from "react-router-dom";
+import { Suspense, lazy, useEffect, useState } from "react";
+import { BrowserRouter as Router, Navigate, Outlet, Route, Routes, useLocation } from "react-router-dom";
 import ErrorBoundary from "./components/ErrorBoundary";
 import Spinner from "./components/Spinner";
 import RouteErrorBoundary from "./components/RouteErrorBoundary";
 import "./components/RouteErrorBoundary.css";
 import { GlobalSearch } from "./components/GlobalSearch";
-import { CommandPalette } from "./components/CommandPalette";
-import { CommandBar } from "./components/GestureControls";
 import { MobileNav } from "./components/MobileNav";
-import NLPCommandBar from "./components/NLPCommandBar";
 import OnboardingTour from "./components/OnboardingTour";
 import SeoManager from "./components/SeoManager";
-import SmartSearch from "./components/SmartSearch";
 import { ToastProvider } from "./components/Toast";
 import UnifiedLayout from "./components/UnifiedLayout";
 import { AuthProvider, useAuth } from "./hooks/useAuth";
@@ -25,13 +21,10 @@ const APIKeys = lazy(() => import("./pages/APIKeys"));
 const AskRecall = lazy(() => import("./pages/AskRecall"));
 const AuditLogs = lazy(() => import("./pages/AuditLogs"));
 const AutomationRules = lazy(() => import("./pages/AutomationRules"));
-const Backlog = lazy(() => import("./pages/Backlog"));
-const BlockerTracker = lazy(() => import("./pages/BlockerTracker"));
 const Bookmarks = lazy(() => import("./pages/Bookmarks"));
 const Conversations = lazy(() => import("./pages/Conversations"));
 const ConversationDetail = lazy(() => import("./pages/ConversationDetail"));
 const CreateConversation = lazy(() => import("./pages/CreateConversation"));
-const CurrentSprint = lazy(() => import("./pages/CurrentSprint"));
 const DataExport = lazy(() => import("./pages/DataExport"));
 const Decisions = lazy(() => import("./pages/Decisions"));
 const DecisionDetail = lazy(() => import("./pages/DecisionDetail"));
@@ -55,10 +48,6 @@ const Insights = lazy(() => import("./pages/Insights"));
 const Integrations = lazy(() => import("./pages/Integrations"));
 const GitHubIntegration = lazy(() => import("./pages/GitHubIntegration"));
 const GitHubAppCallback = lazy(() => import("./pages/GitHubAppCallback"));
-const IssueDetail = lazy(() => import("./pages/IssueDetail"));
-const CreateIssue = lazy(() => import("./pages/CreateIssue"));
-const IssueTemplates = lazy(() => import("./pages/IssueTemplates"));
-const KanbanBoard = lazy(() => import("./pages/KanbanBoardFull"));
 const Knowledge = lazy(() => import("./pages/Knowledge"));
 const KnowledgeBase = lazy(() => import("./pages/KnowledgeBase"));
 const KnowledgeGraph = lazy(() => import("./pages/KnowledgeGraph"));
@@ -73,23 +62,12 @@ const Partners = lazy(() => import("./pages/Partners"));
 const PartnerInbox = lazy(() => import("./pages/PartnerInbox"));
 const PrivacyEnterprise = lazy(() => import("./pages/PrivacyEnterprise"));
 const Profile = lazy(() => import("./pages/Profile"));
-const ProjectDetail = lazy(() => import("./pages/ProjectDetail"));
-const ProjectManagement = lazy(() => import("./pages/ProjectManagement"));
-const ProjectRoadmap = lazy(() => import("./pages/ProjectRoadmap"));
-const Projects = lazy(() => import("./pages/Projects"));
 const Proposals = lazy(() => import("./pages/Proposals"));
-const Releases = lazy(() => import("./pages/Releases"));
 const Reports = lazy(() => import("./pages/Reports"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
-const RetrospectiveDetail = lazy(() => import("./pages/RetrospectiveDetail"));
-const RetrospectiveMemory = lazy(() => import("./pages/RetrospectiveMemory"));
-const SavedFilters = lazy(() => import("./pages/SavedFilters"));
 const Security = lazy(() => import("./pages/Security"));
 const SecurityAnnex = lazy(() => import("./pages/SecurityAnnex"));
 const Settings = lazy(() => import("./pages/Settings"));
-const SprintDetail = lazy(() => import("./pages/SprintDetail"));
-const SprintHistory = lazy(() => import("./pages/SprintHistory"));
-const SprintManagement = lazy(() => import("./pages/SprintManagement"));
 const StaffInvitations = lazy(() => import("./pages/StaffInvitations"));
 const Subscription = lazy(() => import("./pages/Subscription"));
 const TasksBoard = lazy(() => import("./pages/TasksBoard"));
@@ -168,7 +146,7 @@ const PUBLIC_ROUTES = [
   { path: "/login", element: <Login /> },
   { path: "/forgot-password", element: <ForgotPassword /> },
   { path: "/reset-password", element: <ResetPassword /> },
-  { path: "/signup", element: <Navigate to="/login" replace /> },
+  { path: "/signup", element: <Navigate to="/login?mode=signup" replace /> },
   { path: "/invite/:token", element: <AcceptInvite /> },
 ];
 
@@ -234,29 +212,32 @@ const APP_ROUTES = [
   { path: "/my-decisions", element: <Navigate to="/decisions" replace /> },
   { path: "/my-questions", element: <Navigate to="/knowledge" replace /> },
   { path: "/sample-decision", element: <Navigate to="/decisions" replace /> },
-  { path: "/sprint", element: <CurrentSprint /> },
-  { path: "/sprint-history", element: <SprintHistory /> },
-  { path: "/sprint-management", element: <SprintManagement /> },
-  { path: "/sprints", element: <Navigate to="/sprint-history" replace /> },
-  { path: "/sprints/:id", element: <SprintDetail /> },
-  { path: "/blockers", element: <BlockerTracker /> },
-  { path: "/retrospectives", element: <RetrospectiveMemory /> },
-  { path: "/sprints/:sprintId/retrospective", element: <RetrospectiveDetail /> },
+  // The Agile suite is outside the launch product. Keep the underlying data
+  // intact, but old bookmarks and shared links now return users to the focused
+  // decision-memory workspace instead of exposing a second product.
+  { path: "/sprint", element: <Navigate to="/dashboard" replace /> },
+  { path: "/sprint-history", element: <Navigate to="/dashboard" replace /> },
+  { path: "/sprint-management", element: <Navigate to="/dashboard" replace /> },
+  { path: "/sprints", element: <Navigate to="/dashboard" replace /> },
+  { path: "/sprints/:id", element: <Navigate to="/dashboard" replace /> },
+  { path: "/blockers", element: <Navigate to="/dashboard" replace /> },
+  { path: "/retrospectives", element: <Navigate to="/dashboard" replace /> },
+  { path: "/sprints/:sprintId/retrospective", element: <Navigate to="/dashboard" replace /> },
   { path: "/proposals", element: <Proposals /> },
   { path: "/decision-proposals", element: <DecisionProposals /> },
-  { path: "/projects", element: <Projects /> },
-  { path: "/projects/:projectId", element: <ProjectDetail /> },
-  { path: "/projects/:projectId/manage", element: <ProjectManagement /> },
-  { path: "/projects/:projectId/roadmap", element: <ProjectRoadmap /> },
-  { path: "/projects/:projectId/backlog", element: <Backlog /> },
-  { path: "/projects/:projectId/releases", element: <Releases /> },
-  { path: "/boards/:boardId", element: <KanbanBoard /> },
-  { path: "/boards", element: <Navigate to="/projects" replace /> },
-  { path: "/agile/templates", element: <IssueTemplates /> },
-  { path: "/agile/filters", element: <SavedFilters /> },
-  { path: "/issues/new", element: <CreateIssue /> },
-  { path: "/issues/:issueId", element: <IssueDetail /> },
-  { path: "/issues", element: <Navigate to="/projects" replace /> },
+  { path: "/projects", element: <Navigate to="/dashboard" replace /> },
+  { path: "/projects/:projectId", element: <Navigate to="/dashboard" replace /> },
+  { path: "/projects/:projectId/manage", element: <Navigate to="/dashboard" replace /> },
+  { path: "/projects/:projectId/roadmap", element: <Navigate to="/dashboard" replace /> },
+  { path: "/projects/:projectId/backlog", element: <Navigate to="/dashboard" replace /> },
+  { path: "/projects/:projectId/releases", element: <Navigate to="/dashboard" replace /> },
+  { path: "/boards/:boardId", element: <Navigate to="/dashboard" replace /> },
+  { path: "/boards", element: <Navigate to="/dashboard" replace /> },
+  { path: "/agile/templates", element: <Navigate to="/dashboard" replace /> },
+  { path: "/agile/filters", element: <Navigate to="/dashboard" replace /> },
+  { path: "/issues/new", element: <Navigate to="/dashboard" replace /> },
+  { path: "/issues/:issueId", element: <Navigate to="/dashboard" replace /> },
+  { path: "/issues", element: <Navigate to="/dashboard" replace /> },
   { path: "/messages", element: <Navigate to="/notifications" replace /> },
   { path: "/messages/:userId", element: <Navigate to="/notifications" replace /> },
   { path: "/account-settings", element: <Navigate to="/profile" replace /> },
@@ -327,23 +308,11 @@ function renderRoute(route, idx) {
 }
 
 function AppContent() {
-  const navigate = useNavigate();
   const location = useLocation();
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [showSearch, setShowSearch] = useState(false);
   const { user } = useAuth();
   const isPublicPage = isPublicPath(location.pathname);
-
-  const commandRouteMap = useMemo(
-    () => ({
-      "create-issue": "/projects",
-      "new-sprint": "/sprint-history",
-      "show-blockers": "/blockers",
-      "my-tasks": "/projects",
-      "goto-dashboard": "/dashboard",
-    }),
-    []
-  );
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
@@ -375,24 +344,17 @@ function AppContent() {
     <>
       <SeoManager />
       {!isPublicPage ? <OnboardingTour /> : null}
-      {!isPublicPage ? <SmartSearch /> : null}
-      {!isPublicPage ? <NLPCommandBar /> : null}
       {!isOnline ? (
         <div className="fixed top-0 left-0 right-0 bg-yellow-500 text-white p-2 text-center z-50">
           You are offline. Some features may be limited.
         </div>
       ) : null}
-      {!isPublicPage ? <CommandPalette /> : null}
       {!isPublicPage ? <GlobalSearch isOpen={showSearch} onClose={() => setShowSearch(false)} /> : null}
-      {user && !isPublicPage ? <MobileNav onSearchOpen={() => setShowSearch(true)} /> : null}
-      {user && !isPublicPage ? (
-        <CommandBar
-          onCommand={(cmd) => {
-            const destination = commandRouteMap[cmd];
-            if (destination) navigate(destination);
-          }}
-        />
-      ) : null}
+      {/* The bottom bar no longer carries a Search tab — five tabs forced the
+          labels down to 9px, and search is in the top bar at every width. The
+          prop this used to pass is gone with it; GlobalSearch is still opened
+          by the command palette. */}
+      {user && !isPublicPage ? <MobileNav /> : null}
 
       <Suspense fallback={<RouteLoading />}>
         <Routes>

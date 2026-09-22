@@ -81,6 +81,25 @@ SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 USE_X_FORWARDED_HOST = True
 SECURE_REDIRECT_EXEMPT = [r'^api/health/']
 
+# security.W001 warns that django.middleware.security.SecurityMiddleware is
+# absent from MIDDLEWARE and that the SECURE_* settings above therefore do
+# nothing. It is absent by name only: LocalDevelopmentSecurityMiddleware
+# subclasses it, so all of that behaviour runs. The check compares the literal
+# dotted path and does not resolve subclasses.
+#
+# Silencing a security warning deserves evidence rather than an argument, so
+# this was verified against production rather than reasoned about:
+#
+#   $ curl -sSI https://www.knoledgr.com/api/health/
+#   Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
+#   X-Content-Type-Options: nosniff
+#   Referrer-Policy: strict-origin-when-cross-origin
+#   $ curl -sSI http://www.knoledgr.com/   ->   301 to https://
+#
+# If the subclass is ever removed, this silence hides a real finding — so the
+# subclass is the thing to check first if these headers ever go missing.
+SILENCED_SYSTEM_CHECKS = ['security.W001']
+
 # Custom User Model
 AUTH_USER_MODEL = 'organizations.User'
 
@@ -95,8 +114,6 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework_simplejwt.token_blacklist',
     'corsheaders',
-    'cloudinary_storage',
-    'cloudinary',
     'channels',
     'apps.organizations',
     'apps.conversations',
@@ -152,7 +169,6 @@ DATABASES = {
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework_simplejwt.authentication.JWTAuthentication',
-        'apps.users.authentication.CognitoAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
@@ -169,10 +185,10 @@ REST_FRAMEWORK = {
     'PAGE_SIZE': 20
 }
 
-# AWS Cognito Configuration
-COGNITO_USER_POOL_ID = config('COGNITO_USER_POOL_ID', default='')
-COGNITO_CLIENT_ID = config('COGNITO_CLIENT_ID', default='')
-COGNITO_REGION = config('AWS_REGION', default='us-east-1')
+# AWS Cognito removed: the credentials were rejected with 403, no user was ever
+# linked to a Cognito identity, and Google OAuth plus SimpleJWT cover auth.
+# Keeping a dead second authenticator on the hot path meant every token
+# SimpleJWT declined triggered an outbound JWKS fetch to AWS.
 GOOGLE_CLIENT_ID = config('GOOGLE_CLIENT_ID', default='')
 GOOGLE_OAUTH_ENABLED = _env_bool('GOOGLE_OAUTH_ENABLED', default=bool(GOOGLE_CLIENT_ID))
 GOOGLE_CLIENT_SECRET = config('GOOGLE_CLIENT_SECRET', default='')
@@ -230,12 +246,32 @@ CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = 'UTC'
 CELERY_TASK_TRACK_STARTED = True
 CELERY_TASK_TIME_LIMIT = 30 * 60
+
+# Shared cache. Without this Django falls back to LocMemCache, which is
+# per-process — and production runs gunicorn with 3 workers. Anything written
+# by one worker is invisible to the other two, which silently broke two things:
+#
+#   - The GitHub install CSRF state. It was issued by whichever worker served
+#     install-url/ and looked up by whichever worker served callback/, so the
+#     connection failed roughly two times in three with "Install state did not
+#     match" and no way for the user to make progress by retrying.
+#   - Rate limiting. Every counter was per-worker, so the real ceiling was
+#     three times the configured limit.
+#
+# Redis is already a hard dependency here (Celery broker and channel layer),
+# so this adds no new failure mode. The key prefix keeps cache keys from
+# colliding with Celery's on the same database.
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+        'LOCATION': redis_url,
+        'KEY_PREFIX': 'knoledgr',
+    }
+}
 NOTIFICATIONS_USE_CELERY = _env_bool('NOTIFICATIONS_USE_CELERY', default=False)
 
 # AI Configuration
-AWS_ACCESS_KEY_ID = config('AWS_ACCESS_KEY_ID', default='')
-AWS_SECRET_ACCESS_KEY = config('AWS_SECRET_ACCESS_KEY', default='')
-AWS_REGION = config('AWS_REGION', default='us-east-1')
+# AWS settings removed with Cognito — nothing else in the codebase used them.
 CLAUDE_API_KEY = config('CLAUDE_API_KEY', default='').strip()
 ANTHROPIC_API_KEY = config('ANTHROPIC_API_KEY', default=CLAUDE_API_KEY).strip()
 CLAUDE_MODEL = (
@@ -383,28 +419,16 @@ USE_TZ = True
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
-import cloudinary
-import cloudinary.uploader
-import cloudinary.api
-
-cloudinary.config(
-    cloud_name=config('CLOUDINARY_CLOUD_NAME', default=''),
-    api_key=config('CLOUDINARY_API_KEY', default=''),
-    api_secret=config('CLOUDINARY_API_SECRET', default=''),
-    secure=True
-)
-
-CLOUDINARY_STORAGE = {
-    'CLOUD_NAME': config('CLOUDINARY_CLOUD_NAME', default=''),
-    'API_KEY': config('CLOUDINARY_API_KEY', default=''),
-    'API_SECRET': config('CLOUDINARY_API_SECRET', default=''),
-}
-
-if not DEBUG:
-    DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
-
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+STORAGES = {
+    'default': {
+        'BACKEND': 'django.core.files.storage.FileSystemStorage',
+    },
+    'staticfiles': {
+        'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage',
+    },
+}
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 WSGI_APPLICATION = 'config.wsgi.application'

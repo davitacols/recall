@@ -15,7 +15,7 @@ import { getProjectPalette, getProjectUi } from "../utils/projectUi";
 const CONTROL_PILLARS = [
   {
     title: "Identity and access",
-    body: "Role-based permissions, workspace scoping, and enterprise-ready paths for SSO / SAML as the team matures.",
+    body: "Role-based permissions and workspace scoping are implemented. SSO / SAML and MFA are not currently available.",
     icon: LockClosedIcon,
   },
   {
@@ -31,10 +31,10 @@ const CONTROL_PILLARS = [
 ];
 
 const ENTERPRISE_CONTROLS = [
-  "SSO / SAML access management",
-  "Data residency and security annex review",
+  "SSO / SAML requirement discovery — not currently implemented",
+  "Data residency review — the current deployment is single-region",
   "Custom rollout support and procurement handoff",
-  "Expanded audit and governance expectations",
+  "Expanded audit expectations — the current log covers selected administrative events",
 ];
 
 const DATA_RIGHTS = [
@@ -76,7 +76,7 @@ export default function Security() {
         darkMode={darkMode}
         eyebrow="Security & Governance"
         title="Security posture should feel operational, not hidden."
-        description="Review the controls available in the current workspace, then move into enterprise governance when identity, data residency, or procurement requirements become more formal."
+        description="Review the controls that exist today and the gaps that still require product or infrastructure work before making procurement commitments."
         actions={
           <>
             <Link className="ui-btn-polish ui-focus-ring" to="/security-annex" style={{ ...ui.primaryButton, textDecoration: "none" }}>
@@ -93,13 +93,13 @@ export default function Security() {
           { label: "Current Plan", value: planName || "Workspace", helper: "Billing determines which governance controls are unlocked.", tone: palette.text },
           { label: "Identity", value: "RBAC", helper: "Role-based access exists on every workspace.", tone: palette.accent },
           { label: "Exports", value: "Available", helper: "Teams can keep data portable as policies evolve.", tone: palette.success },
-          { label: "Enterprise Path", value: "Ready", helper: "Use pricing when SSO, data residency, or procurement appear.", tone: palette.warn },
+          { label: "Enterprise Gaps", value: "Open", helper: "SSO, MFA, and residency controls are not implemented.", tone: palette.warn },
         ]}
         aside={
           <UpgradeNotice
             palette={palette}
-            title="Enterprise controls have a clear path now."
-            description="When the workspace needs SSO / SAML, governance review, or residency conversations, move from self-serve pricing into the enterprise track."
+            title="Enterprise requirements need a technical review."
+            description="SSO / SAML, MFA, and residency controls are not enabled by upgrading a plan. Confirm implementation and deployment scope before committing to them."
             currentPlan={planName || undefined}
             requiredPlan="Enterprise"
             ctaTo="/subscription"
@@ -114,7 +114,7 @@ export default function Security() {
         palette={palette}
         eyebrow="Security Layers"
         title="Core control pillars"
-        description="The product already carries several operational control surfaces. This page makes them visible and points admins toward the right upgrade route when the team outgrows self-serve settings."
+        description="This page separates implemented controls from procurement requirements that Knoledgr does not yet satisfy."
       >
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 12 }}>
           {CONTROL_PILLARS.map((pillar) => {
@@ -150,8 +150,8 @@ export default function Security() {
         <WorkspacePanel
           palette={palette}
           eyebrow="Enterprise Upgrade"
-          title="Controls that usually trigger procurement"
-          description="These are the moments where teams stop treating security as a settings page and start treating it like a rollout decision."
+          title="Requirements that usually trigger procurement"
+          description="These items need verification or implementation; they are not unlocked automatically by an enterprise plan."
         >
           <div style={{ display: "grid", gap: 10 }}>
             {ENTERPRISE_CONTROLS.map((item) => (

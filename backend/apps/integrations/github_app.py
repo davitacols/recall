@@ -191,6 +191,38 @@ def github_get(path: str, *, installation_id: int, params: Optional[dict] = None
     )
 
 
+def github_post(path: str, *, installation_id: int, json_body: dict) -> requests.Response:
+    """POST to a GitHub API path using the installation's token.
+
+    Writing requires a permission the App may not hold — it shipped read-only.
+    Callers must treat 403 as "not granted yet" rather than an error, so a
+    workspace that has not accepted the updated permissions keeps working with
+    the read-only behaviour instead of erroring on every webhook.
+    """
+    token = get_installation_token(installation_id)
+    return requests.post(
+        f"{GITHUB_API}{path}",
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+        },
+        json=json_body,
+        timeout=15,
+    )
+
+
+def installation_can_write_prs(installation) -> bool:
+    """Whether this installation granted pull_requests: write.
+
+    Checked before attempting a comment so the common case (permission not yet
+    accepted) costs nothing and logs once, rather than issuing a request that
+    is guaranteed to 403.
+    """
+    perms = getattr(installation, "permissions", None) or {}
+    return str(perms.get("pull_requests", "")).lower() == "write"
+
+
 def list_installation_repos(installation_id: int) -> list[dict]:
     """Pull every repo the installation has access to.
 
@@ -221,6 +253,107 @@ def list_installation_repos(installation_id: int) -> list[dict]:
     return repos
 
 
+#: Ceiling on how far back a backfill will walk. Capture normally rides live
+#: merge events, so this exists only for the one-off catch-up when a repo is
+#: first connected. Beyond a few hundred the useful discussions are long since
+#: stale, and each one costs three API calls to examine.
+MAX_BACKFILL_PRS = 300
+
+
+def list_recent_merged_prs(
+    installation_id: int, repo_full_name: str, limit: int = 100
+) -> list[dict]:
+    """Merged pull requests, newest merged first.
+
+    Capture is otherwise driven entirely by live merge events, which means a
+    team connecting a repo sees an empty workspace until the next substantive
+    PR lands - possibly a fortnight, since most merges are deliberately
+    skipped. Their own history is the best demonstration the product has, and
+    it was sitting there unread.
+
+    GitHub cannot filter by merged, only by closed, and a closed-unmerged PR
+    has review discussion that never became anything. Those are filtered here
+    rather than left for the caller, so "merged" means merged.
+    """
+    limit = max(1, min(int(limit or 100), MAX_BACKFILL_PRS))
+    merged: list[dict] = []
+    url = (
+        f"{GITHUB_API}/repos/{repo_full_name}/pulls"
+        "?state=closed&sort=updated&direction=desc&per_page=100"
+    )
+    token = get_installation_token(installation_id)
+
+    while url and len(merged) < limit:
+        resp = requests.get(
+            url,
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Accept": "application/vnd.github+json",
+                "X-GitHub-Api-Version": "2022-11-28",
+            },
+            timeout=20,
+        )
+        if resp.status_code != 200:
+            raise RuntimeError(
+                f"GitHub rejected pulls for {repo_full_name} "
+                f"({resp.status_code}): {resp.text[:200]}"
+            )
+        page = resp.json()
+        if not isinstance(page, list) or not page:
+            break
+        merged.extend(pr for pr in page if pr.get("merged_at"))
+        url = _next_page_url(resp.headers.get("Link", ""))
+
+    merged.sort(key=lambda pr: str(pr.get("merged_at") or ""), reverse=True)
+    return merged[:limit]
+
+
+#: A pull request touching more files than this is a bulk move, a generated
+#: lockfile sweep, or a vendored dependency drop. Attributing a decision to all
+#: of them would bury the handful of files the decision is actually about, so
+#: the whole PR is skipped rather than paged through.
+MAX_PR_FILES = 300
+
+
+def list_pr_files(installation_id: int, repo_full_name: str, pr_number: int) -> list[dict]:
+    """Return the files a pull request touched.
+
+    This is the join that makes "why is this code here?" answerable: a
+    decision knows its pull request, and a pull request knows its files, so a
+    file can be traced back to the reasoning behind it.
+
+    Returns an empty list when the PR exceeds MAX_PR_FILES — a caller cannot
+    tell that from "no files", and should not need to: in both cases there is
+    nothing worth attributing.
+    """
+    files: list[dict] = []
+    url = f"{GITHUB_API}/repos/{repo_full_name}/pulls/{pr_number}/files?per_page=100"
+    token = get_installation_token(installation_id)
+    while url:
+        resp = requests.get(
+            url,
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Accept": "application/vnd.github+json",
+                "X-GitHub-Api-Version": "2022-11-28",
+            },
+            timeout=20,
+        )
+        if resp.status_code != 200:
+            raise RuntimeError(
+                f"GitHub rejected pulls/{pr_number}/files ({resp.status_code}): {resp.text[:200]}"
+            )
+        files.extend(resp.json())
+        if len(files) > MAX_PR_FILES:
+            logger.info(
+                "Skipping file attribution for %s#%s: %d+ files changed",
+                repo_full_name, pr_number, len(files),
+            )
+            return []
+        url = _next_page_url(resp.headers.get("Link", ""))
+    return files
+
+
 def fetch_installation_metadata(installation_id: int) -> dict:
     """Read the GitHub-side installation record for our local copy."""
     cfg = get_app_config()
@@ -241,6 +374,42 @@ def fetch_installation_metadata(installation_id: int) -> dict:
             f"GitHub rejected app/installations/<id> ({resp.status_code}): {resp.text[:200]}"
         )
     return resp.json()
+
+
+def list_app_installations() -> list[dict]:
+    """Return every installation GitHub currently associates with this App.
+
+    This deliberately uses App authentication rather than an installation
+    token. It is the only view that can reveal an installation which still
+    exists on GitHub after its local database row has disappeared.
+    """
+    cfg = get_app_config()
+    if not cfg:
+        raise RuntimeError("GitHub App is not configured for this deployment")
+
+    installations: list[dict] = []
+    url = f"{GITHUB_API}/app/installations?per_page=100"
+    app_jwt = build_app_jwt(cfg)
+    while url:
+        resp = requests.get(
+            url,
+            headers={
+                "Authorization": f"Bearer {app_jwt}",
+                "Accept": "application/vnd.github+json",
+                "X-GitHub-Api-Version": "2022-11-28",
+            },
+            timeout=20,
+        )
+        if resp.status_code != 200:
+            raise RuntimeError(
+                f"GitHub rejected app/installations ({resp.status_code}): {resp.text[:200]}"
+            )
+        body = resp.json()
+        if not isinstance(body, list):
+            raise RuntimeError("GitHub returned an invalid app/installations response")
+        installations.extend(body)
+        url = _next_page_url(resp.headers.get("Link", ""))
+    return installations
 
 
 def _next_page_url(link_header: str) -> Optional[str]:

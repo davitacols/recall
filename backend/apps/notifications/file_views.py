@@ -4,8 +4,9 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.parsers import MultiPartParser, FormParser
 from apps.users.auth_utils import check_rate_limit
-import cloudinary.uploader
+from django.core.files.storage import default_storage
 import os
+import uuid
 
 MAX_UPLOAD_SIZE = 10 * 1024 * 1024
 ALLOWED_EXTENSIONS = {
@@ -34,20 +35,17 @@ def upload_file(request):
         return Response({'error': 'File exceeds 10MB limit'}, status=status.HTTP_400_BAD_REQUEST)
     
     try:
-        # Upload to Cloudinary with public access
-        result = cloudinary.uploader.upload(
+        safe_name = os.path.basename((file.name or "upload").replace("\\", "/"))
+        storage_name = default_storage.save(
+            f"recall/{request.user.organization.slug}/{uuid.uuid4().hex}_{safe_name}",
             file,
-            folder=f"recall/{request.user.organization.slug}",
-            resource_type="auto",
-            type="upload",
-            access_mode="public"
         )
-        
+
         return Response({
-            'url': result['secure_url'],
-            'public_id': result['public_id'],
-            'format': result.get('format'),
-            'size': result.get('bytes'),
+            'url': request.build_absolute_uri(default_storage.url(storage_name)),
+            'public_id': storage_name,
+            'format': ext.lstrip('.'),
+            'size': file.size,
             'filename': file.name
         }, status=status.HTTP_201_CREATED)
     except Exception:
@@ -62,12 +60,17 @@ def delete_file(request, public_id):
             status=status.HTTP_429_TOO_MANY_REQUESTS,
         )
 
+    normalized_id = public_id.replace('\\', '/')
     org_prefix = f"recall/{request.user.organization.slug}/"
-    if not public_id.startswith(org_prefix):
+    if (
+        not normalized_id.startswith(org_prefix)
+        or normalized_id.startswith('/')
+        or '..' in normalized_id.split('/')
+    ):
         return Response({'error': 'Invalid file reference'}, status=status.HTTP_400_BAD_REQUEST)
 
     try:
-        cloudinary.uploader.destroy(public_id)
+        default_storage.delete(normalized_id)
         return Response({'message': 'File deleted'}, status=status.HTTP_200_OK)
     except Exception:
         return Response({'error': 'Delete failed'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

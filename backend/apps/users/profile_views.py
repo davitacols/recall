@@ -29,12 +29,11 @@ def update_profile(request):
         avatar_url = None
         if user.avatar:
             try:
-                from django.conf import settings
+                # Filesystem media is exposed by the stack's nginx under
+                # /media/. Convert the storage URL into the public URL returned
+                # to the browser.
                 if hasattr(user.avatar, 'url'):
-                    if settings.DEBUG or not hasattr(settings, 'AWS_STORAGE_BUCKET_NAME') or not settings.AWS_STORAGE_BUCKET_NAME:
-                        avatar_url = request.build_absolute_uri(user.avatar.url)
-                    else:
-                        avatar_url = user.avatar.url
+                    avatar_url = request.build_absolute_uri(user.avatar.url)
             except Exception as e:
                 print(f"Avatar URL error: {str(e)}")
         

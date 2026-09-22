@@ -14,6 +14,7 @@ urlpatterns = [
     path('outcomes/calibration/', views.team_calibration_analytics, name='team_calibration_analytics'),
     path('<int:decision_id>/related-sprints/', linking_views.decision_related_sprints, name='decision_related_sprints'),
     path('<int:decision_id>/', views.decision_detail, name='decision_detail'),
+    path('<int:decision_id>/rationale/', views.decision_rationale, name='decision_rationale'),
     path('<int:decision_id>/impact-trail/', views.decision_impact_trail, name='decision_impact_trail'),
     path('<int:decision_id>/replay-simulator/', views.decision_replay_simulator, name='decision_replay_simulator'),
     path('<int:decision_id>/replay-simulator/create-follow-up/', views.create_replay_followup_tasks, name='create_replay_followup_tasks'),
@@ -48,6 +49,7 @@ urlpatterns = [
     path('twins/<int:twin_id>/', intelligence_views.twin_detail, name='twin_detail'),
     # Workspace-wide scorecard + manual sweep trigger
     path('intelligence/overview/', intelligence_views.intelligence_overview, name='intelligence_overview'),
+    path('memory-health/', intelligence_views.memory_health, name='memory_health'),
     path('intelligence/sweep/', intelligence_views.trigger_intelligence_sweep, name='intelligence_sweep'),
     # Before-you-decide: similar past decisions with outcomes
     path('intelligence/similar/', intelligence_views.similar_decisions, name='intelligence_similar'),

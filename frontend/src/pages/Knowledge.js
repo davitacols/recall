@@ -21,6 +21,7 @@ import {
   Tabs,
 } from "../components/atlas";
 import { useAgentContextHint } from "../components/AgentDock";
+import { toPlainExcerpt } from "../components/RichText";
 
 const TYPE_FACETS = [
   { id: "all", label: "All" },
@@ -157,7 +158,7 @@ export default function Knowledge() {
   );
 
   return (
-    <div style={{ padding: "0 32px 32px" }}>
+    <div style={{ padding: "0 var(--page-x) 32px" }}>
       <PageHeader
         breadcrumb={[
           { label: "Knoledgr", to: "/" },
@@ -211,7 +212,7 @@ export default function Knowledge() {
 
       {error ? <SectionMessage tone="error" style={{ marginTop: 16 }}>{error}</SectionMessage> : null}
 
-      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 320px", gap: 32, marginTop: 16 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "var(--split-main)", gap: 32, marginTop: 16 }}>
         <section>
           {query.trim() ? (
             loading ? (
@@ -287,7 +288,7 @@ function ResultRow({ item }) {
             {item.status ? <Lozenge status={item.status} /> : null}
           </div>
           {item.snippet || item.description ? (
-            <p style={resultSnippet}>{(item.snippet || item.description || "").slice(0, 220)}</p>
+            <p style={resultSnippet}>{toPlainExcerpt(item.snippet || item.description, 220)}</p>
           ) : null}
           <div style={resultMeta}>
             <span>{item.project_name || item.project_slug || "Workspace"}</span>

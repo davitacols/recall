@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import { motion, useReducedMotion } from "framer-motion";
 import {
   ArrowLongRightIcon,
   ArrowRightIcon,
@@ -10,32 +11,59 @@ import {
   CodeBracketIcon,
   DocumentTextIcon,
   ChatBubbleLeftRightIcon,
-  LinkIcon,
   SparklesIcon,
 } from "@heroicons/react/24/outline";
 import BrandLogo from "../components/BrandLogo";
 import { useAuth } from "../hooks/useAuth";
 import "./Homepage.css";
 
+// Every tag here has to be something a buyer could ask us to demonstrate on a
+// call. "SSO ready" was not: a workspace can store IdP settings, but no SAML
+// assertion is ever consumed and no login path reads that configuration.
+// Sitting in a list of security properties, a reader takes it as "supports
+// SSO" — and it is the single claim most likely to be relied on in
+// procurement. Put it back when there is a login flow behind it.
 const SECURITY_TAGS = [
   "Role-based access",
-  "SSO ready",
   "Workspace isolation",
+  "Encrypted in transit",
   "Audit logs",
   "Source-grounded answers",
 ];
 
-const WORKS_WITH = [
-  { label: "Conversations", icon: ChatBubbleLeftRightIcon },
-  { label: "Decisions", icon: CheckCircleIcon },
-  { label: "Meetings", icon: CalendarIcon },
-  { label: "Tasks", icon: ClipboardDocumentListIcon },
-  { label: "Documents", icon: DocumentTextIcon },
-  { label: "GitHub", icon: CodeBracketIcon },
+/* Framed as the places reasoning already gets buried, not as product surfaces
+   we replace. Under the decision-memory positioning these are inputs, so the
+   page never invites a feature-by-feature comparison with Jira. */
+const SOURCES = [
+  { label: "Pull requests", icon: CodeBracketIcon },
+  { label: "Threads", icon: ChatBubbleLeftRightIcon },
+  { label: "Meeting notes", icon: CalendarIcon },
+  { label: "Design docs", icon: DocumentTextIcon },
+  { label: "Tickets", icon: ClipboardDocumentListIcon },
 ];
+
+/* ---------- Motion ----------
+ * One shared vocabulary so the page moves as a system rather than a pile of
+ * effects: things enter from 12px below, on the same easing, staggered by
+ * their reading order. Every variant respects prefers-reduced-motion via the
+ * `reduce` flag threaded down from the component.
+ */
+const EASE = [0.2, 0, 0, 1];
+
+const riseParent = (reduce, stagger = 0.07) => ({
+  hidden: {},
+  show: { transition: { staggerChildren: reduce ? 0 : stagger } },
+});
+
+const rise = (reduce) => ({
+  hidden: { opacity: 0, y: reduce ? 0 : 12 },
+  show: { opacity: 1, y: 0, transition: { duration: reduce ? 0 : 0.5, ease: EASE } },
+});
 
 /* ---------- Crafted CSS product mockups ---------- */
 
+/* Ask Recall stays supporting proof: the decision loop is the product, while
+   the assistant makes the accumulated evidence easy to retrieve. */
 function AskMock({ compact }) {
   return (
     <div className={`mk ${compact ? "mk-sm" : ""}`}>
@@ -51,8 +79,8 @@ function AskMock({ compact }) {
         <div className="mk-sources">
           <span className="mk-src-label">Sources</span>
           <span className="mk-chip">DEC-128</span>
-          <span className="mk-chip">Sprint 42 retro</span>
-          <span className="mk-chip">Roadmap brief</span>
+          <span className="mk-chip">PR #412</span>
+          <span className="mk-chip">Architecture brief</span>
         </div>
       </div>
     </div>
@@ -80,51 +108,123 @@ function DecisionMock() {
   );
 }
 
-function GraphMock() {
+function DecisionLoopMock({ compact = false }) {
+  const steps = [
+    { number: "01", label: "Predict", detail: "Deploy failures stay below 2%", value: "Target 2%" },
+    { number: "02", label: "Check", detail: "Observed after 30 days", value: "4.8%", drifted: true },
+    { number: "03", label: "Learn", detail: "Keep releases inside staffed windows", value: "Retro open" },
+  ];
+
   return (
-    <div className="mk mk-sm mk-graph">
-      <svg viewBox="0 0 320 170" preserveAspectRatio="xMidYMid meet">
-        <line x1="160" y1="85" x2="70" y2="42" />
-        <line x1="160" y1="85" x2="262" y2="48" />
-        <line x1="160" y1="85" x2="60" y2="132" />
-        <line x1="160" y1="85" x2="250" y2="132" />
-        <circle className="mk-node-hub" cx="160" cy="85" r="9" />
-        <circle className="mk-node" cx="70" cy="42" r="6" />
-        <circle className="mk-node" cx="262" cy="48" r="6" />
-        <circle className="mk-node" cx="60" cy="132" r="6" />
-        <circle className="mk-node" cx="250" cy="132" r="6" />
-      </svg>
-      <div className="mk-graph-labels">
-        <span className="mk-chip">Decision</span>
-        <span className="mk-chip">Project</span>
-        <span className="mk-chip">Owner</span>
-        <span className="mk-chip">Doc</span>
+    <div className={`mk mk-decision-loop ${compact ? "mk-sm" : ""}`}>
+      <div className="mk-row mk-row-top">
+        <span className="mk-tag">DEC-128</span>
+        <span className="mk-lozenge mk-lozenge-green">Learning</span>
+      </div>
+      <p className="mk-title">Move releases to Friday mornings</p>
+      <div className="mk-loop-list">
+        {steps.map((step) => (
+          <div className="mk-loop-step" key={step.number}>
+            <span className="mk-loop-index">{step.number}</span>
+            <span className="mk-loop-copy">
+              <strong>{step.label}</strong>
+              <span>{step.detail}</span>
+            </span>
+            <span className={`mk-loop-value ${step.drifted ? "is-drift" : ""}`}>{step.value}</span>
+          </div>
+        ))}
+      </div>
+      <div className="mk-loop-lesson">
+        <SparklesIcon aria-hidden="true" />
+        Lesson will surface on the next similar decision.
       </div>
     </div>
   );
 }
 
-function DocsMock() {
+
+function GitHubMock() {
   return (
     <div className="mk mk-sm">
-      <p className="mk-title">Rollout playbook</p>
-      <div className="mk-line w-95" />
-      <div className="mk-line w-80" />
-      <div className="mk-ref">
-        <DocumentTextIcon />
-        <span>References <strong>DEC-128</strong></span>
+      <div className="mk-row mk-row-top">
+        <span className="mk-tag">DEC-128</span>
+        <span className="mk-lozenge mk-lozenge-green">Decided</span>
       </div>
-      <div className="mk-line w-88" />
-      <div className="mk-line w-60" />
+      <p className="mk-title">Ship releases Friday mornings only</p>
+      <div className="mk-divider" />
+      <div className="mk-pr">
+        <CodeBracketIcon />
+        <span className="mk-pr-id">#412</span>
+        <span className="mk-pr-title">Move deploy window to Friday AM</span>
+        <span className="mk-lozenge mk-lozenge-merged">Merged</span>
+      </div>
+      <div className="mk-pr">
+        <CodeBracketIcon />
+        <span className="mk-pr-id">#418</span>
+        <span className="mk-pr-title">Update on-call rotation docs</span>
+        <span className="mk-lozenge mk-lozenge-merged">Merged</span>
+      </div>
     </div>
   );
 }
+
+function PullRequestDecisionArtifact() {
+  return (
+    <div className="hp-review-artifact" aria-label="A pull request linked to a Knoledgr decision">
+      <div className="hp-review-head">
+        <span className="hp-review-repo">acme / platform</span>
+        <span className="hp-review-number">pull / 412</span>
+        <span className="hp-review-state"><i aria-hidden="true" /> merged</span>
+      </div>
+
+      <div className="hp-review-main">
+        <div className="hp-review-title-row">
+          <span className="hp-review-type">pull request</span>
+          <span className="hp-review-branch">deploy-window → main</span>
+        </div>
+        <h3>Move deploy window to Friday AM</h3>
+        <p className="hp-review-summary">2 files changed <span>+18</span> <em>−4</em></p>
+
+        <div className="hp-review-thread">
+          <span className="hp-review-avatar">PN</span>
+          <div className="hp-review-comment">
+            <div className="hp-review-comment-meta">
+              <strong>priya-nair</strong>
+              <span>commented on line 86</span>
+            </div>
+            <p>Friday mornings give us a staffed recovery window if the rollout drifts.</p>
+          </div>
+        </div>
+
+        <div className="hp-review-link">
+          <span className="hp-review-link-label">Knoledgr · linked context</span>
+          <div className="hp-review-decision">
+            <span className="hp-review-decision-id">DEC-128</span>
+            <strong>Release inside staffed recovery windows</strong>
+          </div>
+          <dl>
+            <div><dt>Expected</dt><dd>Failures below 2%</dd></div>
+            <div><dt>Observed</dt><dd className="is-drift">4.8% · drift</dd></div>
+            <div><dt>Next review</dt><dd>24 Oct</dd></div>
+          </dl>
+        </div>
+      </div>
+
+      <div className="hp-review-foot">
+        <span>Context stays with the code.</span>
+        <strong>Lesson returns at the next decision →</strong>
+      </div>
+    </div>
+  );
+}
+
 
 export default function Homepage() {
   const { user } = useAuth();
   const [isScrolled, setIsScrolled] = useState(false);
-  const appEntryHref = user ? "/dashboard" : "/login";
+  const appEntryHref = user ? "/dashboard" : "/login?mode=signup";
   const revealRef = useRef(null);
+  const reduceMotion = useReducedMotion();
 
   useEffect(() => {
     const savedTheme = document.documentElement.getAttribute("data-theme");
@@ -141,49 +241,85 @@ export default function Homepage() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  // Scroll-reveal: fade + rise each [data-reveal] element as it enters the viewport.
+  // Scroll choreography. GSAP + ScrollTrigger replaces the hand-rolled
+  // IntersectionObserver: same [data-reveal] contract, but siblings that enter
+  // together are batched and staggered, so a row of cards arrives as a wave
+  // rather than four independent pops.
   useEffect(() => {
     const root = revealRef.current;
     if (!root) return undefined;
     const els = Array.from(root.querySelectorAll("[data-reveal]"));
-    if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    if (!els.length) return undefined;
+
+    if (
+      window.matchMedia &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
       els.forEach((el) => el.classList.add("is-revealed"));
       return undefined;
     }
-    const io = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add("is-revealed");
-            io.unobserve(entry.target);
-          }
-        });
-      },
-      { threshold: 0.14, rootMargin: "0px 0px -8% 0px" }
+
+    let ctx;
+    let cancelled = false;
+
+    // Code-split: GSAP only loads for visitors who reach this page, and never
+    // blocks first paint.
+    Promise.all([import("gsap"), import("gsap/ScrollTrigger")]).then(
+      ([{ gsap }, { ScrollTrigger }]) => {
+        if (cancelled) return;
+        gsap.registerPlugin(ScrollTrigger);
+
+        ctx = gsap.context(() => {
+          ScrollTrigger.batch(els, {
+            start: "top 88%",
+            once: true,
+            onEnter: (batch) => {
+              gsap.to(batch, {
+                opacity: 1,
+                y: 0,
+                duration: 0.62,
+                ease: "power3.out",
+                stagger: 0.09,
+                overwrite: true,
+                onComplete: () =>
+                  batch.forEach((el) => el.classList.add("is-revealed")),
+              });
+            },
+          });
+        }, root);
+      }
     );
-    els.forEach((el) => io.observe(el));
-    return () => io.disconnect();
+
+    return () => {
+      cancelled = true;
+      if (ctx) ctx.revert();
+    };
   }, []);
 
-  const tryLink = (route) => (user ? route : "/login");
+  const tryLink = (route) => (user ? route : appEntryHref);
 
   return (
     <div className="hp" ref={revealRef}>
       <header className={`hp-header ${isScrolled ? "hp-header-scrolled" : ""}`}>
         <div className="hp-container hp-header-row">
-          <Link to="/" className="hp-brand-link" aria-label="Knoledgr homepage">
-            <BrandLogo tone="warm" size="md" />
-          </Link>
+          <div className="hp-header-identity">
+            <Link to="/" className="hp-brand-link" aria-label="Knoledgr homepage">
+              <BrandLogo tone="warm" size="md" />
+            </Link>
+            <span className="hp-header-descriptor"><i aria-hidden="true" /> Decision memory</span>
+          </div>
           <nav className="hp-nav" aria-label="Public navigation">
-            <a href="#product">Product</a>
-            <a href="#how">How it works</a>
-            <Link to="/docs">Docs</Link>
-            <Link to="/partners">Partners</Link>
+            <a href="#product"><span>01</span> Product</a>
+            <a href="#how"><span>02</span> How it works</a>
+            <Link to="/docs"><span>03</span> Docs</Link>
+            <Link to="/partners"><span>04</span> Partners</Link>
           </nav>
           <div className="hp-header-actions">
             <Link to="/login" className="hp-text-link">Sign in</Link>
-            <Link to={appEntryHref} className="hp-button hp-button-primary">
-              {user ? "Open app" : "Get started"}
+            <Link to={appEntryHref} className="hp-button hp-button-primary hp-header-cta">
+              <CodeBracketIcon aria-hidden="true" />
+              <span className="hp-header-cta-desktop">{user ? "Open workspace" : "Connect GitHub"}</span>
+              <span className="hp-header-cta-mobile">{user ? "Open" : "Start free"}</span>
             </Link>
           </div>
         </div>
@@ -193,22 +329,30 @@ export default function Homepage() {
         {/* ---------- Hero ---------- */}
         <section className="hp-hero">
           <div className="hp-container hp-hero-inner">
-            <div className="hp-hero-text" data-reveal>
-              <Link to="/ask" className="hp-hero-badge">
-                <span className="hp-hero-badge-pill">New</span>
-                Source-grounded answers
-                <ArrowRightIcon aria-hidden="true" />
-              </Link>
-              <h1>
-                Your team already knows the answer.
+            <motion.div
+              className="hp-hero-text"
+              initial="hidden"
+              animate="show"
+              variants={riseParent(reduceMotion, 0.09)}
+            >
+              <motion.div variants={rise(reduceMotion)}>
+                <Link to={tryLink("/decisions")} className="hp-hero-badge">
+                  <span className="hp-hero-badge-pill">PR #412 → DEC-128</span>
+                  Decision context, without another meeting
+                  <ArrowRightIcon aria-hidden="true" />
+                </Link>
+              </motion.div>
+              <motion.h1 variants={rise(reduceMotion)}>
+                The commit says what.
                 <br />
-                <span className="hp-hero-accent">Knoledgr remembers where it is.</span>
-              </h1>
-              <p className="hp-hero-sub">
-                Pages, decisions, meetings, and tasks — connected. Ask anything and get an
-                answer from your own workspace, with the sources attached.
-              </p>
-              <div className="hp-actions">
+                <span className="hp-hero-accent">Keep the why with it.</span>
+              </motion.h1>
+              <motion.p className="hp-hero-sub" variants={rise(reduceMotion)}>
+                Knoledgr captures qualifying discussions around merged work, links them to
+                the decision behind it, and brings the result back when your team faces the
+                same tradeoff again.
+              </motion.p>
+              <motion.div className="hp-actions" variants={rise(reduceMotion)}>
                 <Link to={appEntryHref} className="hp-button hp-button-primary hp-button-large">
                   {user ? "Open workspace" : "Start free"}
                   <ArrowLongRightIcon aria-hidden="true" />
@@ -216,22 +360,27 @@ export default function Homepage() {
                 <a href="#product" className="hp-button hp-button-secondary hp-button-large">
                   See how it works
                 </a>
-              </div>
-              <ul className="hp-proof">
-                <li><CheckCircleIcon aria-hidden="true" /> No tagging required</li>
-                <li><CheckCircleIcon aria-hidden="true" /> Set up in a minute</li>
-              </ul>
-            </div>
+              </motion.div>
+              <motion.ul className="hp-proof" variants={rise(reduceMotion)}>
+                <li><CheckCircleIcon aria-hidden="true" /> GitHub App, no migration</li>
+                <li><CheckCircleIcon aria-hidden="true" /> Free while we're in beta</li>
+              </motion.ul>
+            </motion.div>
 
-            <div className="hp-hero-mock" data-reveal>
-              <AskMock />
-            </div>
+            <motion.div
+              className="hp-hero-mock"
+              initial={{ opacity: 0, y: reduceMotion ? 0 : 18 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: reduceMotion ? 0 : 0.6, ease: EASE, delay: reduceMotion ? 0 : 0.25 }}
+            >
+              <PullRequestDecisionArtifact />
+            </motion.div>
           </div>
 
           <div className="hp-container hp-works">
-            <p className="hp-works-label">One workspace, every kind of work</p>
+            <p className="hp-works-label">Context in. Decision memory out.</p>
             <div className="hp-works-row">
-              {WORKS_WITH.map(({ label, icon: Icon }) => (
+              {SOURCES.map(({ label, icon: Icon }) => (
                 <span key={label} className="hp-works-chip"><Icon aria-hidden="true" /> {label}</span>
               ))}
             </div>
@@ -242,24 +391,27 @@ export default function Homepage() {
         <section id="product" className="hp-product">
           <div className="hp-container">
             <div className="hp-product-intro" data-reveal>
-              <span className="hp-eyebrow">Product</span>
-              <h2>Four surfaces, one workspace.</h2>
-              <p>Each one solves a real problem teams hit every week. Skim them and pick where to start.</p>
+              <span className="hp-eyebrow">How it holds together</span>
+              <h2>A learning loop, not another place to do the work.</h2>
+              <p>
+                Capture the reasoning, check the predicted outcome, and bring the lesson
+                forward when the next similar decision starts.
+              </p>
             </div>
 
             <div className="hp-bento">
               {/* Flagship — wide */}
-              <Link to={tryLink("/ask")} className="hp-bento-card hp-bento-wide" data-reveal>
+              <Link to={tryLink("/decisions/intelligence")} className="hp-bento-card hp-bento-wide" data-reveal>
                 <div className="hp-bento-copy">
-                  <span className="hp-feature-eyebrow"><SparklesIcon aria-hidden="true" /> Ask Recall</span>
-                  <h3>Ask anything. Get the answer with sources stapled to it.</h3>
+                  <span className="hp-feature-eyebrow"><SparklesIcon aria-hidden="true" /> Decision Intelligence</span>
+                  <h3>Turn every important choice into a lesson the team can reuse.</h3>
                   <p className="hp-bento-body">
-                    Type a plain-English question. Recall pulls from your pages, decisions, meetings,
-                    and tasks, then shows where each part of the answer came from.
+                    Log what you expect, then record what happened. Knoledgr compares the two,
+                    flags drift, and opens a retrospective before the context disappears.
                   </p>
-                  <span className="hp-inline-link">{user ? "Open Ask Recall" : "Try Ask Recall"} <ArrowRightIcon aria-hidden="true" /></span>
+                  <span className="hp-inline-link">{user ? "Open Decision Intelligence" : "Start learning from decisions"} <ArrowRightIcon aria-hidden="true" /></span>
                 </div>
-                <div className="hp-bento-mock"><AskMock compact /></div>
+                <div className="hp-bento-mock"><DecisionLoopMock compact /></div>
               </Link>
 
               {/* Decisions */}
@@ -275,31 +427,33 @@ export default function Homepage() {
                 <div className="hp-bento-mock"><DecisionMock /></div>
               </Link>
 
-              {/* Knowledge graph */}
-              <Link to={tryLink("/knowledge/graph")} className="hp-bento-card" data-reveal style={{ "--rd": "180ms" }}>
+              {/* GitHub is the low-friction adoption path: one connection gives
+                  the decision loop evidence without asking teams to migrate work. */}
+              <Link to={tryLink("/integrations/github")} className="hp-bento-card" data-reveal style={{ "--rd": "180ms" }}>
                 <div className="hp-bento-copy">
-                  <span className="hp-feature-eyebrow"><LinkIcon aria-hidden="true" /> Knowledge Graph</span>
-                  <h3>Your workspace, finally connected.</h3>
+                  <span className="hp-feature-eyebrow"><CodeBracketIcon aria-hidden="true" /> GitHub</span>
+                  <h3>The decision, next to the code that shipped it.</h3>
                   <p className="hp-bento-body">
-                    Docs link to decisions, decisions link to projects, projects link to owners.
+                    Capture meaningful discussions from merged pull requests, then link
+                    the relevant PR to the decision it informed. Nothing to migrate.
                   </p>
-                  <span className="hp-inline-link">{user ? "Open Graph" : "Try the graph"} <ArrowRightIcon aria-hidden="true" /></span>
+                  <span className="hp-inline-link">Connect GitHub <ArrowRightIcon aria-hidden="true" /></span>
                 </div>
-                <div className="hp-bento-mock"><GraphMock /></div>
+                <div className="hp-bento-mock"><GitHubMock /></div>
               </Link>
 
-              {/* Documents — wide reversed */}
-              <Link to={tryLink("/business/documents")} className="hp-bento-card hp-bento-wide hp-bento-rev" data-reveal>
+              {/* Ask Recall — wide reversed */}
+              <Link to={tryLink("/ask")} className="hp-bento-card hp-bento-wide hp-bento-rev" data-reveal>
                 <div className="hp-bento-copy">
-                  <span className="hp-feature-eyebrow"><DocumentTextIcon aria-hidden="true" /> Documents</span>
-                  <h3>Notes, specs, briefs — searchable the way they should be.</h3>
+                  <span className="hp-feature-eyebrow"><SparklesIcon aria-hidden="true" /> Ask Recall</span>
+                  <h3>Ask what happened, and see the evidence behind the answer.</h3>
                   <p className="hp-bento-body">
-                    Write in a clean editor. Reference other docs, decisions, and people. When Recall
-                    answers a question, your docs are the source.
+                    Ask Recall pulls from decisions, merged pull-request discussions, and linked
+                    evidence, then shows which sources support the response.
                   </p>
-                  <span className="hp-inline-link">{user ? "Open Documents" : "Try Documents"} <ArrowRightIcon aria-hidden="true" /></span>
+                  <span className="hp-inline-link">{user ? "Open Ask Recall" : "Try Ask Recall"} <ArrowRightIcon aria-hidden="true" /></span>
                 </div>
-                <div className="hp-bento-mock"><DocsMock /></div>
+                <div className="hp-bento-mock"><AskMock compact /></div>
               </Link>
             </div>
           </div>
@@ -310,32 +464,32 @@ export default function Homepage() {
           <div className="hp-container hp-how-grid">
             <div className="hp-how-copy" data-reveal>
               <span className="hp-eyebrow hp-eyebrow-light">How it works</span>
-              <h2>Write the way you already write. Recall does the connecting.</h2>
+              <h2>Keep working normally. Knoledgr closes the learning loop.</h2>
               <p>
-                You don't need to tag anything or fill out a form. Recall reads what your team
-                writes, links it together, and makes the whole thing askable.
+                GitHub and your workspace provide the context. Your team adds the expected
+                result, and Knoledgr makes sure the outcome becomes reusable knowledge.
               </p>
             </div>
             <ol className="hp-steps">
               <li data-reveal>
                 <span className="hp-step-num">01</span>
                 <div>
-                  <h4>You work like normal</h4>
-                  <p>Docs, meeting notes, tickets, decisions. Whatever you already do.</p>
+                  <h4>Connect GitHub</h4>
+                  <p>Capture qualifying discussions from merged pull requests as reusable context.</p>
                 </div>
               </li>
               <li data-reveal style={{ "--rd": "110ms" }}>
                 <span className="hp-step-num">02</span>
                 <div>
-                  <h4>Recall builds the graph</h4>
-                  <p>Every piece of work gets linked to the people, projects, and decisions it touches.</p>
+                  <h4>Record the expected outcome</h4>
+                  <p>Attach a measurable prediction and review date to the decision while context is fresh.</p>
                 </div>
               </li>
               <li data-reveal style={{ "--rd": "220ms" }}>
                 <span className="hp-step-num">03</span>
                 <div>
-                  <h4>Anyone can ask</h4>
-                  <p>"What changed last week?" "Why did we pick Postgres?" Answer comes back with receipts.</p>
+                  <h4>Check reality and learn</h4>
+                  <p>Drift opens a retrospective, and its lesson appears when a similar decision is drafted.</p>
                 </div>
               </li>
             </ol>
@@ -351,7 +505,7 @@ export default function Homepage() {
                 <span className="hp-quote-tag">Recall</span>
                 <p>
                   Two weeks ago the team agreed to ship Friday mornings only, pushed by the on-call
-                  rotation change. Owner: Priya. Linked to DEC-128 and the Sprint 42 retro.
+                  rotation change. Owner: Priya. Linked to DEC-128 and PR #412.
                 </p>
               </div>
             </blockquote>
@@ -373,8 +527,8 @@ export default function Homepage() {
         {/* ---------- CTA ---------- */}
         <section className="hp-cta">
           <div className="hp-container hp-cta-inner" data-reveal>
-            <h2>Stop re-explaining the same decisions.</h2>
-            <p>Free while we're in beta. Set up takes about a minute.</p>
+            <h2>Make the next decision better than the last one.</h2>
+            <p>Free while we're in beta. Connect one repository to start.</p>
             <div className="hp-actions hp-actions-center">
               <Link to={appEntryHref} className="hp-button hp-button-primary hp-button-xl">
                 {user ? "Open Knoledgr" : "Get started"}
@@ -389,18 +543,38 @@ export default function Homepage() {
       </main>
 
       <footer className="hp-footer">
-        <div className="hp-container hp-footer-row">
+        <div className="hp-container hp-footer-main">
           <div className="hp-footer-brand">
-            <BrandLogo tone="blue" size="sm" />
-            <span>© {new Date().getFullYear()} Knoledgr</span>
+            <BrandLogo tone="warm" size="md" />
+            <p>Decision memory for teams that ship software.</p>
           </div>
-          <div className="hp-footer-links">
-            <Link to="/feedback">Feedback</Link>
-            <Link to="/partners">Partners</Link>
+
+          <nav className="hp-footer-index" aria-label="Product links">
+            <span className="hp-footer-label">Explore / 04</span>
+            <Link to={tryLink("/decisions")}><span>01</span> Decisions <ArrowUpRightIcon aria-hidden="true" /></Link>
+            <Link to={tryLink("/integrations/github")}><span>02</span> GitHub <ArrowUpRightIcon aria-hidden="true" /></Link>
+            <Link to={tryLink("/ask")}><span>03</span> Ask Recall <ArrowUpRightIcon aria-hidden="true" /></Link>
+            <Link to="/docs"><span>04</span> Docs <ArrowUpRightIcon aria-hidden="true" /></Link>
+          </nav>
+
+          <div className="hp-footer-status">
+            <span className="hp-footer-label">Current release</span>
+            <div className="hp-footer-status-line"><i aria-hidden="true" /> Public beta</div>
+            <p>GitHub decision context is available now. Start with one repository.</p>
+            <div className="hp-footer-reference-links">
+              <Link to="/feedback">Feedback</Link>
+              <Link to="/partners">Partners</Link>
+              <Link to="/security-annex">Security</Link>
+            </div>
+          </div>
+        </div>
+
+        <div className="hp-container hp-footer-bottom">
+          <span>&copy; {new Date().getFullYear()} Knoledgr</span>
+          <span className="hp-footer-coordinate">github → decision → outcome → lesson</span>
+          <div>
             <Link to="/privacy">Privacy</Link>
             <Link to="/terms">Terms</Link>
-            <Link to="/security-annex">Security</Link>
-            <Link to="/docs">Docs</Link>
           </div>
         </div>
       </footer>

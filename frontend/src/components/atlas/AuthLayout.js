@@ -58,8 +58,8 @@ function DefaultSidePanel() {
         </span>
         <h2>Your team already knows the answer.</h2>
         <p>
-          Knoledgr keeps pages, decisions, meetings, and tasks connected — and gives
-          you the source behind every answer.
+          Knoledgr connects decisions to the pull requests, discussions, and evidence
+          behind them — then gives you the source behind every answer.
         </p>
       </div>
 
@@ -74,8 +74,8 @@ function DefaultSidePanel() {
         </p>
         <div className="auth-mock-chips">
           <span>DEC-128</span>
-          <span>Sprint 42 retro</span>
-          <span>Roadmap brief</span>
+          <span>PR #412</span>
+          <span>Architecture brief</span>
         </div>
       </div>
 

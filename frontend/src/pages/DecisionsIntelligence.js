@@ -148,7 +148,7 @@ export default function DecisionsIntelligence() {
         />
       </div>
 
-      <div style={{ padding: "0 32px" }}>
+      <div style={{ padding: "0 var(--page-x)" }}>
         <PageHeader
           title={
             <span style={{ display: "inline-flex", alignItems: "center", gap: 12 }}>

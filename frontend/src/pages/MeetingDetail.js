@@ -133,7 +133,7 @@ export default function MeetingDetail() {
   const end = new Date(new Date(meeting.meeting_date).getTime() + (meeting.duration_minutes || 60) * 60000);
 
   return (
-    <div style={{ padding: "0 32px 32px" }}>
+    <div style={{ padding: "0 var(--page-x) 32px" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, paddingTop: 24 }}>
         <IconButton icon={<ArrowLeftIcon style={{ width: 16, height: 16 }} />} label="Back" onClick={() => navigate(-1)} />
         <Breadcrumb

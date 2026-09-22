@@ -15,6 +15,7 @@ class Notification(models.Model):
         ('reminder', 'Reminder'),
         ('badge', 'Badge Earned'),
         ('automation', 'Automation'),
+        ('capture', 'Captured'),
         ('message', 'Message'),
         ('system', 'System'),
     ]

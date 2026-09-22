@@ -7,7 +7,6 @@ import {
   SparklesIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
-import api from "../services/api";
 import { useAuth } from "../hooks/useAuth";
 import { useTheme } from "../utils/ThemeAndAccessibility";
 import { getUnifiedNavPalette } from "../utils/projectUi";
@@ -20,7 +19,11 @@ import {
   isNavItemActive,
 } from "./unifiedNavConfig";
 
-export const MobileNav = ({ onSearchOpen }) => {
+// The Search tab that used to sit here called `onSearchOpen`, a prop that was
+// never passed — UnifiedLayout mounts this as <MobileNav /> — so the tab did
+// nothing at all while taking a fifth of the bar and squeezing the four real
+// tabs down to 9px labels. Search is in the top bar on every screen size.
+export const MobileNav = () => {
   const location = useLocation();
   const { darkMode } = useTheme();
   const {
@@ -38,7 +41,6 @@ export const MobileNav = ({ onSearchOpen }) => {
   const [requestingCodeOrgSlug, setRequestingCodeOrgSlug] = useState(null);
   const [switchingOrgSlug, setSwitchingOrgSlug] = useState(null);
   const [workspaceError, setWorkspaceError] = useState("");
-  const [installedApps, setInstalledApps] = useState([]);
   const [experienceMode, setExperienceMode] = useState(
     localStorage.getItem("ui_experience_mode") || "standard"
   );
@@ -104,20 +106,7 @@ export const MobileNav = ({ onSearchOpen }) => {
       setWorkspaceLoading(false);
     };
 
-    const loadInstalledApps = async () => {
-      try {
-        const response = await api.get("/api/organizations/enterprise/marketplace/apps/");
-        if (!active) return;
-        const apps = Array.isArray(response.data) ? response.data : [];
-        setInstalledApps(apps.filter((app) => app.installed));
-      } catch {
-        if (!active) return;
-        setInstalledApps([]);
-      }
-    };
-
     loadWorkspaces();
-    loadInstalledApps();
 
     return () => {
       active = false;
@@ -133,11 +122,10 @@ export const MobileNav = ({ onSearchOpen }) => {
   } = useMemo(
     () =>
       buildUnifiedNavModel({
-        user,
         experienceMode,
-        installedApps,
+        canManageIntegrations: user?.role === "admin",
       }),
-    [experienceMode, installedApps, user]
+    [experienceMode, user?.role]
   );
 
   const workspaceName = formatWorkspaceName(user?.organization_slug);
@@ -360,20 +348,6 @@ export const MobileNav = ({ onSearchOpen }) => {
             );
           })}
 
-          <button
-            type="button"
-            onClick={onSearchOpen}
-            style={{
-              ...mobileNavItem,
-              ...(isPhone ? mobileNavItemPhone : null),
-              color: palette.muted,
-              background: "transparent",
-              border: "1px solid transparent",
-            }}
-          >
-            <MagnifyingGlassIcon style={icon20} />
-            <span>Search</span>
-          </button>
 
           <button
             type="button"
@@ -662,16 +636,16 @@ const mobileNavItem = {
   minHeight: 48,
   borderRadius: 16,
   textDecoration: "none",
-  fontSize: 10,
-  fontWeight: 700,
+  fontSize: 12,
+  fontWeight: 650,
   lineHeight: 1.1,
 };
 
 const mobileNavItemPhone = {
-  minHeight: 46,
+  minHeight: 50,
   borderRadius: 14,
-  fontSize: 9,
-  gap: 3,
+  fontSize: 11,
+  gap: 4,
 };
 
 const menuOverlay = {
@@ -737,8 +711,8 @@ const menuHeaderText = {
 
 const menuHeaderEyebrow = {
   margin: 0,
-  fontSize: 10,
-  fontWeight: 700,
+  fontSize: 12,
+  fontWeight: 650,
   letterSpacing: "0.08em",
   textTransform: "uppercase",
   lineHeight: 1,
@@ -807,8 +781,8 @@ const askRecallText = {
 };
 
 const askRecallEyebrow = {
-  fontSize: 10,
-  fontWeight: 700,
+  fontSize: 12,
+  fontWeight: 650,
   letterSpacing: "0.08em",
   textTransform: "uppercase",
   lineHeight: 1,
@@ -840,8 +814,8 @@ const sectionCard = {
 
 const sectionTitle = {
   margin: 0,
-  fontSize: 10,
-  fontWeight: 700,
+  fontSize: 12,
+  fontWeight: 650,
   letterSpacing: "0.08em",
   textTransform: "uppercase",
   lineHeight: 1,
@@ -877,15 +851,18 @@ const menuLeafBody = {
   gap: 3,
 };
 
+// The desktop sidebar renders these same links at 16px. There is no reason
+// the phone — held further from the eye, tapped rather than clicked — should
+// get 14px titles over 11px descriptions.
 const menuLeafTitle = {
-  fontSize: 14,
-  fontWeight: 700,
-  lineHeight: 1.15,
+  fontSize: 16,
+  fontWeight: 650,
+  lineHeight: 1.25,
 };
 
 const menuLeafMeta = {
-  fontSize: 11,
-  lineHeight: 1.35,
+  fontSize: 13,
+  lineHeight: 1.4,
 };
 
 const menuGroupCard = {
@@ -910,8 +887,8 @@ const menuCount = {
   height: 24,
   padding: "0 8px",
   borderRadius: 999,
-  fontSize: 10,
-  fontWeight: 700,
+  fontSize: 12,
+  fontWeight: 650,
   lineHeight: 1,
 };
 
@@ -947,8 +924,8 @@ const menuSubLabel = {
 };
 
 const menuSubMeta = {
-  fontSize: 10,
-  fontWeight: 700,
+  fontSize: 12,
+  fontWeight: 650,
   lineHeight: 1,
   flexShrink: 0,
 };
@@ -1002,8 +979,8 @@ const currentTag = {
   width: "fit-content",
   borderRadius: 999,
   padding: "5px 10px",
-  fontSize: 10,
-  fontWeight: 700,
+  fontSize: 12,
+  fontWeight: 650,
   letterSpacing: "0.06em",
   textTransform: "uppercase",
 };

@@ -134,6 +134,7 @@ export default function SecurityAnnex() {
       summaryCards={summaryCards}
       sections={sections}
       footerLinks={[
+        { href: "/github-data-handling", label: "GitHub Data Handling" },
         { href: "/privacy", label: "Privacy Notice" },
         { href: "/terms", label: "Terms of Service" },
         { href: "/feedback", label: "Feedback" },

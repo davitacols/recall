@@ -1,11 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
+  ArrowDownTrayIcon,
   ArrowRightIcon,
   CheckCircleIcon,
-  ChatBubbleLeftIcon,
-  CubeIcon,
-  DocumentTextIcon,
+  ChatBubbleLeftRightIcon,
+  CodeBracketSquareIcon,
+  DocumentCheckIcon,
   RocketLaunchIcon,
   SparklesIcon,
 } from "@heroicons/react/24/outline";
@@ -20,34 +21,49 @@ import {
 
 const FALLBACK_STEPS = [
   {
-    icon: SparklesIcon,
-    title: "Try Ask Recall",
-    description: "Ask anything about your workspace — recall cites sources from team memory.",
+    id: "connect_github",
+    title: "Connect GitHub",
+    description: "Install the Knoledgr GitHub App and choose only the repositories this workspace may read.",
+    to: "/integrations/github",
+    cta: "Connect GitHub",
+  },
+  {
+    id: "enable_repository",
+    title: "Enable a repository",
+    description: "Select one repository for decision capture. Repositories you do not enable stay out of Knoledgr.",
+    to: "/integrations/github",
+    cta: "Choose repository",
+  },
+  {
+    id: "capture_discussion",
+    title: "Capture a pull-request discussion",
+    description: "Import past merged pull requests or merge a new PR with a substantive team discussion.",
+    to: "/integrations/github",
+    cta: "Import PR history",
+  },
+  {
+    id: "record_decision",
+    title: "Turn the discussion into a decision",
+    description: "Review a captured conversation and preserve the choice, rationale, and source evidence.",
+    to: "/conversations",
+    cta: "Review conversations",
+  },
+  {
+    id: "ask_recall",
+    title: "Ask Recall why it happened",
+    description: "Ask a question about the decision and verify that the answer cites workspace evidence.",
     to: "/ask",
     cta: "Open Ask Recall",
   },
-  {
-    icon: CubeIcon,
-    title: "Create your first project",
-    description: "Start tracking work with boards, backlogs, and sprints.",
-    to: "/projects?new=1",
-    cta: "Create project",
-  },
-  {
-    icon: DocumentTextIcon,
-    title: "Capture a page",
-    description: "Write your first Confluence-style page so the team can find it later.",
-    to: "/business/documents?new=1",
-    cta: "Create page",
-  },
-  {
-    icon: ChatBubbleLeftIcon,
-    title: "Invite teammates",
-    description: "Add the people you collaborate with.",
-    to: "/settings#team",
-    cta: "Invite people",
-  },
 ];
+
+const STEP_ICONS = {
+  connect_github: CodeBracketSquareIcon,
+  enable_repository: CodeBracketSquareIcon,
+  capture_discussion: ArrowDownTrayIcon,
+  record_decision: DocumentCheckIcon,
+  ask_recall: ChatBubbleLeftRightIcon,
+};
 
 export default function Onboarding() {
   const [data, setData] = useState(null);
@@ -65,17 +81,26 @@ export default function Onboarding() {
   }, []);
 
   const steps = useMemo(() => {
-    if (Array.isArray(data?.steps) && data.steps.length) {
-      return data.steps.map((s) => ({
-        icon: SparklesIcon,
+    const apiSteps = Array.isArray(data?.steps) && data.steps.length
+      ? data.steps
+      : data?.onboarding_progress?.checklist;
+
+    if (Array.isArray(apiSteps) && apiSteps.length) {
+      return apiSteps.map((s) => ({
+        id: s.id,
+        icon: STEP_ICONS[s.id] || SparklesIcon,
         title: s.title || s.label,
         description: s.description,
-        to: s.url || s.path || "/dashboard",
+        to: s.url || s.path || s.href || "/dashboard",
         cta: s.cta || "Open",
-        completed: s.completed,
+        completed: Boolean(s.completed ?? s.complete),
       }));
     }
-    return FALLBACK_STEPS;
+    return FALLBACK_STEPS.map((step) => ({
+      ...step,
+      icon: STEP_ICONS[step.id] || SparklesIcon,
+      completed: false,
+    }));
   }, [data]);
 
   const completed = steps.filter((s) => s.completed).length;
@@ -91,7 +116,7 @@ export default function Onboarding() {
       <PageHeader
         breadcrumb={[{ label: "Knoledgr", to: "/" }, { label: "Get started" }]}
         title={data?.organization_name ? `Welcome to ${data.organization_name}` : "Welcome to Knoledgr"}
-        subtitle="A few steps to make this workspace useful from day one."
+        subtitle="Connect one repository, preserve one decision, and prove that your team can find the why later."
         actions={
           <Button appearance="primary" iconBefore={<RocketLaunchIcon style={{ width: 14, height: 14 }} />} onClick={() => (window.location.href = "/dashboard")}>
             Skip & explore
@@ -116,7 +141,7 @@ export default function Onboarding() {
         {steps.map((s, i) => {
           const Icon = s.icon;
           return (
-            <li key={i} style={stepRow}>
+            <li key={s.id || i} style={stepRow}>
               <span style={{ ...stepIcon, color: s.completed ? "var(--g500)" : "var(--b400)" }}>
                 {s.completed ? <CheckCircleIcon style={{ width: 20, height: 20 }} /> : <Icon style={{ width: 20, height: 20 }} />}
               </span>

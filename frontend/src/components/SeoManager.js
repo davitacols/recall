@@ -165,6 +165,20 @@ function resolveMeta(pathname) {
     };
   }
 
+  if (pathname === "/github-data-handling") {
+    const title = `GitHub Data Handling | ${BRAND}`;
+    const description =
+      "See what the Knoledgr GitHub App reads, stores, sends for AI processing, and how repository access, export, retention, and pilot deletion work.";
+    return {
+      title,
+      description,
+      robots: "index,follow",
+      canonicalPath: "/github-data-handling",
+      ogType: "article",
+      structuredData: [webPageSchema(title, description, "/github-data-handling")],
+    };
+  }
+
   if (pathname === "/privacy") {
     const title = `Privacy Notice | ${BRAND}`;
     const description =

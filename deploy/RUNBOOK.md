@@ -9,6 +9,9 @@ Everything here runs **on the VPS**, over SSH. None of it works from a
 PowerShell prompt on Windows: `deploy.sh` is a shell script, and the compose
 file at the repo root is a different stack that has no `backend` service.
 
+Before admitting a pilot workspace, complete the operational and restore checks
+in [PILOT_READINESS.md](PILOT_READINESS.md).
+
 ## The prefix
 
 Every command below assumes these two lines first. Set them once per session.

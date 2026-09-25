@@ -42,6 +42,7 @@ const Files = lazy(() => import("./pages/Files"));
 const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
 const GoalDetail = lazy(() => import("./pages/GoalDetail"));
 const Goals = lazy(() => import("./pages/Goals"));
+const GitHubDataHandling = lazy(() => import("./pages/GitHubDataHandling"));
 const Homepage = lazy(() => import("./pages/Homepage"));
 const ImportExport = lazy(() => import("./pages/ImportExport"));
 const Insights = lazy(() => import("./pages/Insights"));
@@ -140,6 +141,7 @@ const PUBLIC_ROUTES = [
   { path: "/docs/*", element: <Documentation /> },
   { path: "/feedback", element: <Feedback /> },
   { path: "/partners", element: <Partners /> },
+  { path: "/github-data-handling", element: <GitHubDataHandling /> },
   { path: "/privacy", element: <PrivacyEnterprise /> },
   { path: "/terms", element: <TermsEnterprise /> },
   { path: "/security-annex", element: <SecurityAnnex /> },
@@ -155,6 +157,7 @@ const PUBLIC_ROUTE_PATHS = new Set([
   "/home",
   "/feedback",
   "/partners",
+  "/github-data-handling",
   "/privacy",
   "/terms",
   "/security-annex",

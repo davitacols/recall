@@ -1135,7 +1135,7 @@ def memory_score(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def onboarding_package(request):
-    """Generate onboarding package for new employees"""
+    """Return the decision-memory setup path for the current workspace."""
     org = request.user.organization
     user = request.user
     
@@ -1172,49 +1172,95 @@ def onboarding_package(request):
             keyword_counts[keyword] = keyword_counts.get(keyword, 0) + 1
     
     trending = sorted(keyword_counts.items(), key=lambda x: x[1], reverse=True)[:10]
-    task_count = Task.objects.filter(organization=org).count() if Task is not None else 0
-    assigned_task_count = Task.objects.filter(organization=org, assigned_to=user).exclude(status='done').count() if Task is not None else 0
-    document_count = Document.objects.filter(organization=org).count() if Document is not None else 0
-    decision_count = Decision.objects.filter(organization=org).count()
-    conversation_count = Conversation.objects.filter(organization=org).count()
-    integration_count = 0
-    try:
-        integration_count += getattr(org, 'github_integrations', None).count() if hasattr(org, 'github_integrations') else 0
-        integration_count += getattr(org, 'jira_integrations', None).count() if hasattr(org, 'jira_integrations') else 0
-        integration_count += getattr(org, 'slack_integrations', None).count() if hasattr(org, 'slack_integrations') else 0
-    except Exception:
-        integration_count = 0
-    checklist = [
+    # The launch product starts in GitHub, not in the retired project-management
+    # surface.  Count both an installation owned by this workspace and a repo
+    # assigned to it from a shared installation.  The latter is required for the
+    # supported one-installation/multiple-workspaces flow.
+    from apps.integrations.github_app_models import GitHubAppInstallation, GitHubRepo
+    from apps.organizations.auditlog_models import AuditLog
+
+    active_installations = GitHubAppInstallation.objects.filter(
+        organization=org,
+        suspended_at__isnull=True,
+        revoked_at__isnull=True,
+    )
+    workspace_repos = GitHubRepo.objects.filter(
+        organization=org,
+        installation__suspended_at__isnull=True,
+        installation__revoked_at__isnull=True,
+    )
+    github_connected = active_installations.exists() or workspace_repos.exists()
+    enabled_repo_count = workspace_repos.filter(is_enabled_for_decisions=True).count()
+    captured_conversation_count = Conversation.objects.filter(
+        organization=org,
+        source=Conversation.SOURCE_GITHUB_PR,
+    ).count()
+    github_decision_count = Decision.objects.filter(
+        organization=org,
+        conversation__source=Conversation.SOURCE_GITHUB_PR,
+    ).count()
+    recall_query_count = AuditLog.objects.filter(
+        organization=org,
+        resource_type='agi_copilot_query',
+    ).count()
+
+    steps = [
+        {
+            'id': 'connect_github',
+            'title': 'Connect GitHub',
+            'description': 'Install the Knoledgr GitHub App and choose only the repositories this workspace may read.',
+            'completed': github_connected,
+            'path': '/integrations/github',
+            'cta': 'Connect GitHub',
+        },
+        {
+            'id': 'enable_repository',
+            'title': 'Enable a repository',
+            'description': 'Select one repository for decision capture. Knoledgr will ignore repositories that are not enabled.',
+            'completed': enabled_repo_count > 0,
+            'path': '/integrations/github',
+            'cta': 'Choose repository',
+        },
+        {
+            'id': 'capture_discussion',
+            'title': 'Capture a pull-request discussion',
+            'description': 'Import past merged pull requests or merge a new PR with a substantive team discussion.',
+            'completed': captured_conversation_count > 0,
+            'path': '/integrations/github',
+            'cta': 'Import PR history',
+        },
+        {
+            'id': 'record_decision',
+            'title': 'Turn the discussion into a decision',
+            'description': 'Review a captured conversation and preserve the choice, rationale, and source evidence.',
+            'completed': github_decision_count > 0,
+            'path': '/conversations',
+            'cta': 'Review conversations',
+        },
         {
             'id': 'ask_recall',
-            'label': 'Ask Recall has workspace context',
-            'description': 'Create at least one conversation, decision, task, or document so answers have evidence.',
-            'complete': any([conversation_count, decision_count, task_count, document_count]),
-            'href': '/ask',
-        },
-        {
-            'id': 'tasks',
-            'label': 'Execution work exists',
-            'description': 'Create or assign tasks so Ask Recall can prioritize next work.',
-            'complete': assigned_task_count > 0 or task_count > 0,
-            'href': '/business/tasks',
-        },
-        {
-            'id': 'documents',
-            'label': 'Knowledge is captured',
-            'description': 'Save drafts, procedures, reports, or plans into Documents.',
-            'complete': document_count > 0,
-            'href': '/business/documents',
-        },
-        {
-            'id': 'integrations',
-            'label': 'Work sources are connected',
-            'description': 'Connect GitHub, Jira, Slack, or calendar sources when available.',
-            'complete': integration_count > 0,
-            'href': '/integrations',
+            'title': 'Ask Recall why it happened',
+            'description': 'Ask a question about the decision and verify that the answer cites the workspace evidence.',
+            'completed': recall_query_count > 0,
+            'path': '/ask',
+            'cta': 'Open Ask Recall',
         },
     ]
-    completed_steps = len([item for item in checklist if item['complete']])
+    completed_steps = len([item for item in steps if item['completed']])
+
+    # Keep the original nested checklist contract for older clients while the
+    # web app consumes the clearer top-level `steps` representation.
+    checklist = [
+        {
+            'id': item['id'],
+            'label': item['title'],
+            'description': item['description'],
+            'complete': item['completed'],
+            'href': item['path'],
+            'cta': item['cta'],
+        }
+        for item in steps
+    ]
     
     return Response({
         'key_decisions': [{
@@ -1238,10 +1284,11 @@ def onboarding_package(request):
             'created_at': c.created_at
         } for c in recent_updates],
         'trending_topics': [{'topic': t[0], 'count': t[1]} for t in trending],
+        'steps': steps,
         'onboarding_progress': {
             'completed_steps': completed_steps,
-            'total_steps': len(checklist),
-            'percent': round((completed_steps / max(1, len(checklist))) * 100),
+            'total_steps': len(steps),
+            'percent': round((completed_steps / max(1, len(steps))) * 100),
             'checklist': checklist,
         },
         'organization_name': org.name

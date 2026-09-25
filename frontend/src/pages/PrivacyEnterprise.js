@@ -161,6 +161,7 @@ export default function PrivacyEnterprise() {
       summaryCards={summaryCards}
       sections={sections}
       footerLinks={[
+        { href: "/github-data-handling", label: "GitHub Data Handling" },
         { href: "/terms", label: "Terms of Service" },
         { href: "/security-annex", label: "Security Annex" },
         { href: "/feedback", label: "Feedback" },

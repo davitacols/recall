@@ -316,6 +316,17 @@ class KnowledgeApiContractTests(TestCase):
         response = self.client.get("/api/knowledge/onboarding/")
 
         self.assertEqual(response.status_code, 200)
+        steps = response.data.get("steps") or []
+        self.assertEqual(
+            [item.get("id") for item in steps],
+            [
+                "connect_github",
+                "enable_repository",
+                "capture_discussion",
+                "record_decision",
+                "ask_recall",
+            ],
+        )
         progress = response.data.get("onboarding_progress") or {}
         self.assertIn("completed_steps", progress)
         self.assertIn("total_steps", progress)
@@ -323,7 +334,7 @@ class KnowledgeApiContractTests(TestCase):
         checklist = progress.get("checklist") or []
         self.assertTrue(checklist)
         self.assertTrue(any(item.get("id") == "ask_recall" for item in checklist))
-        self.assertTrue(any(item.get("href") == "/business/tasks" for item in checklist))
+        self.assertTrue(any(item.get("href") == "/integrations/github" for item in checklist))
 
     def test_search_respects_type_filters(self):
         response = self.client.post(

@@ -156,6 +156,7 @@ export default function TermsEnterprise() {
       summaryCards={summaryCards}
       sections={sections}
       footerLinks={[
+        { href: "/github-data-handling", label: "GitHub Data Handling" },
         { href: "/privacy", label: "Privacy Notice" },
         { href: "/security-annex", label: "Security Annex" },
         { href: "/partners", label: "Partners" },

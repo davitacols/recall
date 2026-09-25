@@ -564,6 +564,7 @@ export default function Homepage() {
             <div className="hp-footer-reference-links">
               <Link to="/feedback">Feedback</Link>
               <Link to="/partners">Partners</Link>
+              <Link to="/github-data-handling">GitHub data</Link>
               <Link to="/security-annex">Security</Link>
             </div>
           </div>

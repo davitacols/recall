@@ -315,6 +315,24 @@ PAYPAL_ENTERPRISE_PLAN_ID = config('PAYPAL_ENTERPRISE_PLAN_ID', default='').stri
 # Vector Database
 CHROMA_PERSIST_DIRECTORY = config('CHROMA_PERSIST_DIRECTORY', default='./chroma_db')
 
+# Private semantic embedding service.  Production points this at the internal
+# TEI container; a blank URL keeps local development on keyword search only.
+SEMANTIC_SEARCH_URL = config('SEMANTIC_SEARCH_URL', default='').strip().rstrip('/')
+SEMANTIC_SEARCH_MODEL = config(
+    'SEMANTIC_SEARCH_MODEL',
+    default='sentence-transformers/all-MiniLM-L6-v2',
+).strip()
+SEMANTIC_SEARCH_TIMEOUT = config('SEMANTIC_SEARCH_TIMEOUT', default=15.0, cast=float)
+SEMANTIC_SEARCH_BATCH_SIZE = config('SEMANTIC_SEARCH_BATCH_SIZE', default=32, cast=int)
+SEMANTIC_SEARCH_CANDIDATE_LIMIT = config(
+    'SEMANTIC_SEARCH_CANDIDATE_LIMIT', default=100, cast=int
+)
+SEMANTIC_SEARCH_MIN_SCORE = config('SEMANTIC_SEARCH_MIN_SCORE', default=0.28, cast=float)
+SEMANTIC_SEARCH_CACHE_TIMEOUT = config(
+    'SEMANTIC_SEARCH_CACHE_TIMEOUT', default=7 * 24 * 3600, cast=int
+)
+SEMANTIC_SEARCH_MAX_CHARS = config('SEMANTIC_SEARCH_MAX_CHARS', default=3000, cast=int)
+
 # Model Cache Directories
 HUGGINGFACE_HUB_CACHE = config('HUGGINGFACE_HUB_CACHE', default='D:\\\\huggingface_cache')
 TRANSFORMERS_CACHE = config('TRANSFORMERS_CACHE', default='D:\\\\transformers_cache')

@@ -1,36 +1,39 @@
-from django.core.management.base import BaseCommand
-from apps.organizations.models import Organization
+from django.core.management.base import BaseCommand, CommandError
+
 from apps.knowledge.search_engine import get_search_engine
-from apps.conversations.models import Conversation
-from apps.decisions.models import Decision
+from apps.knowledge.semantic_search import SemanticSearchUnavailable
+from apps.organizations.models import Organization
+
 
 class Command(BaseCommand):
-    help = 'Index all conversations and decisions for semantic search'
+    help = "Warm cached semantic embeddings for workspace search"
 
     def add_arguments(self, parser):
-        parser.add_argument('--org-slug', type=str, help='Index only specific organization')
+        parser.add_argument(
+            "--org-slug",
+            type=str,
+            help="Warm only one organization",
+        )
 
     def handle(self, *args, **options):
         search_engine = get_search_engine()
-        
-        if options['org_slug']:
-            orgs = Organization.objects.filter(slug=options['org_slug'])
-        else:
-            orgs = Organization.objects.all()
-        
-        for org in orgs:
-            self.stdout.write(f'\nIndexing: {org.name}')
-            
-            conversations = Conversation.objects.filter(organization=org)
-            self.stdout.write(f'  Conversations: {conversations.count()}')
-            for conv in conversations:
-                search_engine.index_conversation(conv)
-            
-            decisions = Decision.objects.filter(organization=org)
-            self.stdout.write(f'  Decisions: {decisions.count()}')
-            for decision in decisions:
-                search_engine.index_decision(decision)
-            
-            self.stdout.write(self.style.SUCCESS(f'  Done: {org.name}'))
-        
-        self.stdout.write(self.style.SUCCESS('\nAll indexed!'))
+        if not search_engine.semantic.enabled:
+            raise CommandError("SEMANTIC_SEARCH_URL is not configured")
+
+        organizations = Organization.objects.all().order_by("id")
+        if options.get("org_slug"):
+            organizations = organizations.filter(slug=options["org_slug"])
+            if not organizations.exists():
+                raise CommandError("Organization not found")
+
+        total = 0
+        for organization in organizations.iterator():
+            self.stdout.write(f"Warming: {organization.name}")
+            try:
+                count = search_engine.warm_semantic_index(organization.id)
+            except SemanticSearchUnavailable as exc:
+                raise CommandError(str(exc)) from exc
+            total += count
+            self.stdout.write(self.style.SUCCESS(f"  Cached {count} records"))
+
+        self.stdout.write(self.style.SUCCESS(f"Semantic index ready: {total} records"))

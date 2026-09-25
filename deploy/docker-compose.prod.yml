@@ -13,7 +13,7 @@
 #
 # Every service carries a hard mem_limit. On a shared box an unbounded worker
 # doesn't just kill itself, it gets a neighbour's Postgres OOM-killed. Ceilings
-# total ~3.7G against 7.6G installed, leaving headroom for solakuti and the OS.
+# total ~4.5G against 7.6G installed, leaving headroom for solakuti and the OS.
 name: recall
 
 services:
@@ -51,6 +51,26 @@ services:
       timeout: 5s
       retries: 5
     mem_limit: 256m
+
+  # One shared CPU embedding model. Running it here keeps a model copy out of
+  # each Gunicorn/Celery process and exposes no host port; only this stack's
+  # private network can call it. Model files persist across container rebuilds.
+  semantic:
+    image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.9
+    restart: unless-stopped
+    command:
+      - --model-id
+      - ${SEMANTIC_SEARCH_MODEL:-sentence-transformers/all-MiniLM-L6-v2}
+      - --auto-truncate
+      - --max-batch-tokens
+      - "8192"
+    environment:
+      HF_HUB_DISABLE_TELEMETRY: "1"
+    volumes:
+      - semantic_data:/data
+    expose:
+      - "80"
+    mem_limit: 768m
 
   # One-shot: owns schema migration and static collection so the long-running
   # services never race each other running migrate on startup.
@@ -91,12 +111,16 @@ services:
       --error-logfile -
     env_file:
       - .env.prod
+    environment:
+      SEMANTIC_SEARCH_URL: ${SEMANTIC_SEARCH_URL:-http://semantic:80}
     volumes:
       - static_data:/app/staticfiles
       - media_data:/app/media
     depends_on:
       migrate:
         condition: service_completed_successfully
+      semantic:
+        condition: service_started
     expose:
       - "8000"
     mem_limit: 768m
@@ -128,11 +152,15 @@ services:
       --max-tasks-per-child=200
     env_file:
       - .env.prod
+    environment:
+      SEMANTIC_SEARCH_URL: ${SEMANTIC_SEARCH_URL:-http://semantic:80}
     volumes:
       - media_data:/app/media
     depends_on:
       migrate:
         condition: service_completed_successfully
+      semantic:
+        condition: service_started
     mem_limit: 768m
 
   beat:
@@ -192,6 +220,7 @@ volumes:
   static_data:
   media_data:
   beat_data:
+  semantic_data:
 
 networks:
   default:

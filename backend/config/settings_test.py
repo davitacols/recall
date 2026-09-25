@@ -49,6 +49,7 @@ MIGRATION_MODULES = {
 REDIS_URL = "redis://127.0.0.1:6379/15"
 CELERY_BROKER_URL = REDIS_URL
 CELERY_RESULT_BACKEND = REDIS_URL
+SEMANTIC_SEARCH_URL = ""
 
 # Faster tests.
 PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]

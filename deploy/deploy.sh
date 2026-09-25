@@ -66,6 +66,23 @@ $DC up -d
 echo "==> waiting for the backend"
 sleep 15
 
+echo "==> waiting for semantic search"
+semantic_ready=0
+attempt=0
+while [ "$attempt" -lt 24 ]; do
+  if docker exec recall-backend-1 python -c \
+    "import requests; r=requests.get('http://semantic:80/health', timeout=2); raise SystemExit(0 if r.ok else 1)" \
+    >/dev/null 2>&1; then
+    semantic_ready=1
+    break
+  fi
+  attempt=$((attempt + 1))
+  sleep 5
+done
+if [ "$semantic_ready" -ne 1 ]; then
+  echo "    semantic model is not ready; keyword fallback remains available"
+fi
+
 echo "==> migrations"
 $DC logs --tail 20 migrate 2>&1 | grep -E "migrations to apply|Applying|static files|ready" || true
 

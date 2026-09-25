@@ -110,6 +110,33 @@ None of them overwrite anything. `backfill_rationale` only ever fills a
 rationale that is currently empty, and when a source states no reason it leaves
 the field blank rather than inventing one.
 
+## Semantic search
+
+The `semantic` container runs the private CPU embedding model. It has no public
+port. Search sends workspace-scoped candidate text to it over the internal
+Docker network, stores content-hash embeddings in Redis, and falls back to the
+keyword engine if the model is unavailable.
+
+After the first deployment or a large import, warm the cache instead of making
+the first user wait for every document embedding:
+
+```sh
+$DC exec backend python manage.py index_knowledge
+$DC exec backend python manage.py index_knowledge --org-slug <workspace-slug>
+```
+
+Check model startup and readiness with:
+
+```sh
+$DC logs --tail 100 semantic
+$DC exec backend python manage.py shell -c \
+  "from apps.knowledge.semantic_search import get_semantic_search_status; print(get_semantic_search_status())"
+```
+
+`available` means the embedding endpoint answered. `unavailable` degrades the
+public health endpoint but does not take search down; users continue to receive
+keyword results while the model recovers.
+
 ## Checking it worked
 
 Capture lands in `/conversations` within seconds of a merge. If nothing

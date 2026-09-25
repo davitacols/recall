@@ -66,12 +66,20 @@ def health_check(request):
         status['components']['search'] = 'error'
         status['status'] = 'degraded'
 
+    # The model is served by a private TEI container.  Checking for a Python
+    # package in the web image used to report a capability that was never wired
+    # into retrieval; readiness now reflects the service that search calls.
     try:
-        import importlib.util
-        semantic = importlib.util.find_spec('sentence_transformers') is not None
-        status['components']['semantic_search'] = 'available' if semantic else 'unavailable'
+        from apps.knowledge.semantic_search import get_semantic_search_status
+
+        semantic_status = get_semantic_search_status()
+        status['components']['semantic_search'] = semantic_status
+        if semantic_status == 'unavailable':
+            status['status'] = 'degraded'
     except Exception:
+        logger.exception('Health check: semantic search state unavailable')
         status['components']['semantic_search'] = 'unknown'
+        status['status'] = 'degraded'
 
     # Ask Recall can fall back to its deterministic rules engine, so a missing
     # model key does not make the whole app unavailable. It must still be

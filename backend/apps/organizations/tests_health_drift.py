@@ -151,3 +151,22 @@ class HealthDriftTests(TestCase):
         self.assertEqual(body["components"]["ask_recall"], "unavailable")
         self.assertEqual(body["status"], "degraded")
         self.assertNotIn("API key", str(body))
+
+    def test_semantic_service_outage_is_visible(self, _cfg, _redis):
+        with patch(
+            "apps.knowledge.semantic_search.get_semantic_search_status",
+            return_value="unavailable",
+        ):
+            body = self._get()
+
+        self.assertEqual(body["components"]["semantic_search"], "unavailable")
+        self.assertEqual(body["status"], "degraded")
+
+    def test_semantic_service_readiness_is_reported(self, _cfg, _redis):
+        with patch(
+            "apps.knowledge.semantic_search.get_semantic_search_status",
+            return_value="available",
+        ):
+            body = self._get()
+
+        self.assertEqual(body["components"]["semantic_search"], "available")

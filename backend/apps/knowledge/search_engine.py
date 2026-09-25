@@ -1,12 +1,20 @@
+import logging
 from datetime import datetime
-from html import unescape
 
+from django.conf import settings
 from django.db.models import Q
-from django.utils.html import strip_tags
 
 from apps.conversations.models import ActionItem, Conversation, ConversationReply
 from apps.decisions.models import Decision
 from apps.organizations.models import User
+from apps.knowledge.semantic_search import (
+    SemanticSearchClient,
+    SemanticSearchUnavailable,
+    cosine_similarity,
+)
+
+
+logger = logging.getLogger(__name__)
 
 try:
     from apps.business.models import CalendarConnection, Goal, Meeting, Task
@@ -632,7 +640,10 @@ def _build_phrase_windows(query, min_size=2, max_size=3):
 
 
 def _requested_types(filters):
-    requested = filters.get('types') or []
+    # ``kinds`` is used by the decision-similarity and agent callers; ``types``
+    # is the public search API name.  Treat them as aliases so a focused search
+    # never widens into unrelated workspace records.
+    requested = filters.get('types') or filters.get('kinds') or []
     if isinstance(requested, str):
         requested = [part.strip().lower() for part in requested.split(',')]
     requested = {item.strip().lower() for item in requested if str(item).strip()}
@@ -705,7 +716,74 @@ def _query_matches_terms(query, match_terms):
     return False
 
 
+def _build_scope_filter(item_type, config, organization_id, filters):
+    """Build non-text filters shared by keyword and semantic retrieval."""
+    filters_q = Q(**{config['org_filter']: organization_id})
+    date_from = _parse_iso(filters.get('date_from'))
+    date_to = _parse_iso(filters.get('date_to'))
+
+    if date_from:
+        filters_q &= Q(**{f"{config['date_field']}__gte": date_from})
+    if date_to:
+        filters_q &= Q(**{f"{config['date_field']}__lte": date_to})
+
+    if filters.get('author'):
+        author_query = str(filters['author']).strip()
+        if item_type == 'conversation':
+            filters_q &= Q(author__username__icontains=author_query)
+        elif item_type == 'decision':
+            filters_q &= Q(decision_maker__username__icontains=author_query)
+        elif item_type == 'reply':
+            filters_q &= Q(author__username__icontains=author_query)
+        elif item_type == 'sprint_update':
+            filters_q &= Q(author__username__icontains=author_query)
+        elif item_type == 'person':
+            filters_q &= (
+                Q(username__icontains=author_query)
+                | Q(full_name__icontains=author_query)
+            )
+
+    if filters.get('status'):
+        status_query = str(filters['status']).strip()
+        if item_type == 'conversation':
+            filters_q &= Q(status_label=status_query)
+        elif item_type in {
+            'decision', 'goal', 'task', 'issue', 'sprint', 'blocker', 'action_item'
+        }:
+            filters_q &= Q(status=status_query)
+        elif item_type == 'milestone':
+            filters_q &= Q(
+                completed=status_query.lower() in {'completed', 'done', 'true', '1'}
+            )
+
+    return filters_q
+
+
+def _resolve_search_value(item, field):
+    value = item
+    for part in field.split('__'):
+        if value is None:
+            return ''
+        value = getattr(value, part, '')
+    if isinstance(value, (list, tuple, set)):
+        return ' '.join(str(part) for part in value)
+    if isinstance(value, dict):
+        return ' '.join(f'{key} {part}' for key, part in value.items())
+    return str(value or '')
+
+
+def _semantic_text(item_type, item, config):
+    from apps.knowledge.text_utils import to_plain_text
+
+    parts = [item_type.replace('_', ' ')]
+    parts.extend(_resolve_search_value(item, field) for field in config['search_fields'])
+    return to_plain_text(' '.join(part for part in parts if part), limit=3000)
+
+
 class EnhancedSearchEngine:
+    def __init__(self, semantic_client=None):
+        self.semantic = semantic_client or SemanticSearchClient()
+
     def search(self, query, organization_id, filters=None, limit=10):
         """Search the workspace, widening the query only if it finds nothing.
 
@@ -719,12 +797,21 @@ class EnhancedSearchEngine:
         results = self._search_pass(query, organization_id, filters, limit, relaxed=False)
         if query and not results.get('total'):
             results = self._search_pass(query, organization_id, filters, limit, relaxed=True)
+        if query and self.semantic.enabled:
+            try:
+                semantic_results = self._semantic_search(
+                    query, organization_id, filters=filters, limit=limit
+                )
+                results = self._merge_results(results, semantic_results, limit=limit)
+            except SemanticSearchUnavailable as exc:
+                logger.warning(
+                    "Semantic retrieval unavailable; using keyword results: %s",
+                    exc,
+                )
         return results
 
     def _search_pass(self, query, organization_id, filters=None, limit=10, relaxed=False):
         filters = filters or {}
-        date_from = _parse_iso(filters.get('date_from'))
-        date_to = _parse_iso(filters.get('date_to'))
         requested_types = _requested_types(filters)
         allowed_types = requested_types or {
             item_type for item_type, config in TYPE_CONFIG.items() if config['model'] is not None
@@ -741,44 +828,122 @@ class EnhancedSearchEngine:
             if model is None or item_type not in allowed_types:
                 continue
 
-            filters_q = Q(**{config['org_filter']: organization_id})
+            filters_q = _build_scope_filter(
+                item_type, config, organization_id, filters
+            )
             if query:
                 broad_match_terms = config.get('broad_match_terms') or set()
                 if not (broad_match_terms and _query_matches_terms(query, broad_match_terms)):
                     filters_q &= _build_query(config['search_fields'], query, relaxed=relaxed)
-
-            if date_from:
-                filters_q &= Q(**{f"{config['date_field']}__gte": date_from})
-            if date_to:
-                filters_q &= Q(**{f"{config['date_field']}__lte": date_to})
-
-            if filters.get('author'):
-                author_query = str(filters['author']).strip()
-                if item_type == 'conversation':
-                    filters_q &= Q(author__username__icontains=author_query)
-                elif item_type == 'decision':
-                    filters_q &= Q(decision_maker__username__icontains=author_query)
-                elif item_type == 'reply':
-                    filters_q &= Q(author__username__icontains=author_query)
-                elif item_type == 'sprint_update':
-                    filters_q &= Q(author__username__icontains=author_query)
-                elif item_type == 'person':
-                    filters_q &= (Q(username__icontains=author_query) | Q(full_name__icontains=author_query))
-
-            if filters.get('status'):
-                status_query = str(filters['status']).strip()
-                if item_type == 'conversation':
-                    filters_q &= Q(status_label=status_query)
-                elif item_type in {'decision', 'goal', 'task', 'issue', 'sprint', 'blocker', 'action_item'}:
-                    filters_q &= Q(status=status_query)
-                elif item_type == 'milestone':
-                    filters_q &= Q(completed=status_query.lower() in {'completed', 'done', 'true', '1'})
 
             queryset = model.objects.filter(filters_q).order_by(config['order_by'])[:limit]
             results[config['bucket']] = [config['serialize'](item) for item in queryset]
 
         results['total'] = sum(len(value) for value in results.values() if isinstance(value, list))
         return results
+
+    def _semantic_documents(self, organization_id, filters=None):
+        filters = filters or {}
+        requested_types = _requested_types(filters)
+        allowed_types = requested_types or {
+            item_type
+            for item_type, config in TYPE_CONFIG.items()
+            if config['model'] is not None
+        }
+        candidate_limit = max(
+            1, int(getattr(settings, 'SEMANTIC_SEARCH_CANDIDATE_LIMIT', 100))
+        )
+
+        documents = []
+        for item_type, config in TYPE_CONFIG.items():
+            model = config['model']
+            if model is None or item_type not in allowed_types:
+                continue
+            filters_q = _build_scope_filter(
+                item_type, config, organization_id, filters
+            )
+            queryset = model.objects.filter(filters_q).order_by(
+                config['order_by']
+            )[:candidate_limit]
+            for item in queryset:
+                text = _semantic_text(item_type, item, config)
+                if not text:
+                    continue
+                documents.append(
+                    {
+                        'bucket': config['bucket'],
+                        'text': text,
+                        'serialized': config['serialize'](item),
+                    }
+                )
+        return documents
+
+    def _semantic_search(self, query, organization_id, filters=None, limit=10):
+        results = {}
+        for config in TYPE_CONFIG.values():
+            results.setdefault(config['bucket'], [])
+
+        documents = self._semantic_documents(organization_id, filters=filters)
+        if not documents:
+            results['total'] = 0
+            return results
+
+        query_vector = self.semantic.embed([query])[0]
+        document_vectors = self.semantic.embed_cached(
+            document['text'] for document in documents
+        )
+        min_score = float(getattr(settings, 'SEMANTIC_SEARCH_MIN_SCORE', 0.28))
+
+        ranked = []
+        for document, vector in zip(documents, document_vectors):
+            score = cosine_similarity(query_vector, vector)
+            if score < min_score:
+                continue
+            serialized = dict(document['serialized'])
+            serialized['semantic_score'] = round(score, 4)
+            ranked.append((score, document['bucket'], serialized))
+
+        ranked.sort(key=lambda row: row[0], reverse=True)
+        for _, bucket, serialized in ranked[:limit]:
+            results[bucket].append(serialized)
+        results['total'] = sum(
+            len(value) for value in results.values() if isinstance(value, list)
+        )
+        return results
+
+    def _merge_results(self, keyword_results, semantic_results, limit):
+        merged = {
+            key: list(value) if isinstance(value, list) else value
+            for key, value in keyword_results.items()
+        }
+        for bucket, semantic_items in semantic_results.items():
+            if not isinstance(semantic_items, list):
+                continue
+            current = merged.setdefault(bucket, [])
+            seen = {
+                (str(item.get('type', '')), item.get('id'))
+                for item in current
+                if isinstance(item, dict)
+            }
+            for item in semantic_items:
+                key = (str(item.get('type', '')), item.get('id'))
+                if key in seen or len(current) >= limit:
+                    continue
+                current.append(item)
+                seen.add(key)
+
+        merged['total'] = sum(
+            len(value) for value in merged.values() if isinstance(value, list)
+        )
+        return merged
+
+    def warm_semantic_index(self, organization_id, filters=None):
+        """Populate shared document embeddings without issuing a search query."""
+        if not self.semantic.enabled:
+            raise SemanticSearchUnavailable('semantic search is not configured')
+        documents = self._semantic_documents(organization_id, filters=filters)
+        self.semantic.embed_cached(document['text'] for document in documents)
+        return len(documents)
 
     def get_suggestions(self, query, organization_id, limit=8):
         if len(query) < 2:
